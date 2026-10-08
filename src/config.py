@@ -1,0 +1,63 @@
+"""Configuration for the NLI pipeline."""
+import os
+from pathlib import Path
+
+# Paths
+PROJECT_ROOT = Path(__file__).parent.parent
+REPOS_DIR = PROJECT_ROOT / "repos"
+DATA_DIR = PROJECT_ROOT / "data"
+
+# OCR text source - use the pre-existing cleaned text
+OCR_TEXT_DIR = REPOS_DIR / "VotingBooklets-mono" / "cleaned_ocr_txt" / "gemini-ocr"
+PARALLEL_CORPUS_DIR = REPOS_DIR / "VotingBooklets-mono" / "parallel_corpus"
+
+# Language directories in OCR text
+LANG_DIRS = {
+    "de": "Deutsch",
+    "fr": "Franz\u00f6sisch",
+    "it": "Italienisch",
+    "rm": "R\u00e4toromanisch",
+}
+
+# Available voting dates (years)
+YEARS = ["1977", "1985", "2007"]
+
+# Embedding model for retrieval
+EMBEDDING_MODEL = "jgrosjean-mathesis/sentence-swissbert"
+BATCH_SIZE = 32
+
+# LLM for NLI judgment.
+# Backend options: "lexical" (no LLM, smoke-test only), "mlx" (Apple Silicon
+# local via mlx_lm), "ollama" (requires Ollama installed and running).
+# Override with:  LLM_BACKEND=mlx python main.py
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "lexical")
+
+# MLX backend: default model. Override with:
+#   MLX_MODEL=<hf-id> python main.py           (or:  ./run.sh <hf-id>)
+#
+# IMPORTANT: the model's `model_type` must be implemented in your installed
+# mlx-lm. Check with `ls .../site-packages/mlx_lm/models/`. Current mlx-lm
+# 0.21.2 supports qwen2, llama, gemma, gemma2, phi3, etc. It does NOT yet
+# support Apertus (that landed after 0.21.2 — upgrade mlx-lm to >=0.22 or
+# latest to unlock it).
+#
+# Curated list of MLX models that DO work on this machine as-is:
+#   mlx-community/Qwen2.5-3B-Instruct-4bit     ~1.7 GB  (default, safe)
+#   mlx-community/Qwen2.5-7B-Instruct-4bit     ~4.3 GB  (better quality)
+#   mlx-community/Meta-Llama-3.1-8B-Instruct-4bit  ~4.5 GB
+#
+# Requires `pip3 install --upgrade mlx-lm` first (arch not in 0.21.2):
+#   swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4      ~0.6 GB  Swiss-native
+#   mlx-community/Apertus-8B-Instruct-2509-4bit     ~4.3 GB
+MLX_MODEL = os.environ.get("MLX_MODEL", "mlx-community/Qwen2.5-3B-Instruct-4bit")
+
+# Ollama backend (kept for later use).
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "apertus-8b")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Retrieval settings
+TOP_K = 5  # number of passages to retrieve
+MIN_SIMILARITY = 0.3  # minimum cosine similarity threshold
+
+# NLI labels
+NLI_LABELS = ["entailment", "contradiction", "neutral"]

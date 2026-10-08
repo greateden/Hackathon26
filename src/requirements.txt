@@ -1,0 +1,15 @@
+# Minimal Baseline Pipeline for Track 2A (Swiss Voting Booklets NLI)
+# Architecture: claim -> retrieval -> evidence -> judgement + source
+
+# Core deep-learning stack (already installed on this machine)
+torch>=2.0
+transformers>=4.38
+numpy
+scipy
+scikit-learn
+huggingface_hub
+
+# Local LLM inference on Apple Silicon (for the MLX NLI judge backend)
+# If missing: pip install --user mlx mlx-lm
+mlx>=0.21
+mlx-lm>=0.21

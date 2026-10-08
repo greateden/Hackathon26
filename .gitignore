@@ -1,0 +1,19 @@
+# External corpus checkouts (see RUN.md for download commands)
+/repos/
+
+# Generated pipeline outputs
+/data/logs/
+/data/results_*.json
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# macOS metadata
+.DS_Store

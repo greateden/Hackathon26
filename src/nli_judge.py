@@ -1,0 +1,242 @@
+"""
+NLI Judge: Classify claim-vs-evidence relationship (entailment/contradiction/neutral).
+
+Backends:
+  - "mlx":    mlx_lm.generate against a local MLX model (Apple Silicon). Default.
+  - "ollama": Ollama HTTP API (if user has Ollama installed).
+  - "lexical": No-LLM heuristic for smoke-testing plumbing only.
+"""
+import json
+import re
+from typing import Dict, List
+
+from config import (
+    LLM_BACKEND, OLLAMA_MODEL, OLLAMA_BASE_URL,
+    MLX_MODEL, NLI_LABELS,
+)
+
+
+SYSTEM_PROMPT = (
+    "You are a document-grounded NLI system. Determine the relationship between a CLAIM "
+    "and EVIDENCE drawn from Swiss voting booklets.\n\n"
+    "Labels:\n"
+    "- entailment: EVIDENCE clearly supports the CLAIM.\n"
+    "- contradiction: EVIDENCE contradicts the CLAIM.\n"
+    "- neutral: EVIDENCE does not give enough information either way.\n\n"
+    "Judge ONLY using the given evidence, not outside knowledge. "
+    "If the evidence is in another language, translate and compare meaning.\n"
+    "Reply with EXACTLY this JSON and nothing else:\n"
+    '{"label": "entailment"|"contradiction"|"neutral", '
+    '"reasoning": "one short sentence", '
+    '"evidence_snippet": "verbatim key sentence(s) from the evidence"}'
+)
+
+USER_TEMPLATE = (
+    "## Claim\n{claim}\n\n"
+    "## Evidence from the official voting booklet\n{evidence}\n\n"
+    "## Task\nBased ONLY on the evidence above, classify the claim as "
+    "entailment, contradiction, or neutral. Reply with JSON only."
+)
+
+
+def format_evidence(passages: List[Dict], max_chars: int = 2000) -> str:
+    """Concatenate retrieved passages into an evidence block, capped to max_chars."""
+    if not passages:
+        return "(No relevant passages found.)"
+    parts, total = [], 0
+    for p in passages:
+        tag = f"[{p['lang'].upper()}] [{p['id']}]"
+        chunk = f"{tag}\n{p['text']}"
+        if total + len(chunk) > max_chars:
+            break
+        parts.append(chunk)
+        total += len(chunk)
+    return "\n\n".join(parts) if parts else "(No relevant passages found.)"
+
+
+_JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+def parse_nli_response(raw: str) -> Dict:
+    """Best-effort parse of LLM output into {label, reasoning, evidence_snippet}."""
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+    m = _JSON_RE.search(text)
+    if m:
+        try:
+            obj = json.loads(m.group(0))
+            if obj.get("label") in NLI_LABELS:
+                return obj
+        except json.JSONDecodeError:
+            pass
+
+    lower = text.lower()
+    for label in ("contradiction", "entailment", "neutral"):
+        if label in lower:
+            return {"label": label, "reasoning": text[:200], "evidence_snippet": ""}
+    return {"label": "neutral",
+            "reasoning": f"Unparseable: {text[:100]}",
+            "evidence_snippet": ""}
+
+
+class MlxJudge:
+    """Local NLI judge backed by mlx_lm (Apple Silicon)."""
+
+    def __init__(self, model_id: str = MLX_MODEL, max_tokens: int = 400,
+                 temperature: float = 0.1):
+        import mlx_lm
+        from mlx_lm import load
+        self.model_id = model_id
+        print(f"Loading MLX model: {model_id}   (mlx-lm {mlx_lm.__version__})")
+        print("           first load downloads weights from Hugging Face; "
+              "subsequent runs are cached.")
+        try:
+            self.model, self.tokenizer = load(model_id)
+        except (ValueError, ModuleNotFoundError) as e:
+            msg = str(e)
+            hint_lines = []
+            if "not supported" in msg or "mlx_lm.models." in msg:
+                m = re.search(r"Model type (\S+) not supported", msg)
+                arch = m.group(1) if m else "unknown"
+                hint_lines = [
+                    "",
+                    f"  Root cause: mlx-lm {mlx_lm.__version__} does not implement",
+                    f"  the '{arch}' model architecture, so the downloaded weights",
+                    "  cannot be loaded.",
+                    "",
+                    "  Fix (pick ONE):",
+                    "    (a) upgrade mlx-lm to latest, which includes Apertus:",
+                    "          pip3 install --upgrade mlx-lm",
+                    "        then re-run ./run.sh",
+                    "    (b) keep mlx-lm as-is and use a qwen2/llama model:",
+                    "          ./run.sh mlx-community/Qwen2.5-3B-Instruct-4bit",
+                    "          ./run.sh mlx-community/Qwen2.5-7B-Instruct-4bit",
+                    "          ./run.sh mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
+                    "",
+                ]
+            raise RuntimeError(
+                f"Failed to load MLX model {model_id!r}: {msg}\n" + "\n".join(hint_lines)
+            ) from e
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        print("MLX model loaded.")
+
+    def judge(self, claim: str, passages: List[Dict]) -> Dict:
+        from mlx_lm import generate
+        from mlx_lm.sample_utils import make_sampler
+
+        evidence = format_evidence(passages)
+        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ]
+        prompt = self.tokenizer.apply_chat_template(
+            messages, add_generation_prompt=True, tokenize=False
+        )
+        sampler = make_sampler(temp=self.temperature)
+        raw = generate(
+            self.model, self.tokenizer, prompt=prompt,
+            max_tokens=self.max_tokens, sampler=sampler, verbose=False,
+        )
+        return parse_nli_response(raw)
+
+
+class OllamaJudge:
+    """NLI judge via Ollama HTTP API."""
+
+    def __init__(self, model: str = OLLAMA_MODEL, base_url: str = OLLAMA_BASE_URL):
+        import requests
+        self.model = model
+        self.base_url = base_url
+        self._requests = requests
+        try:
+            resp = requests.get(f"{base_url}/api/tags", timeout=5)
+            if resp.status_code == 200:
+                names = [m["name"] for m in resp.json().get("models", [])]
+                print(f"Ollama OK. Models: {names}")
+            else:
+                print(f"Ollama returned HTTP {resp.status_code}")
+        except Exception as e:
+            print(f"WARNING: cannot reach Ollama at {base_url}: {e}")
+
+    def judge(self, claim: str, passages: List[Dict]) -> Dict:
+        evidence = format_evidence(passages)
+        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
+            "options": {"temperature": 0.1},
+            "stream": False,
+        }
+        try:
+            resp = self._requests.post(
+                f"{self.base_url}/api/chat", json=payload, timeout=120
+            )
+            resp.raise_for_status()
+            raw = resp.json()["message"]["content"]
+            return parse_nli_response(raw)
+        except Exception as e:
+            return {"label": "neutral",
+                    "reasoning": f"Ollama error: {e}",
+                    "evidence_snippet": "", "error": str(e)}
+
+
+class LexicalJudge:
+    """
+    No-LLM fallback: crude keyword polarity heuristic. Only useful for smoke-testing
+    that the retrieval -> judge -> report plumbing works. NOT a real NLI classifier.
+    Do not report these labels as evidence of model quality.
+    """
+
+    _NEG = (" lehnen ", " ablehnen ", "nicht ", " reject ", " refuse ",
+            " widerspr", "ne pas ", "no ", " nicht zulässig")
+    _POS = (" empfehlen", " accept", " unterstützt", "garanti", " unterst")
+
+    def judge(self, claim: str, passages: List[Dict]) -> Dict:
+        if not passages:
+            return {"label": "neutral",
+                    "reasoning": "no evidence retrieved",
+                    "evidence_snippet": ""}
+        claim_l = " " + claim.lower() + " "
+        ev = " ".join(p["text"] for p in passages).lower()
+        neg = sum(1 for t in self._NEG if t in ev)
+        pos = sum(1 for t in self._POS if t in ev)
+        label = "neutral"
+        if neg > pos:
+            # Contradiction heuristic: claim asserts what evidence negates.
+            assertive = any(k in claim_l for k in
+                            ("accept", "recommends accepting",
+                             "supports", "increases", "is approved",
+                             "reduces by 5 billion"))
+            label = "contradiction" if assertive else "entailment"
+        elif pos > 0:
+            label = "entailment"
+        top = passages[0]
+        return {
+            "label": label,
+            "reasoning": f"LEXICAL heuristic only (no LLM). "
+                         f"top hit sim={top['score']:.3f} from {top['id']}",
+            "evidence_snippet": top["text"][:200],
+        }
+
+
+def build_judge(backend: str = None):
+    backend = backend or LLM_BACKEND
+    if backend == "mlx":
+        return MlxJudge()
+    if backend == "ollama":
+        return OllamaJudge()
+    if backend == "lexical":
+        print("Using LEXICAL fallback judge (no LLM) — plumbing smoke test only")
+        return LexicalJudge()
+    raise ValueError(f"unknown LLM_BACKEND: {backend}")
+
