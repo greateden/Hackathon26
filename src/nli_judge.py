@@ -12,8 +12,9 @@ from typing import Dict, List
 
 from config import (
     LLM_BACKEND, OLLAMA_MODEL, OLLAMA_BASE_URL,
-    MLX_MODEL, NLI_LABELS,
+    MLX_MODEL,
 )
+from labels import normalise_label
 
 
 SYSTEM_PROMPT = (
@@ -55,10 +56,26 @@ def format_evidence(passages: List[Dict], max_chars: int = 2000) -> str:
 
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+_LABEL_KEY_RE = re.compile(
+    r'"label"\s*:\s*\(?\s*"?(entailment|neutral|contradiction|0|1|2)\b',
+    re.IGNORECASE)
+_LEADING_LABEL_RE = re.compile(
+    r"\s*(entailment|neutral|contradiction)\b", re.IGNORECASE)
 
 
 def parse_nli_response(raw: str) -> Dict:
-    """Best-effort parse of LLM output into {label, reasoning, evidence_snippet}."""
+    """Parse an LLM reply into {label, reasoning, evidence_snippet}.
+
+    Strict by design (2026-10-09): a reply yields a label only if
+      (a) it contains a JSON object with a valid "label", or
+      (b) a "label": <value> pair can still be recovered from broken JSON, or
+      (c) the reply starts with a bare label word.
+    The old substring keyword fallback was removed: it let prose that merely
+    *mentions* a label word masquerade as a prediction (see test_judge.py).
+    Anything else returns label=None + error="unparseable_response" and the
+    harness must report it as a failure, never score it as Neutral.
+    Numeric codes ("0"/"1"/"2") are accepted via labels.normalise_label.
+    """
     text = raw.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[-1]
@@ -70,18 +87,23 @@ def parse_nli_response(raw: str) -> Dict:
     if m:
         try:
             obj = json.loads(m.group(0))
-            if obj.get("label") in NLI_LABELS:
+            label = normalise_label(obj.get("label"))
+            if label:
+                obj["label"] = label
                 return obj
         except json.JSONDecodeError:
             pass
 
-    lower = text.lower()
-    for label in ("contradiction", "entailment", "neutral"):
-        if label in lower:
-            return {"label": label, "reasoning": text[:200], "evidence_snippet": ""}
-    return {"label": "neutral",
-            "reasoning": f"Unparseable: {text[:100]}",
-            "evidence_snippet": ""}
+    m2 = _LABEL_KEY_RE.search(text) or _LEADING_LABEL_RE.match(text)
+    if m2:
+        label = normalise_label(m2.group(1))
+        if label:
+            return {"label": label, "reasoning": text[:200],
+                    "evidence_snippet": ""}
+    return {"label": None,
+            "reasoning": f"Unparseable response: {text[:120]}",
+            "evidence_snippet": "",
+            "error": "unparseable_response"}
 
 
 class MlxJudge:
@@ -140,10 +162,20 @@ class MlxJudge:
             messages, add_generation_prompt=True, tokenize=False
         )
         sampler = make_sampler(temp=self.temperature)
-        raw = generate(
-            self.model, self.tokenizer, prompt=prompt,
-            max_tokens=self.max_tokens, sampler=sampler, verbose=False,
-        )
+        try:
+            raw = generate(
+                self.model, self.tokenizer, prompt=prompt,
+                max_tokens=self.max_tokens, sampler=sampler, verbose=False,
+            )
+        except Exception as e:
+            # Generation failures must be reported, never defaulted to a label.
+            return {"label": None,
+                    "reasoning": f"MLX generation failed: {e}",
+                    "evidence_snippet": "", "error": str(e)}
+        if isinstance(raw, tuple) and raw:
+            raw = raw[0]  # older mlx-lm returned (text, response)
+        elif not isinstance(raw, str):
+            raw = getattr(raw, "text", None) or str(raw)
         return parse_nli_response(raw)
 
 
@@ -185,7 +217,7 @@ class OllamaJudge:
             raw = resp.json()["message"]["content"]
             return parse_nli_response(raw)
         except Exception as e:
-            return {"label": "neutral",
+            return {"label": None,
                     "reasoning": f"Ollama error: {e}",
                     "evidence_snippet": "", "error": str(e)}
 

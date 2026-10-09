@@ -13,7 +13,7 @@ import json
 import time
 import logging
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -22,6 +22,7 @@ from config import TOP_K, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, DATA_DIR
 from ingest import build_corpus
 from retriever import build_retriever
 from nli_judge import build_judge, format_evidence
+from labels import label_to_code
 
 
 LOG_DIR = DATA_DIR / "logs"
@@ -76,10 +77,13 @@ class Pipeline:
             claim, top_k=top_k, filter_year=year, filter_lang=lang,
         )
         verdict = self.judge.judge(claim, passages)
-        return {
+        label = verdict.get("label")
+        result = {
             "claim": claim,
             "year_filter": year,
-            "label": verdict.get("label", "neutral"),
+            "label": label,
+            "label_code": label_to_code(label),
+            "status": "ok" if label else "error",
             "reasoning": verdict.get("reasoning", ""),
             "evidence_snippet": verdict.get("evidence_snippet", ""),
             "retrieved": [
@@ -94,6 +98,11 @@ class Pipeline:
                 for p in passages
             ],
         }
+        if verdict.get("error"):
+            result["error"] = verdict["error"]
+        if verdict.get("usage"):
+            result["usage"] = verdict["usage"]
+        return result
 
 
 def run(pipeline, claims, log):
@@ -113,10 +122,12 @@ def run(pipeline, claims, log):
             continue
         elapsed = time.time() - t0
 
+        label = res["label"]
+        shown = (label or "ERROR").upper()
         mark = ""
         if expected:
-            mark = "  OK" if expected == res["label"] else f"  (expected {expected})"
-        log.info("   -> %-13s (%.1fs)%s", res["label"].upper(), elapsed, mark)
+            mark = "  OK" if expected == label else f"  (expected {expected})"
+        log.info("   -> %-13s (%.1fs)%s", shown, elapsed, mark)
         for r in res["retrieved"][:3]:
             log.info("      . %s [%s] sim=%.3f  %s",
                      r["id"], r["lang"], r["score"], r["text_head"][:80])
@@ -162,10 +173,27 @@ def main():
     log.info("=" * 60)
     log.info("DONE: %d claims in %.1fs", len(results), time.time() - t_total)
 
-    # Structured results
+    # Structured results (machine-readable run report)
+    n_err = sum(1 for r in results if r.get("status") == "error")
+    if n_err:
+        log.warning("%d/%d claims finished with status=error "
+                    "(no trustworthy label)", n_err, len(results))
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_json = DATA_DIR / f"results_{ts}_{backend}.json"
-    out_json.write_text(json.dumps(results, indent=2, ensure_ascii=False))
+    report = {
+        "config": {
+            "backend": backend,
+            "model": (MLX_MODEL if backend == "mlx" else
+                      OLLAMA_MODEL if backend == "ollama" else None),
+            "top_k": TOP_K,
+            "timestamp_utc": datetime.now(timezone.utc)
+                                .isoformat(timespec="seconds"),
+            "label_mapping": {"entailment": 0, "neutral": 1,
+                              "contradiction": 2},
+        },
+        "results": results,
+    }
+    out_json.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     log.info("results JSON: %s", out_json)
 
 

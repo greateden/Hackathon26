@@ -19,13 +19,17 @@ Exploratory prototype — the plumbing works; the science is still open.
 - End-to-end CLI over 526 passages from three voting booklets (1977/1985/2007).
 - Cross-lingual retrieval measures R@1 0.83–1.00 on gold-aligned translation
   pairs. This is a *proxy* task, not claim→evidence retrieval.
-- The judgement layer does **not** yet work: the one LLM run scored 3/10 on
-  ten smoke-test claims, largely because English queries retrieve the wrong
-  evidence. The default `lexical` judge is a keyword heuristic for
-  smoke-testing only; its labels are not real NLI.
-- The Apertus backend has never run: the installed `mlx-lm` 0.21.2 cannot
-  load the `apertus` architecture (upgrading to ≥ 0.22 is the documented
-  way back).
+- Judgement is now measured, not guessed: `eval_nli.py` scores any judge
+  backend against the official 1,488-item MNLI-over-Swiss-Voting-Booklets
+  set (v1.1, MIT; `make eval-data` to download). Accuracy + macro-F1 +
+  confusion matrix, pure Python. `--evidence oracle` isolates the
+  judgement step from retrieval; `--evidence retrieve` is the full pipeline
+  (plumbing check: the eval booklets are not in the indexed corpus yet).
+  The old 10-claim smoke set (3/10, flawed) is superseded, not extended.
+- The Apertus backend runs: the git-ignored `.venv` carries mlx-lm 0.32,
+  which loads `swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4`. The first run
+  (2026-10-09) passed a 3-item dev smoke with 0 parse errors. That is
+  plumbing evidence — no accuracy claim until a full split is recorded.
 
 Evidence, measurements and explicit caveats: `REPORT_HACKAPERTUS_OST.md`
 (§8 lists everything that is unverified). Official requirements:
@@ -64,3 +68,27 @@ LLM_BACKEND=mlx python3 main.py # real LLM judge (MLX); or: ./run.sh [mlx-model-
 
 Each run writes a log to `data/logs/` and a results JSON to `data/`
 (git-ignored, regenerable).
+
+## Reproducible entry points (from the repo root)
+
+The `Makefile` wraps the common runs and uses `.venv/bin/python` for the
+Apertus targets when that venv exists.
+
+```bash
+make test                 # offline unit checks (labels, parser, evidence)
+make eval-data            # download the official eval set (needs internet)
+make eval-lex-quick       # 60-item dev split, lexical heuristic (plumbing)
+make eval-apertus-quick   # 10-item dev split, Apertus MLX judge (needs .venv)
+make eval-apertus-full    # 1,428-item held-out eval split (long run)
+```
+
+Set up the Apertus venv once with:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0"
+```
+
+The dev/eval split is a fixed seeded partition of the 1,488-item set
+(`--seed` to change; `--limit` to subsample). Treat `eval` as held out:
+freeze prompts and settings before running it, and record the printed
+command line with any numbers you report.

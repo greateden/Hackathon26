@@ -4,6 +4,8 @@
 # Generated pipeline outputs
 /data/logs/
 /data/results_*.json
+/data/eval_results_*.json
+/data/eval/
 
 # Python environments and caches
 .venv/

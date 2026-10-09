@@ -8,10 +8,12 @@ numpy
 huggingface_hub
 
 # MLX NLI judge backend on Apple Silicon (LLM_BACKEND=mlx).
-# NOTE: Apertus checkpoints need mlx-lm >= 0.22; 0.21.x cannot load the
-# "apertus" model type (this is why the Apertus run of 2026-10-06 failed).
-mlx>=0.21
-mlx-lm>=0.21
+# NOTE: Apertus checkpoints have model_type "apertus", which 0.21.x cannot
+# load. The floor below matches the verified setup (.venv, 2026-10-09):
+#   python3 -m venv .venv && .venv/bin/pip install -r src/requirements.txt
+# or just: .venv/bin/pip install "mlx-lm==0.32.0"
+mlx>=0.32
+mlx-lm>=0.32
 
 # Ollama NLI judge backend (LLM_BACKEND=ollama); never exercised so far.
 requests

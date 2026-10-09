@@ -35,20 +35,16 @@ LLM_BACKEND = os.environ.get("LLM_BACKEND", "lexical")
 #   MLX_MODEL=<hf-id> python main.py           (or:  ./run.sh <hf-id>)
 #
 # IMPORTANT: the model's `model_type` must be implemented in your installed
-# mlx-lm. Check with `ls .../site-packages/mlx_lm/models/`. Current mlx-lm
-# 0.21.2 supports qwen2, llama, gemma, gemma2, phi3, etc. It does NOT yet
-# support Apertus (that landed after 0.21.2 — upgrade mlx-lm to >=0.22 or
-# latest to unlock it).
-#
-# Curated list of MLX models that DO work on this machine as-is:
-#   mlx-community/Qwen2.5-3B-Instruct-4bit     ~1.7 GB  (default, safe)
-#   mlx-community/Qwen2.5-7B-Instruct-4bit     ~4.3 GB  (better quality)
+# mlx-lm. The default below has `model_type: "apertus"`, which needs
+# mlx-lm >= 0.22. The verified setup is the .venv at the repo root
+# (mlx-lm 0.32.0, first successful Apertus load 2026-10-09):
+#   python3.12 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0"
+# `make eval-apertus-*` uses that .venv automatically. With the system
+# python3 (older mlx-lm) set MLX_MODEL to a qwen2/llama model instead:
+#   mlx-community/Qwen2.5-3B-Instruct-4bit     ~1.7 GB
+#   mlx-community/Qwen2.5-7B-Instruct-4bit     ~4.3 GB
 #   mlx-community/Meta-Llama-3.1-8B-Instruct-4bit  ~4.5 GB
-#
-# Requires `pip3 install --upgrade mlx-lm` first (arch not in 0.21.2):
-#   swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4      ~0.6 GB  Swiss-native
-#   mlx-community/Apertus-8B-Instruct-2509-4bit     ~4.3 GB
-MLX_MODEL = os.environ.get("MLX_MODEL", "mlx-community/Qwen2.5-3B-Instruct-4bit")
+MLX_MODEL = os.environ.get("MLX_MODEL", "swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4")
 
 # Ollama backend (kept for later use).
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "apertus-8b")
