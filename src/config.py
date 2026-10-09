@@ -54,5 +54,23 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 TOP_K = 5  # number of passages to retrieve
 MIN_SIMILARITY = 0.3  # minimum cosine similarity threshold
 
+# --- Modern-booklet PDF ingestion (Track 2A Priority 1) -------------------
+# The official eval set references 60 booklet PDFs on bk.admin.ch via the
+# `booklet_url` field. fetch_booklets.py downloads them and builds a
+# retrieval corpus from the ORIGINAL PDFs only. The dataset's
+# `reference_string` field is oracle evidence and must never enter the
+# index or the retrieval query path.
+BOOKLET_PDF_DIR = DATA_DIR / "booklets" / "pdf"
+BOOKLET_TEXT_DIR = DATA_DIR / "booklets" / "txt"
+BOOKLET_CORPUS_JSON = DATA_DIR / "booklets" / "corpus.json"
+
+# End-to-end retrieval configuration, selected with RETRIEVAL_CONFIG=...
+#   v1: as previously measured - query always encoded with the de_CH
+#       adapter, no query translation (weak cross-lingual).
+#   v2: claim translated into the evidence language when languages differ
+#       (Ollama Apertus if reachable; otherwise encoded untranslated, which
+#       the eval reports), then encoded with the EVIDENCE-language adapter.
+RETRIEVAL_CONFIG = os.environ.get("RETRIEVAL_CONFIG", "v2")
+
 # NLI labels
 NLI_LABELS = ["entailment", "contradiction", "neutral"]

@@ -6,6 +6,7 @@
 /data/results_*.json
 /data/eval_results_*.json
 /data/eval/
+/data/booklets/
 
 # Python environments and caches
 .venv/

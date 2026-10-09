@@ -34,6 +34,19 @@ set) before changing `data/example_claims.json`.
   - `eval_retrieval.py`, `diag_embeddings.py`, `diag_claim_retrieval.py` —
     measurement/diagnostic scripts whose output backs the report. Keep them
     runnable; they are the reproduction path for documented findings.
+  - `fetch_booklets.py` — booklet PDF corpus builder: discovers the unique
+    PDFs via the eval set's `booklet_url` field, downloads them (verifies
+    `%PDF` magic bytes), extracts text (`pdftotext`, PyMuPDF fallback) and
+    chunks into `data/booklets/corpus.json` (`{id, doc_id, year, lang,
+    text}`). Resumable. `make fetch-booklets`.
+  - `sampling.py` — seeded class-stratified round-robin sampler
+    (`balanced_sample`, `label_counts`) used by `eval_e2e.py`.
+  - `eval_e2e.py` — evidence-based retrieval eval over the booklet PDF
+    corpus. Gold passage = where the `reference_string` appears verbatim
+    (probe) or with ≥50% 40-char shingle coverage; unlocatable items are
+    excluded from denominators, never guessed. Configs: `lexical` (BM25),
+    `emb_v1` (de_CH query adapter), `emb_v2` (evidence-language adapter +
+    optional Ollama query translation). Full-corpus search, no filters.
   - `run.sh` — convenience wrapper for the MLX backend.
 - `data/example_claims.json` — 10 smoke-test claims (flawed; see below).
 - `data/logs/`, `data/results_*.json` — generated outputs, git-ignored.
@@ -60,6 +73,9 @@ python3 eval_retrieval.py                    # retrieval eval (~12 s, model cach
 python3 eval_retrieval.py --mode same-lang   # encoder degeneracy control
 python3 diag_embeddings.py
 python3 diag_claim_retrieval.py
+python3 fetch_booklets.py                        # 60-booklet PDF corpus (needs internet, resumable)
+python3 eval_e2e.py --configs lexical            # full-set e2e eval without any model
+python3 eval_e2e.py                              # all three configs (loads SwissBERT)
 ```
 
 MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh` or `make eval-apertus-*`)
@@ -87,7 +103,23 @@ checks.
 - Retrieval adapter configuration is *measured, not arbitrary*: queries are
   encoded with the `de_CH` adapter, passages with their own language
   adapter (see the comment in `Retriever.retrieve` and report §5.2 — the
-  uniform-adapter alternative measured worse).
+  uniform-adapter alternative measured worse). `eval_e2e.py`'s `emb_v2`
+  config instead encodes each *query* with its evidence-language adapter
+  (optionally translating first) — better on the 60-item smoke (R@5 0.25
+  vs 0.08 de_CH-only). Do not unify the two adapter paths without a rerun.
+- `eval_e2e.py` integrity rules: `reference_string` and `booklet_url` are
+  gold-labelling material ONLY — never query text, never a retrieval
+  filter. Retrieval searches the whole corpus and must route to the right
+  booklet itself; "helping" it by pre-filtering booklets or languages
+  changes the task being measured. If Ollama is down, `--translate`
+  degrades to *untranslated* queries and the report says so — never fake
+  a translated run, and never quote degraded numbers as translated ones.
+- v1.5 compliance check (2026-10-09): `challenge_spec.md` requires local
+  open-source models (Apertus, SwissBERT) but mandates no version; HF has
+  no MLX/GGUF conversion of Apertus v1.5 (v1.1 conversions only), and
+  mlx-lm 0.32 is the only working loader here. Pinning
+  v1.1-4B-Instruct-MLX-INT4 is compliant; a v1.5 switch needs a
+  conversion path first — do not claim v1.5 support without one.
 - `retriever.cosine_sim_matrix()` is single-query only and returns shape
   `(N,)`. Batch evaluation must use its own matmul (`eval_retrieval.batched_sims`);
   feeding it batches was a real bug (report §5.1).
@@ -111,14 +143,25 @@ checks.
   claim's gold label is wrong (defensibly `neutral`); all claims are
   English. The measurement path is now `eval_nli.py` over the official
   1,488-item set; keep `example_claims.json` for smoke tests only.
-- The official eval set refers to booklets NOT in the indexed corpus
-  (`data/eval/` is git-ignored; regenerate with `fetch_eval_data.py`), so
-  `--evidence retrieve` numbers measure end-to-end plumbing only. The
-  first Apertus run (3 dev items, 2026-10-09, mlx-lm 0.32) loaded the
-  model and parsed 3/3 verdicts — plumbing evidence, NOT a quality
+- `eval_nli.py --evidence retrieve` still runs over the legacy
+  526-passage CLI corpus, so its numbers remain plumbing checks
+  (`data/eval/` is git-ignored; regenerate with `fetch_eval_data.py`).
+  The first Apertus run (3 dev items, 2026-10-09, mlx-lm 0.32) loaded
+  the model and parsed 3/3 verdicts — plumbing evidence, NOT a quality
   result; no full-split run has been recorded yet.
-- Only 3 booklets / 526 passages of 529 upstream files are indexed; full
-  corpus behaviour is unmeasured.
+- The 60-booklet PDF corpus (`make fetch-booklets`, git-ignored
+  `data/booklets/`) covers every booklet the eval set cites: 16,618
+  passages; 1,470/1,488 (98.8%) gold evidence strings locate inside it.
+  The 18 that do not are mostly FR/IT reference strings that match
+  neither verbatim nor by shingle coverage — possibly paraphrases of the
+  booklet text rather than extraction gaps; unresolved. `eval_e2e.py`
+  over this corpus is the retrieval measurement path now; `main.py`
+  still runs the legacy 526-passage index.
+- First e2e numbers (single runs, no variance control): BM25 over the
+  full 1,488-item set R@5 0.056, cross-language 0.002 vs same-language
+  0.157; 60-item embedding smoke R@5 0.25 (evidence-language adapter) vs
+  0.08 (de_CH-only) vs 0.05 (BM25). Directional only — the full
+  embedding run has not been recorded yet.
 - `top_k = 5` burns slots on parallel language duplicates of the same
   passage (report §7B).
 - The `ollama` backend has never executed (needs Ollama running; `requests`
