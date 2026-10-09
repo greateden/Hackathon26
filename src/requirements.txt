@@ -1,15 +1,17 @@
-# Minimal Baseline Pipeline for Track 2A (Swiss Voting Booklets NLI)
-# Architecture: claim -> retrieval -> evidence -> judgement + source
+# Baseline pipeline for Track 2A (Swiss Voting Booklets NLI)
+# Pipeline: claim -> retrieval -> evidence -> judgement + source
 
-# Core deep-learning stack (already installed on this machine)
+# Core retrieval stack
 torch>=2.0
 transformers>=4.38
 numpy
-scipy
-scikit-learn
 huggingface_hub
 
-# Local LLM inference on Apple Silicon (for the MLX NLI judge backend)
-# If missing: pip install --user mlx mlx-lm
+# MLX NLI judge backend on Apple Silicon (LLM_BACKEND=mlx).
+# NOTE: Apertus checkpoints need mlx-lm >= 0.22; 0.21.x cannot load the
+# "apertus" model type (this is why the Apertus run of 2026-10-06 failed).
 mlx>=0.21
 mlx-lm>=0.21
+
+# Ollama NLI judge backend (LLM_BACKEND=ollama); never exercised so far.
+requests

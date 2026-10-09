@@ -1,15 +1,13 @@
 """
-Ingest module: Load OCR text files and split into passages for retrieval.
+Ingest module: load OCR text files and split them into passages for retrieval.
 
-Two sources:
-1. OCR text files (full document per year per language) -> split into passages
-2. Parallel corpus JSONL (already aligned paragraph groups) -> use as reference
+The only corpus source is the cleaned OCR text under
+repos/VotingBooklets-mono/cleaned_ocr_txt/gemini-ocr (see config.py).
 """
-import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-from config import OCR_TEXT_DIR, PARALLEL_CORPUS_DIR, LANG_DIRS, YEARS
+from config import OCR_TEXT_DIR, LANG_DIRS, YEARS
 
 
 def load_ocr_text(year: str, lang: str) -> str:
@@ -125,21 +123,6 @@ def build_corpus() -> List[Dict]:
                 })
     
     return corpus
-
-
-def load_parallel_corpus(year: str) -> List[Dict]:
-    """Load the parallel corpus JSONL for a given year."""
-    path = PARALLEL_CORPUS_DIR / f"mono_aligned_{year}.jsonl"
-    if not path.exists():
-        return []
-    
-    records = []
-    with open(path, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    return records
 
 
 if __name__ == "__main__":

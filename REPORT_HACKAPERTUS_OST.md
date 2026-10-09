@@ -68,7 +68,7 @@ full scale, where distractors multiply and vocabulary drifts across decades.
 ## 3. What is implemented
 
 ```
-data/sources → ingest.py → retriever.py → nli_judge.py → main.py → logs + results JSON
+repos/…/cleaned_ocr_txt/gemini-ocr → ingest.py → retriever.py → nli_judge.py → main.py → logs + results JSON
                               ↑
                         eval_retrieval.py   (added in this audit)
 ```
@@ -94,10 +94,10 @@ not accuracy.
 First real model-backed run, completed during this audit:
 
 ```bash
-cd '/Users/liyitian/Documents/Hackathon 26/2/src'
+cd src        # all commands in this report run from src/
 env LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
 # → DONE: 10 claims in 139.0s
-# → data/results_20261006_200808_mlx.json
+# → data/results_20261006_200808_mlx.json   (purged in the Oct 2026 cleanup; regenerable)
 ```
 
 Scored against the `expected` fields in `data/example_claims.json`:
@@ -166,6 +166,15 @@ matmul, and the module docstring records the trap so it is not re-introduced.
 
 Lesson kept: an evaluation harness needs a control case with a known answer before its
 output can be trusted.
+
+October 2026 cleanup note: the `--mode same-lang` control in `eval_retrieval.py`
+suffered from a sibling of that harness bug — it masked the gold passage before
+ranking (score -> -inf), so its output was maximal by construction and carried no
+signal. The mask is now removed; a rerun of the fixed control gives DE
+snippet→passage R@1 of 0.45–0.64 against chance levels of 0.01–0.03 (mean gold
+rank 3–4), independently confirming the encoder was never degenerate. The
+cross-lingual measurements in §5.2 never ran through the control and are
+unaffected by this fix.
 
 ### 5.2 Cross-lingual retrieval is genuinely good
 
@@ -280,7 +289,9 @@ evidence. The upstream alignment files already provide the grouping.
 LLM end to end (40% vs 30%), which strongly suggests exact terminology in these documents
 is highly informative. A dense + BM25 fusion is cheap and usually the fastest win on
 short-document legal prose. Note `rank_bm25` is **not installed**; either add it to
-`requirements.txt` or implement TF-IDF via the already-present scikit-learn 1.9.1. Keep
+`requirements.txt` or implement TF-IDF via scikit-learn (removed from
+`requirements.txt` in the October 2026 cleanup as unused — re-add if you take this
+route). Keep
 retrieval importable without them (guarded import), since `scipy`/`sklearn` availability
 should not be a hard dependency of the retrieval path.
 
@@ -318,7 +329,7 @@ file that crashes at load.
 
 ```bash
 # retrieval quality (no LLM needed; ~12 s, model already cached)
-cd '/Users/liyitian/Documents/Hackathon 26/2/src'
+cd src                              # all commands below run from src/
 python3 eval_retrieval.py --mode mismatched     # as shipped
 python3 eval_retrieval.py --mode uniform        # the worse adapter config
 python3 diag_embeddings.py                      # adapter/degeneracy checks
@@ -328,9 +339,12 @@ python3 diag_claim_retrieval.py                 # the rank-13-vs-rank-1 case
 LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
 ```
 
-Artifacts produced by the audit (safe to delete, all regenerable):
-`src/eval_retrieval.py`, `src/diag_embeddings.py`, `src/diag_claim_retrieval.py`,
-`data/results_20261006_200808_mlx.json`, `data/logs/run_20261006_200808_mlx.log`.
+Artifacts produced by the audit: the scripts (`src/eval_retrieval.py`,
+`src/diag_embeddings.py`, `src/diag_claim_retrieval.py`) are kept in the
+repo. The raw run outputs of the four October 2026 runs under `data/`
+(logs and results JSON, including the failed Apertus-load log) were purged
+in the October 2026 cleanup as regenerable; rerun the commands above to
+reproduce them and compare against the numbers quoted in sections 4–5.
 
 ---
 

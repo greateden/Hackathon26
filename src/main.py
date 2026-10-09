@@ -28,7 +28,7 @@ LOG_DIR = DATA_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def make_logger(tag: str = "") -> logging.Logger:
+def make_logger(tag: str = "") -> tuple[logging.Logger, Path]:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"run_{ts}" + (f"_{tag}" if tag else "")
     log_path = LOG_DIR / f"{name}.log"
@@ -108,7 +108,7 @@ def run(pipeline, claims, log):
         t0 = time.time()
         try:
             res = pipeline.verify(claim, year=year)
-        except Exception as e:
+        except Exception:
             log.exception("verify failed")
             continue
         elapsed = time.time() - t0

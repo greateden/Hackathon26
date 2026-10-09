@@ -69,6 +69,8 @@ LANG_TO_ADAPTER = {
     "rm": "rm_CH",
     "en": "de_CH",  # English queries: use the de_CH adapter (SwissBERT's dominant language)
 }
+
+
 class Retriever:
     """Embedding-based retriever using Sentence SwissBERT (or any AutoModel)."""
 
@@ -194,10 +196,6 @@ class Retriever:
             record = self.corpus_records[idx]
             results.append({**record, "score": score})
         return results
-
-    def retrieve_multilingual(self, claim, top_k=TOP_K, filter_year=None):
-        """Cross-lingual retrieval: search across all languages."""
-        return self.retrieve(claim, top_k=top_k, filter_year=filter_year)
 
 
 def build_retriever(corpus: List[Dict]) -> Retriever:

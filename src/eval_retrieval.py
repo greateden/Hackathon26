@@ -4,37 +4,13 @@ Retrieval-quality evaluation (no LLM needed).
 We have no gold claim->evidence labels, but the upstream repos ship a
 human-annotated *parallel* corpus: each row holds a German passage and its
 official FR/IT/RM counterpart from the same booklet. We use the German
-segment as a probe query and check whether the retriever returns the
-aligned foreign-language segment. This is a proxy for "can retrieval find
-the evidence for a claim?", using ground truth we actually have.
-
-Metrics: Recall@1 / Recall@5 over the foreign-language corpus.
-Chance level for R@1 is 1/N, printed alongside for reference.
-
-Two switches for diagnosis:
-  --adapter        set the SwissBERT language adapter per side (as upstream
-                   align_with_ssb.py does) instead of encoding everything
-                   with the default adapter
-  --same-lang      control run: query and corpus in the same language
-                   (sanity check that the encoder does semantic matching)
-
-Usage:
-    python3 eval_retrieval.py                      # cross-lingual, default
-    python3 eval_retrieval.py --adapter
-    python3 eval_retrieval.py --same-lang
-"""
-"""
-Retrieval-quality evaluation (no LLM needed).
-
-We have no gold claim->evidence labels, but the upstream repos ship a
-human-annotated *parallel* corpus: each row holds a German passage and its
-official FR/IT/RM counterpart from the same booklet. We use the German
 segment as a probe query and check whether the retriever returns the aligned
 foreign-language segment out of the whole foreign-language corpus.
 
-This is a proxy for "can retrieval find the evidence for a claim?" using
-ground truth we actually have. It answers the question the hackathon cares
-about: is cross-lingual retrieval reliable enough to feed the judge?
+This is a PROXY for "can retrieval find the evidence for a claim?":
+translation matching is easier than claim->evidence retrieval and must not
+be reported as the latter (report section 5.3 shows the proxy flatters the
+system on English queries).
 
 Metric: Recall@1 / Recall@5, with the 1/N chance level printed for reference.
 
@@ -42,8 +18,8 @@ Two settings, because production currently encodes queries with the de_CH
 adapter but encodes passages with each passage's own language adapter:
   --mode mismatched   query=de_CH, corpus=per-language adapter  (as shipped)
   --mode uniform      query=de_CH, corpus=de_CH for every language
-  --mode same-lang    DE->DE control (self-match excluded) to confirm the
-                      encoder is not degenerate
+  --mode same-lang    DE snippet -> DE passage control (confirms the
+                      encoder is not degenerate)
 
 Usage:
     python3 eval_retrieval.py
@@ -85,13 +61,11 @@ def batched_sims(q_emb, c_emb, batch=32):
     return sims
 
 
-def rank_of(sims, gold_col, exclude_self=False):
+def rank_of(sims, gold_col):
+    """0-based rank of each query's gold column in its similarity row."""
     ranks = []
     for i, g in enumerate(gold_col):
-        scores = sims[i].copy()
-        if exclude_self:
-            scores[i] = -np.inf
-        order = np.argsort(-scores)
+        order = np.argsort(-sims[i])
         ranks.append(int(np.where(order == g)[0][0]))
     return ranks
 
@@ -138,16 +112,19 @@ def eval_cross_lingual(ret, date, mode, min_len=80):
 
 
 def eval_same_lang_control(ret, date, min_len=80):
-    """Control task: each DE query's true match is its own ALIGNED German
-    duplicate is excluded, so instead we query a short snippet taken from a
-    passage and check it retrieves that passage. Confirms the encoder ranks
-    semantic matches well when language is not a factor."""
+    """Control task: query a short snippet taken from a German passage and
+    check it ranks the passage it came from first. Confirms the encoder is
+    not degenerate when language is not a factor.
+
+    Oct 2026 fix: this used to mask the gold passage (score -> -inf) before
+    reporting its rank, so every rank came out maximal by construction. No
+    reported number used that output; the mask was simply broken."""
     rows = load_gold(date)
     rows = [r for r in rows if len(r.get("de", "").strip()) > min_len]
     if len(rows) < 10:
         return
-    # probe = first sentence of the passage, corpus = whole passages,
-    # correct hit = the passage it came from (self-match removed).
+    # probe = first 60 chars of the passage, corpus = whole passages,
+    # correct hit = the passage it came from.
     probes, corpus, gold = [], [], []
     for i, r in enumerate(rows):
         text = r["de"].strip()
@@ -160,11 +137,11 @@ def eval_same_lang_control(ret, date, min_len=80):
     if len(probes) < 10:
         return
     print(f"\n--- SAME-LANG control {date}: DE snippet -> DE passage "
-          f"(self excluded) ---")
+          f"(correct hit = the passage it came from) ---")
     q_emb = ret.encode(probes, lang_code=ADAPTER["de"])
     c_emb = ret.encode(corpus, lang_code=ADAPTER["de"])
     sims = batched_sims(q_emb, c_emb)
-    ranks = rank_of(sims, gold, exclude_self=True)
+    ranks = rank_of(sims, gold)
     report("DE->DE source recovery", ranks, len(corpus))
 
 

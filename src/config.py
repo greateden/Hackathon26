@@ -9,7 +9,6 @@ DATA_DIR = PROJECT_ROOT / "data"
 
 # OCR text source - use the pre-existing cleaned text
 OCR_TEXT_DIR = REPOS_DIR / "VotingBooklets-mono" / "cleaned_ocr_txt" / "gemini-ocr"
-PARALLEL_CORPUS_DIR = REPOS_DIR / "VotingBooklets-mono" / "parallel_corpus"
 
 # Language directories in OCR text
 LANG_DIRS = {

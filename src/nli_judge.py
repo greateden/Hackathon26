@@ -1,10 +1,10 @@
 """
 NLI Judge: Classify claim-vs-evidence relationship (entailment/contradiction/neutral).
 
-Backends:
-  - "mlx":    mlx_lm.generate against a local MLX model (Apple Silicon). Default.
-  - "ollama": Ollama HTTP API (if user has Ollama installed).
-  - "lexical": No-LLM heuristic for smoke-testing plumbing only.
+Backends (selected via LLM_BACKEND in config.py; default is "lexical"):
+  - "lexical": no-LLM keyword heuristic, plumbing smoke tests only.
+  - "mlx":     mlx_lm.generate against a local MLX model (Apple Silicon).
+  - "ollama":  Ollama HTTP API (requires Ollama installed and running).
 """
 import json
 import re
