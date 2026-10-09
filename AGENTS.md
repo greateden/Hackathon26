@@ -20,7 +20,10 @@ set) before changing `data/example_claims.json`.
     one `judge()` interface, plus `format_evidence` and
     `parse_nli_response`.
   - `main.py` — CLI entry point; writes `data/logs/run_*.log` and
-    `data/results_*.json`.
+    `data/results_*.json`. Retrieval stack is `RETRIEVAL_CONFIG` (env,
+    default `legacy` = 526-passage ingest corpus; `v2`/`hybrid` load
+    `data/booklets/corpus.json` instead — plumbing-verified only, no
+    quality benchmark on the pipeline path).
   - `eval_nli.py` — official eval harness over
     `data/eval/mnli_swiss_v1.1.jsonl` (1,488 items, fetched by
     `fetch_eval_data.py`); accuracy + macro-F1 + confusion, pure Python.
@@ -46,7 +49,15 @@ set) before changing `data/example_claims.json`.
     (probe) or with ≥50% 40-char shingle coverage; unlocatable items are
     excluded from denominators, never guessed. Configs: `lexical` (BM25),
     `emb_v1` (de_CH query adapter), `emb_v2` (evidence-language adapter +
-    optional Ollama query translation). Full-corpus search, no filters.
+    optional Ollama query translation), and research stacks `hyb_rrf`,
+    `two_stage_lex`, `two_stage` (implemented in `hybrid_retrieval.py`;
+    routing knobs `--doc-top-n`/`--cand`/`--per-doc-cap`). Full-corpus
+    search for the global configs; two-stage routes booklets first.
+  - `hybrid_retrieval.py` — hybrid/two-stage stacks + per-config index
+    caches under `data/booklets/`. Measured WORSE than `emb_v2` on the
+    full benchmark (report §5.4); research-only, not a promotion path.
+  - `diag_two_stage.py` — splits two-stage misses into empty-result /
+    wrong-booklet / right-booklet-missed-passage (output behind §5.4/3).
   - `run.sh` — convenience wrapper for the MLX backend.
 - `data/example_claims.json` — 10 smoke-test claims (flawed; see below).
 - `data/logs/`, `data/results_*.json` — generated outputs, git-ignored.
@@ -75,7 +86,9 @@ python3 diag_embeddings.py
 python3 diag_claim_retrieval.py
 python3 fetch_booklets.py                        # 60-booklet PDF corpus (needs internet, resumable)
 python3 eval_e2e.py --configs lexical            # full-set e2e eval without any model
-python3 eval_e2e.py                              # all three configs (loads SwissBERT)
+python3 eval_e2e.py                              # default 3 configs (emb_v1,emb_v2,lexical)
+python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage  # all six (~40 s cached, ~4 min cold)
+python3 diag_two_stage.py                        # booklet-routing failure breakdown
 ```
 
 MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh` or `make eval-apertus-*`)
@@ -105,8 +118,9 @@ checks.
   adapter (see the comment in `Retriever.retrieve` and report §5.2 — the
   uniform-adapter alternative measured worse). `eval_e2e.py`'s `emb_v2`
   config instead encodes each *query* with its evidence-language adapter
-  (optionally translating first) — better on the 60-item smoke (R@5 0.25
-  vs 0.08 de_CH-only). Do not unify the two adapter paths without a rerun.
+  (optionally translating first) — the full-set benchmark confirms it
+  (R@5 0.212 vs 0.089 de_CH-only, report §5.4). Do not unify the two
+  adapter paths without a rerun.
 - `eval_e2e.py` integrity rules: `reference_string` and `booklet_url` are
   gold-labelling material ONLY — never query text, never a retrieval
   filter. Retrieval searches the whole corpus and must route to the right
@@ -114,6 +128,15 @@ checks.
   changes the task being measured. If Ollama is down, `--translate`
   degrades to *untranslated* queries and the report says so — never fake
   a translated run, and never quote degraded numbers as translated ones.
+- Retrieval-stack ranking is MEASURED (report §5.4, six configs, full
+  1,470-item run, `data/eval_results_full_benchmark.json`): global dense
+  with evidence-language adapters beats BM25, beats hybrid RRF, beats
+  both two-stage routings. Booklet routing caps top-1 booklet accuracy
+  at ~17% because booklets are per-language editions of one vote day —
+  do not "fix" language-duplicate noise by adding booklet filters or
+  routing without a rerun and a report entry. `RETRIEVAL_CONFIG=v2` in
+  the CLI is plumbing-verified only; keep `legacy` as the default until
+  the pipeline path itself is benchmarked.
 - v1.5 compliance check (2026-10-09): `challenge_spec.md` requires local
   open-source models (Apertus, SwissBERT) but mandates no version; HF has
   no MLX/GGUF conversion of Apertus v1.5 (v1.1 conversions only), and
@@ -134,10 +157,11 @@ checks.
 
 ## Known limitations and unfinished work (do not present as done)
 
-- Claim→evidence retrieval from English queries is the bottleneck: a
-  decisive passage sits at rank 13/526 for the English query vs rank 1 for
-  German (report §5.3). Next step per report §7A: normalise/translate the
-  query language before embedding.
+- The §5.3 cross-language bottleneck was largely a wrong-adapter
+  artefact: with evidence-language adapters, cross-language R@5 reaches
+  0.200 vs same-language 0.235 (report §5.4, full-set). English claims
+  (a minority of the eval set) still have no adapter, and the §7A
+  translate-before-embedding path remains untested.
 - `example_claims.json` is not a benchmark: n=10; claims #7 and #9
   reference topics absent from the indexed subset; the "army weapons"
   claim's gold label is wrong (defensibly `neutral`); all claims are
@@ -153,15 +177,18 @@ checks.
   `data/booklets/`) covers every booklet the eval set cites: 16,618
   passages; 1,470/1,488 (98.8%) gold evidence strings locate inside it.
   The 18 that do not are mostly FR/IT reference strings that match
-  neither verbatim nor by shingle coverage — possibly paraphrases of the
-  booklet text rather than extraction gaps; unresolved. `eval_e2e.py`
-  over this corpus is the retrieval measurement path now; `main.py`
-  still runs the legacy 526-passage index.
-- First e2e numbers (single runs, no variance control): BM25 over the
-  full 1,488-item set R@5 0.056, cross-language 0.002 vs same-language
-  0.157; 60-item embedding smoke R@5 0.25 (evidence-language adapter) vs
-  0.08 (de_CH-only) vs 0.05 (BM25). Directional only — the full
-  embedding run has not been recorded yet.
+  neither verbatim nor by shingle coverage; the 2 spot-checked are not
+  verbatim booklet text at all (heading + stance-marker paraphrases),
+  so probably labelling artefacts rather than extraction gaps —
+  unresolved. `eval_e2e.py` over this corpus is the retrieval
+  measurement path now; `main.py` defaults to the legacy 526-passage
+  index unless `RETRIEVAL_CONFIG=v2|hybrid` (booklet modes verified for
+  plumbing only).
+- Full benchmark recorded 2026-10-09 (single runs, no variance control;
+  `data/eval_results_full_benchmark.json`, 1,470 items): R@5 — emb_v2
+  0.212 > hyb_rrf 0.132 > emb_v1 0.089 > two_stage 0.076 > BM25 0.056 >
+  two_stage_lex 0.046. Numbers are lower bounds: substring gold scores
+  semantically correct non-annotated passages as misses (§5.4 finding 4).
 - `top_k = 5` burns slots on parallel language duplicates of the same
   passage (report §7B).
 - The `ollama` backend has never executed (needs Ollama running; `requests`

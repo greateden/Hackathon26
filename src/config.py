@@ -64,13 +64,15 @@ BOOKLET_PDF_DIR = DATA_DIR / "booklets" / "pdf"
 BOOKLET_TEXT_DIR = DATA_DIR / "booklets" / "txt"
 BOOKLET_CORPUS_JSON = DATA_DIR / "booklets" / "corpus.json"
 
-# End-to-end retrieval configuration, selected with RETRIEVAL_CONFIG=...
-#   v1: as previously measured - query always encoded with the de_CH
-#       adapter, no query translation (weak cross-lingual).
-#   v2: claim translated into the evidence language when languages differ
-#       (Ollama Apertus if reachable; otherwise encoded untranslated, which
-#       the eval reports), then encoded with the EVIDENCE-language adapter.
-RETRIEVAL_CONFIG = os.environ.get("RETRIEVAL_CONFIG", "v2")
+# End-to-end retrieval configuration for main.py, selected with
+# RETRIEVAL_CONFIG=... (consumed by Pipeline; eval_e2e.py keeps its own
+# --configs list so previous measurement runs stay byte-reproducible).
+#   legacy: historical 526-passage OCR corpus + dense retrieval (unchanged
+#           behaviour - this is what all pre-Oct-2026 runs used).
+#   v2:     booklet PDF corpus (data/booklets/corpus.json), global dense.
+#   hybrid: booklet corpus, two-stage routing + RRF fusion
+#           (hybrid_retrieval.TwoStageRetriever).
+RETRIEVAL_CONFIG = os.environ.get("RETRIEVAL_CONFIG", "legacy")
 
 # NLI labels
 NLI_LABELS = ["entailment", "contradiction", "neutral"]

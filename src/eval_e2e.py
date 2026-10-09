@@ -28,6 +28,15 @@ Configurations compared in one pass:
             language via Ollama Apertus (cached; falls back to untranslated
             and says so in the report).
   lexical   BM25 over whitespace tokens - lower-cost baseline.
+  hyb_rrf   hybrid: RRF over global BM25 + global dense candidates
+            (query side identical to emb_v2).
+  two_stage / two_stage_lex
+            two-stage retrieval: rank booklets (claim-side BM25 on
+            whole-booklet text + mean-of-top-3 dense score, RRF-fused),
+            then gather + RRF-fuse lexical/dense passage candidates from
+            the top --doc-top-n booklets only. two_stage_lex is the
+            all-lexical variant (no embedding model needed).
+            See hybrid_retrieval.py; no gold booklet info at query time.
 
 Metrics: Recall@1/3/5 (any gold passage in top-K), document routing (gold
 document hit by top-1), failure breakdown (wrong booklet vs wrong passage),
@@ -40,11 +49,8 @@ Usage:
 """
 import argparse
 import json
-import math
-import re
 import sys
 import time
-import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -52,22 +58,17 @@ import numpy as np
 
 from config import BOOKLET_CORPUS_JSON, DATA_DIR
 from fetch_booklets import DATASET_PATH, booklet_key, load_dataset
+from hybrid_retrieval import (BM25, TwoStageRetriever, index_cache_key,
+                              load_index, norm_text, save_index)
 from sampling import balanced_sample, label_counts
 
 TOPK = (1, 3, 5)
 
+ALL_CONFIGS = ("lexical", "emb_v1", "emb_v2", "hyb_rrf",
+               "two_stage", "two_stage_lex")
+
 
 # ---------------------------------------------------------------- gold labelling
-
-def norm_text(s: str) -> str:
-    """Aggressive normalisation: NFKC, lowercase, alnum-only, spaces squashed.
-
-    Used for BOTH sides of the evidence<->passage matcher so PDF layout noise
-    (ligatures, doubled spaces, hyphenation artefacts) cannot break matching.
-    """
-    s = unicodedata.normalize("NFKC", s).lower()
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    return " ".join(s.split())
 
 
 def ref_probes(ref_norm: str):
@@ -130,43 +131,8 @@ def find_gold(rec: dict, doc_passages: dict, min_coverage: float = 0.5):
 
 
 # ------------------------------------------------------------------- retrieval
-
-class BM25:
-    """Minimal BM25 (k1=1.2, b=0.75) over whitespace tokens of normalised text."""
-
-    def __init__(self, texts, k1=1.2, b=0.75):
-        self.k1, self.b = k1, b
-        self.doc_tok = [t.split() for t in texts]
-        self.doc_len = [len(t) for t in self.doc_tok]
-        self.avg_len = (sum(self.doc_len) / len(self.doc_len)) or 1.0
-        df = Counter()
-        tf = []
-        for toks in self.doc_tok:
-            c = Counter(toks)
-            tf.append(c)
-            df.update(c.keys())
-        self.tf = tf
-        n = len(texts)
-        self.idf = {t: math.log(1 + (n - d + 0.5) / (d + 0.5))
-                    for t, d in df.items()}
-        self.index = defaultdict(list)
-        for i, toks in enumerate(self.doc_tok):
-            for t in set(toks):
-                self.index[t].append(i)
-
-    def top_k(self, query: str, k: int):
-        scores = {}
-        for t in norm_text(query).split():
-            idf = self.idf.get(t)
-            if idf is None:
-                continue
-            for i in self.index.get(t, ()):
-                f = self.tf[i][t]
-                denom = f + self.k1 * (1 - self.b + self.b
-                                       * self.doc_len[i] / self.avg_len)
-                scores[i] = scores.get(i, 0.0) + idf * f * (self.k1 + 1) / denom
-        top = sorted(scores.items(), key=lambda x: -x[1])[:k]
-        return top
+# (BM25 + RRF + two-stage machinery live in hybrid_retrieval.py so the CLI
+#  and the eval share one implementation.)
 
 
 def embed_rank(retriever, query_texts, adapters, corpus_mat, topk):
@@ -185,6 +151,53 @@ def embed_rank(retriever, query_texts, adapters, corpus_mat, topk):
             top = np.argsort(-sims_row)[:topk]
             ranks[i] = [(int(j), float(sims_row[j])) for j in top]
     return ranks
+
+
+def batched_sims(retriever, query_texts, adapters, corpus_mat):
+    """Per-item cosine similarity rows (whole corpus) - batch-encoded so the
+    hybrid configs and emb_v1/v2 see identical dense scores."""
+    sims = [None] * len(query_texts)
+    by_adapter = defaultdict(list)
+    for i, (q, a) in enumerate(zip(query_texts, adapters)):
+        by_adapter[a].append(i)
+    for adapter, idxs in by_adapter.items():
+        texts = [query_texts[i] for i in idxs]
+        embs = retriever.encode(texts, lang_code=adapter)
+        embs = embs / (np.linalg.norm(embs, axis=1, keepdims=True) + 1e-9)
+        rows = embs @ corpus_mat.T
+        for row, i in enumerate(idxs):
+            sims[i] = rows[row]
+    return sims
+
+
+def failure_examples(records, gold_map, ranks, corpus, n_ex):
+    """Keep top-ranked passages for MISSING items (gold exists, top-5 has
+    none). Some misses may still be defensible evidence - this is for manual
+    inspection, not automated scoring."""
+    out = []
+    for n, rec in enumerate(records):
+        gm = gold_map[n]
+        if not gm["gold"]:
+            continue
+        top = [i for i, _ in ranks[n]]
+        if gm["gold"] & set(top[:max(TOPK)]):
+            continue
+        out.append({
+            "index": n,
+            "claim": rec["claim"],
+            "claim_lang": rec["claim_language"],
+            "ref_lang": rec["reference_language"],
+            "gold_doc": gm["doc_id"],
+            "gold_passages": sorted(gm["gold"]),
+            "top5": [{"doc_id": corpus[i]["doc_id"],
+                      "lang": corpus[i]["lang"],
+                      "is_gold": i in gm["gold"],
+                      "text_head": corpus[i]["text"][:160]}
+                     for i in top[:max(TOPK)]],
+        })
+        if len(out) >= n_ex:
+            break
+    return out
 
 
 # ------------------------------------------------------------------- metrics
@@ -380,10 +393,20 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=0,
                     help="class-balanced sample size (0 = all items)")
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--configs", default="emb_v1,emb_v2,lexical")
+    ap.add_argument("--configs", default="emb_v1,emb_v2,lexical",
+                    help=f"comma list from {list(ALL_CONFIGS)}")
     ap.add_argument("--translate", action="store_true",
                     help="translate cross-lingual claims via Ollama before "
-                         "encoding (emb_v2 only)")
+                         "encoding (emb_v2 + hybrid configs)")
+    ap.add_argument("--doc-top-n", type=int, default=3,
+                    help="two-stage: booklets routed into stage 2")
+    ap.add_argument("--cand", type=int, default=8,
+                    help="candidate passages per source list "
+                         "(stage 2 / global fusion pool)")
+    ap.add_argument("--per-doc-cap", type=int, default=0,
+                    help="max passages kept per booklet (0 = no cap)")
+    ap.add_argument("--dump-failures", type=int, default=0,
+                    help="include up to N top-5 misses per config")
     ap.add_argument("--out", default=None, help="result JSON path")
     args = ap.parse_args(argv)
 
@@ -411,26 +434,42 @@ def main(argv=None):
         for f in fails[:5]:
             print(f"  [{f['method']} {f['ref_lang']}] {f['claim'][:70]}")
 
-    need_emb = {"emb_v1", "emb_v2"} & set(args.configs.split(","))
+    cfg_list = [c.strip() for c in args.configs.split(",") if c.strip()]
+    unknown = set(cfg_list) - set(ALL_CONFIGS)
+    if unknown:
+        sys.exit(f"unknown configs: {sorted(unknown)}; "
+                 f"choose from {list(ALL_CONFIGS)}")
+
+    need_dense = bool({"emb_v1", "emb_v2", "hyb_rrf", "two_stage"}
+                      & set(cfg_list))
     retriever, corpus_mat = None, None
-    if need_emb:
+    cache_note = "n/a (no embedding configs)"
+    if need_dense:
         from retriever import Retriever
+        key = index_cache_key(corpus)
+        corpus_mat = load_index(key)
+        cache_note = (f"loaded data/cache/emb_{key}.npy (cached, not rebuilt)"
+                      if corpus_mat is not None else
+                      f"built now, cached as data/cache/emb_{key}.npy")
         retriever = Retriever()
-        retriever.build_index(corpus)
-        corpus_mat = retriever.corpus_embeddings
+        if corpus_mat is None:
+            retriever.build_index(corpus)
+            corpus_mat = retriever.corpus_embeddings
+            save_index(key, corpus_mat)
         corpus_mat = (corpus_mat / (np.linalg.norm(corpus_mat, axis=1,
                                                    keepdims=True) + 1e-9))
+    print(f"Embedding index: {cache_note}")
 
     bm25 = BM25([r["text"] for r in corpus]) \
-        if "lexical" in args.configs else None
+        if "lexical" in cfg_list else None
 
     results = {}
-    for cfg in [c.strip() for c in args.configs.split(",") if c.strip()]:
+    for cfg in cfg_list:
         t0 = time.time()
         if cfg == "lexical":
             ranks = [bm25.top_k(r["claim"], max(TOPK)) for r in records]
             note = "BM25 on normalised tokens, no translation"
-        else:
+        elif cfg in ("emb_v1", "emb_v2"):
             queries, note = translate_queries(records, cfg, args.translate)
             if cfg == "emb_v1":
                 adapters = ["de_CH"] * len(records)
@@ -439,7 +478,41 @@ def main(argv=None):
                             for r in records]
             ranks = embed_rank(retriever, queries, adapters, corpus_mat,
                                max(TOPK))
+        else:
+            # Hybrid configs: query side identical to emb_v2 (evidence-language
+            # adapter, optional translation) so differences isolate the
+            # candidate-generation + fusion change. No gold information is
+            # used: booklet routing is computed from the claim at query time.
+            ts_kw = dict(doc_top_n=args.doc_top_n,
+                         cand_per_source=args.cand,
+                         per_doc_cap=args.per_doc_cap)
+            if cfg == "hyb_rrf":
+                ts = TwoStageRetriever(corpus, corpus_mat=corpus_mat,
+                                       mode="global", **ts_kw)
+            elif cfg == "two_stage":
+                ts = TwoStageRetriever(corpus, corpus_mat=corpus_mat,
+                                       mode="two_stage", **ts_kw)
+            else:  # two_stage_lex: routing + stage 2 purely lexical, no model
+                ts = TwoStageRetriever(corpus, mode="two_stage",
+                                       use_dense=False, **ts_kw)
+            queries, note = translate_queries(records, "emb_v2",
+                                              args.translate)
+            adapters = [ADAPTER.get(r["reference_language"], "de_CH")
+                        for r in records]
+            sims_rows = ([None] * len(records)
+                         if cfg == "two_stage_lex" or corpus_mat is None
+                         else batched_sims(retriever, queries, adapters,
+                                           corpus_mat))
+            t_rank = time.time()
+            ranks = [ts.retrieve(r["claim"], max(TOPK),
+                                 sims=sims_rows[i])
+                     for i, r in enumerate(records)]
+            note += (f"; {cfg} docs={args.doc_top_n} "
+                     f"cand={args.cand} cap={args.per_doc_cap} rrf_k=60")
         res = eval_config(cfg, records, gold_map, ranks, corpus)
+        if args.dump_failures:
+            res["failure_examples"] = failure_examples(
+                records, gold_map, ranks, corpus, args.dump_failures)
         res["query_mode"] = note
         res["seconds"] = round(time.time() - t0, 1)
         results[cfg] = res
@@ -463,6 +536,9 @@ def main(argv=None):
                      "class_counts": label_counts(records)},
         "corpus": {"passages": len(corpus), "booklets": len(docs),
                    "built_from": "original booklet PDFs only"},
+        "embedding_index": cache_note,
+        "hybrid_params": {"doc_top_n": args.doc_top_n, "cand": args.cand,
+                          "per_doc_cap": args.per_doc_cap, "rrf_k": 60},
         "evidence_matching": cov,
         "scope": "full corpus, no booklet/language filter (end-to-end)",
         "integrity": {

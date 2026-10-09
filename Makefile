@@ -47,7 +47,7 @@ fetch-booklets:
 	cd src && python3 fetch_booklets.py
 
 eval-e2e-quick:
-	cd src && python3 eval_e2e.py --limit 60 --configs lexical,emb_v1,emb_v2
+	cd src && python3 eval_e2e.py --limit 60 --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage
 
 eval-e2e-full:
-	cd src && python3 eval_e2e.py --configs lexical,emb_v1,emb_v2
+	cd src && python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage --dump-failures 10

@@ -25,11 +25,14 @@ Exploratory prototype — the plumbing works; the science is still open.
   evidence strings — 98.8% — locate inside that text). `make eval-e2e-quick`
   / `eval-e2e-full` (`src/eval_e2e.py`) then measure claim→evidence
   retrieval end-to-end, searching the whole corpus with no booklet filter.
-  First numbers (single runs, 2026-10-09): BM25 full-set R@5 0.056 overall,
-  0.002 cross-language vs 0.157 same-language; 60-item embedding smoke
-  favors the evidence-language adapter (R@5 0.25) over de_CH-only (0.08).
-  Directional findings, not benchmark claims. The legacy 526-passage CLI
-  corpus is unchanged.
+  Full benchmark (single runs, 2026-10-09, 1,470 items, six configs —
+  report §5.4): dense retrieval with evidence-language adapters leads
+  (R@5 0.212 overall, 0.200 cross-language), ahead of BM25 (0.056);
+  hybrid RRF fusion and two-stage booklet routing both measured worse.
+  Numbers are lower bounds (substring-matched gold). The legacy
+  526-passage CLI corpus is unchanged; `RETRIEVAL_CONFIG=v2|hybrid`
+  lets `main.py` opt into the booklet-corpus stacks (plumbing verified,
+  no quality benchmark on the pipeline path yet).
 - Judgement is now measured, not guessed: `eval_nli.py` scores any judge
   backend against the official 1,488-item MNLI-over-Swiss-Voting-Booklets
   set (v1.1, MIT; `make eval-data` to download). Accuracy + macro-F1 +
@@ -75,10 +78,11 @@ cd src
 python3 test_pipeline.py        # retrieval smoke test (no LLM)
 python3 main.py                 # full CLI over data/example_claims.json, lexical judge
 python3 main.py --year 2007 "A claim to check"   # one-off claim
+RETRIEVAL_CONFIG=v2 python3 main.py "..."        # opt-in booklet-corpus stack
 python3 eval_retrieval.py       # retrieval-quality evaluation on gold-aligned pairs
 python3 fetch_booklets.py       # build the 60-booklet PDF corpus (internet, resumable)
 python3 eval_e2e.py --configs lexical            # full-set e2e retrieval eval, no model
-python3 eval_e2e.py --limit 60  # class-balanced 60-item e2e eval, all three configs
+python3 eval_e2e.py --limit 60  # class-balanced 60-item e2e eval, all six configs
 LLM_BACKEND=mlx python3 main.py # real LLM judge (MLX); or: ./run.sh [mlx-model-id]
 ```
 
@@ -97,8 +101,8 @@ make eval-lex-quick       # 60-item dev split, lexical heuristic (plumbing)
 make eval-apertus-quick   # 10-item dev split, Apertus MLX judge (needs .venv)
 make eval-apertus-full    # 1,428-item held-out eval split (long run)
 make fetch-booklets       # download 60 booklet PDFs -> data/booklets/corpus.json
-make eval-e2e-quick       # 60-item class-balanced retrieval eval (lexical + embeddings)
-make eval-e2e-full        # full 1,488-item retrieval eval (long run)
+make eval-e2e-quick       # 60-item class-balanced retrieval eval (all six configs)
+make eval-e2e-full        # full 1,488-item retrieval eval (~1 min with cached indexes)
 ```
 
 Set up the Apertus venv once with:

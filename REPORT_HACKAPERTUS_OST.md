@@ -229,6 +229,68 @@ answers were largely correct given the input.** The failure is upstream of the j
 Note also that passages are language *copies*: `de_2007_017`, `fr_2007_019` and
 `fr_2007_021` cover the same content in two languages, so `top_k = 5` spends slots on
 duplicates instead of widening coverage.
+
+### 5.4 Full-set benchmark of retrieval stacks (2026-10-09)
+
+With the 60-booklet PDF corpus (16,618 passages) and `eval_e2e.py` in place, claim→evidence
+retrieval became measurable as a *task*, not a proxy. Setup: all 1,488 eval items, of which
+1,470 have gold evidence locatable in the extracted text (denominator; the 18 others are
+excluded, never guessed); gold passages are the chunks containing the annotated
+`reference_string` (probe or ≥50% shingle match). Every config searches the **whole**
+corpus with no booklet or language filter; `reference_string` and `booklet_url` are used
+only to label gold, never at query time. Embedding configs: query = claim, encoded with
+the evidence-language adapter, **untranslated** (Ollama was not running; see §8). One run
+per config, ~40 s total on the cached index.
+
+| config | R@1 | R@3 | R@5 | MRR@5 | doc-route@1 | R@5 cross-lang (n=959) | R@5 same-lang (n=511) |
+|---|---|---|---|---|---|---|---|
+| lexical (BM25) | .0245 | .0442 | .0558 | .0355 | .1415 | .0021 | .1566 |
+| emb_v1 (dense, de_CH adapter) | .0333 | .0639 | .0891 | .0520 | .1619 | .0740 | .1174 |
+| **emb_v2 (dense, evidence-lang adapter)** | **.0966** | **.1673** | **.2122** | **.1375** | **.4483** | **.2002** | **.2348** |
+| hyb_rrf (global BM25+dense, RRF) | .0361 | .0966 | .1320 | .0695 | .1755 | .0865 | .2172 |
+| two_stage_lex (booklet routing, lexical) | .0224 | .0367 | .0463 | .0305 | .1286 | .0010 | .1311 |
+| two_stage (routing, lexical+dense) | .0306 | .0633 | .0762 | .0483 | .1667 | .0083 | .2035 |
+
+Four findings:
+
+1. **The query-side adapter is the biggest lever.** Matching the adapter to the evidence
+   language roughly quadruples R@5 over BM25 (0.212 vs 0.056) and lifts cross-language
+   retrieval from 0.002 to 0.200. The §5.3/§7-A bottleneck was largely a *configuration*
+   problem — queries encoded with the wrong adapter — not an unsolvable cross-lingual
+   limit of the encoder. (Even emb_v1's uniform de_CH adapter beats BM25 cross-language,
+   0.074 vs 0.002.) Translation on top remains untested.
+2. **Hybridisation with the lexical channel lost.** Fusing global BM25 candidates with
+   dense candidates via RRF (0.132 R@5) is worse than dense alone (0.212), and its
+   same-language slice (0.217) barely differs from dense (0.235) — the BM25 candidate
+   pool mostly injected noise. §7-C did not reproduce as designed on the full corpus.
+3. **Explicit booklet routing is strictly harmful, for a structural reason.** The
+   two-stage configs route to the correct booklet for top-1 far less often (13–17%) than
+   plain global dense retrieval does as a side-effect (45%). Diagnostic
+   (`src/diag_two_stage.py`): booklets exist as **per-language editions** of the same
+   vote day, so a German claim's gold evidence frequently sits in the FR or IT edition —
+   and lexical routing from a short claim never crosses that boundary (it routes to the
+   same-language, wrong-day edition instead). Confining passage search to the three
+   routed booklets therefore loses most of the recall that global search still finds.
+   The §7-B duplicate problem is real, but per-document routing is the wrong fix.
+4. **These R@5 numbers are lower bounds.** A spot-check of `wrong_passage` failures found
+   top-ranked passages that *do* settle the claim (palm-oil item: the retrieved DE passage
+   states the claim's content nearly verbatim, while the annotated reference string sits in
+   a different chunk). Two spot-checked items among the 18 unlocatable references turned
+   out not to be verbatim booklet text at all (heading + "SÌ" stance marker + summary), so
+   they are labelling artefacts, not extraction gaps. Substring gold and semantic gold
+   diverge; a system answering correctly via a non-annotated passage scores as a miss.
+
+Decision: the only configuration that improved on all metrics is emb_v2-style *global
+dense retrieval with language-aligned embeddings*; it is the shape being promoted into the
+main pipeline (`RETRIEVAL_CONFIG=v2`, opt-in, default stays `legacy`). Hybrid and
+two-stage remain research configs, measured worse here — do not tune their knobs
+(`--doc-top-n`, `--cand`, `--per-doc-cap`) without a rerun.
+
+Provenance: `python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage --dump-failures 10 --out ../data/eval_results_full_benchmark.json`
+from `src/` on 2026-10-09 (MPS, float32, single run, cached index); full output incl.
+failure examples in `data/eval_results_full_benchmark.json`. An earlier 60-item smoke
+(emb_v2 R@5 0.25, hyb_rrf 0.15, two_stage 0.10) pointed the same direction; these
+full-set numbers supersede it.
 ---
 
 ## 6. The evaluation set is the second weak link
@@ -274,6 +336,13 @@ sourced from real booklet statements are preferable to translated ones.
 
 Priority follows the evidence: the cheapest fix with the largest measured effect first.
 
+**Status update (2026-10-09): A, B, C and E have since been implemented and measured on
+the full 60-booklet corpus (§5.4).** A's adapter fix quadrupled R@5 (translation itself
+still untested); C's BM25+dense RRF fusion measured *worse* than dense alone; B's
+first fix — two-stage booklet routing — measured worse than global search (wrong tool,
+see §5.4 finding 3); E is done, and §5.4 supersedes the §5.2 proxy numbers. Read §5.4
+before pursuing any of these routes.
+
 **A. Translate the claim before embedding (highest payoff, small change).**
 Evidence: identical content retrieved at rank 13 (English) vs rank 1 (German). Route the
 query through a de/fr/it normalisation step — either an MLX translation call or a
@@ -305,7 +374,9 @@ and may invalidate 5.2's numbers; measure retrieval again after scaling rather t
 **F. Swiss-native model evaluation, if still wanted.** Either upgrade `mlx-lm` to a release
 that supports the `apertus` model type, or use a packaging the current version supports.
 Until a run actually completes, Apertus is not a viable option — only a downloaded weight
-file that crashes at load.
+file that crashes at load. *Update (2026-10-09): superseded — mlx-lm 0.32 loads the
+Apertus INT4 MLX conversion and a 3-item dev smoke passed with 0 parse errors; still
+plumbing evidence, not a quality result (§8).*
 
 ---
 
@@ -313,10 +384,15 @@ file that crashes at load.
 
 - **No real NLI quality measurement exists yet.** One MLX run over 10 items, whose labels
   are partly wrong (§6). 30% is a plumbing outcome, not a model score.
-- **Retrieval has never been benchmarked against gold *claim→evidence* pairs.** §5.2 measures
-  translation matching, which is easier and is a proxy only. §5.3 shows the proxy flatters
-  the system on at least one known case.
-- **Full-corpus behaviour is unknown.** Everything here ran on 3 booklets / 526 passages.
+- **Retrieval has been benchmarked once against gold *claim→evidence* pairs** (§5.4:
+  full 1,470-item set, 60-booklet corpus, six configs). Single runs, no variance control;
+  gold is substring-matched and counts semantically correct but non-annotated passages as
+  misses (spot-checked, §5.4 finding 4), so every §5.4 number is a lower bound. The
+  translated-query path (`--translate`, Ollama) has never run.
+- **Full-corpus behaviour is measured; the CLI default is not.** §5.4 covers the
+  60-booklet corpus via `eval_e2e.py` and the opt-in `RETRIEVAL_CONFIG=v2|hybrid`
+  pipeline; the `legacy` default still indexes only 3 booklets / 526 passages and has
+  never been benchmarked against anything.
 - **Apertus has never run.** The weight file downloads; `mlx-lm` 0.21.2 cannot load the
   architecture.
 - **The `ollama` backend has never executed** (Ollama not installed, service not answering).
@@ -334,6 +410,11 @@ python3 eval_retrieval.py --mode mismatched     # as shipped
 python3 eval_retrieval.py --mode uniform        # the worse adapter config
 python3 diag_embeddings.py                      # adapter/degeneracy checks
 python3 diag_claim_retrieval.py                 # the rank-13-vs-rank-1 case
+
+# §5.4 full-set retrieval benchmark (needs `make fetch-booklets` and, for the dense
+# configs, the cached SentenceSwissBERT index; ~40 s cached / ~4 min cold)
+python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage --dump-failures 10
+python3 diag_two_stage.py                       # booklet-routing diagnosis behind §5.4/3
 
 # end-to-end with a real LLM
 LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
