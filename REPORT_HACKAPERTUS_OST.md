@@ -143,6 +143,41 @@ Two related corrections made during this audit:
   skip it. Worth changing to an absolute figure.
 - Ollama is **not installed and not running** (no `ollama` binary; `localhost:11434` gives
   no response), so the `ollama` backend has never been exercised.
+
+### 4.2 First Apertus measurements (2026-10-10) — Docker container → host endpoint
+
+Setup, now supported end to end: the 60-item dev split (seed 20261009) was judged
+inside the Docker container (CPU, linux/aarch64 via colima) against a **real**
+OpenAI-compatible endpoint on the host — `mlx_lm.server` serving
+`swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4` (mlx-lm 0.32, Apple GPU). MLX never
+runs inside the container; the container reaches the host-only server via
+`host.docker.internal`. All 120 calls returned and parsed (0 endpoint errors,
+0 parse errors).
+
+| Run | Evidence | Accuracy | Macro-F1 | Mean judge latency |
+|---|---|---|---|---|
+| retrieve-v2 (end-to-end, booklet corpus) | retrieved top-5 | **0.483** | 0.466 | 1.91 s |
+| oracle | gold `reference_string` | **0.433** | 0.393 | ≈1.5 s |
+
+Artifacts: `data/eval_results_20261010_082336_dev_openai_retrieve-v2.json`,
+`data/eval_results_20261010_082936_dev_openai_oracle.json`.
+
+How to read these honestly:
+
+1. **Development-set plumbing measurements, not submission scores.** n=60 seeded
+   plumbing split, single runs, no variance control. The 1,428-item held-out eval
+   split has still not been run with any model.
+2. **The judge layer remains a real bottleneck.** Oracle (perfect evidence) scores
+   *below* end-to-end — within noise at n=60, but it shows the 4B judge does not
+   reliably exploit even correct evidence. The entailment bias is measurable: 33
+   entailment predictions against 15 entailment golds; 20 of the 45 non-entailment
+   items were answered `entailment`, many on passages that do not discuss the claim.
+   Compared with §4 (Qwen defaulting to `neutral`), the failure mode changed, the
+   problem did not.
+3. **Failure behaviour verified on the same path:** with the endpoint stopped, the
+   container run exits non-zero and names the endpoint — no silent lexical fallback.
+
+Commands: §9. Stop `serve-apertus` when idle — the server keeps several GB resident.
 ---
 
 ## 5. Retrieval-layer result — and a methodology correction
@@ -382,8 +417,10 @@ plumbing evidence, not a quality result (§8).*
 
 ## 8. Explicitly unverified — do not present these as results
 
-- **No real NLI quality measurement exists yet.** One MLX run over 10 items, whose labels
-  are partly wrong (§6). 30% is a plumbing outcome, not a model score.
+- **No held-out quality measurement yet.** The recorded model runs (§4, §4.2) are
+  single runs on plumbing subsets (10 and 60 dev items). §4.2 numbers are indicative
+  development measurements, not submission scores; the 1,428-item eval split has not
+  been run with any model.
 - **Retrieval has been benchmarked once against gold *claim→evidence* pairs** (§5.4:
   full 1,470-item set, 60-booklet corpus, six configs). Single runs, no variance control;
   gold is substring-matched and counts semantically correct but non-annotated passages as
@@ -393,8 +430,9 @@ plumbing evidence, not a quality result (§8).*
   60-booklet corpus via `eval_e2e.py` and the opt-in `RETRIEVAL_CONFIG=v2|hybrid`
   pipeline; the `legacy` default still indexes only 3 booklets / 526 passages and has
   never been benchmarked against anything.
-- **Apertus has never run.** The weight file downloads; `mlx-lm` 0.21.2 cannot load the
-  architecture.
+- **Apertus has now run** (2026-10-10): mlx-lm 0.32 loads the INT4 checkpoint, and the
+  first dev-set measurements are in §4.2. The container→host endpoint path is verified
+  on Apple Silicon via colima only — no x86-64 run, no variance control.
 - **The `ollama` backend has never executed** (Ollama not installed, service not answering).
 - **Gated Hugging Face dataset access is unconfirmed.** It is not currently needed, because
   the corpus is already present locally under `repos/`.
@@ -418,6 +456,15 @@ python3 diag_two_stage.py                       # booklet-routing diagnosis behi
 
 # end-to-end with a real LLM
 LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
+```
+
+```bash
+# §4.2 (2026-10-10): first Apertus measurements, Docker container → host
+# endpoint. From the repo root, two terminals:
+#   make serve-apertus               # host endpoint on :8080 (several GB RAM — stop when done)
+#   make eval-apertus-docker         # end-to-end: retrieved evidence, booklet corpus
+#   make eval-apertus-oracle-docker  # judgement-only: gold evidence
+# Requires the eval data and booklet corpus (eval-data / fetch-booklets).
 ```
 
 Artifacts produced by the audit: the scripts (`src/eval_retrieval.py`,
@@ -444,5 +491,12 @@ attributable and is mostly *not* the model — English queries miss the decisive
 reason over boilerplate. Fixing query-language handling and evidence de-duplication (§7 A–B)
 is the highest-value next work, and both are measurable before any model swap is worth
 considering.
+
+**Update 2026-10-10:** the swap happened — Apertus-4B is now the judge and has been
+measured on the 60-item dev split (§4.2): 0.483 accuracy end-to-end, 0.433 with gold
+evidence, via the Docker-container → host-endpoint path. The judge layer is no longer
+untested; it is tested and mediocre, with the entailment bias (§4) replaced by an
+entailment-default bias. Retrieval and judgement remain joint bottlenecks, and all
+these numbers remain single-run development measurements, not held-out scores.
 
 

@@ -27,7 +27,8 @@ BATCH_SIZE = 32
 
 # LLM for NLI judgment.
 # Backend options: "lexical" (no LLM, smoke-test only), "mlx" (Apple Silicon
-# local via mlx_lm), "ollama" (requires Ollama installed and running).
+# local via mlx_lm), "ollama" (requires Ollama installed and running),
+# "openai" (OpenAI-compatible HTTP endpoint, e.g. mlx_lm.server on the host).
 # Override with:  LLM_BACKEND=mlx python main.py
 LLM_BACKEND = os.environ.get("LLM_BACKEND", "lexical")
 
@@ -49,6 +50,17 @@ MLX_MODEL = os.environ.get("MLX_MODEL", "swiss-ai/Apertus-v1.1-4B-Instruct-MLX-I
 # Ollama backend (kept for later use).
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "apertus-8b")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# OpenAI-compatible HTTP backend (LLM_BACKEND=openai): any server exposing
+# /v1/chat/completions + /v1/models. The supported setup serves the cached
+# Apertus MLX checkpoint from the HOST via `make serve-apertus`
+# (mlx_lm.server, Apple GPU); the container itself never runs model
+# inference. Inside Docker compose.yaml points this at
+# http://host.docker.internal:8080. If the endpoint is unreachable the
+# judge refuses to start (no silent fallback to the lexical baseline).
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "http://127.0.0.1:8080")
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", MLX_MODEL)
+JUDGE_TIMEOUT_S = float(os.environ.get("JUDGE_TIMEOUT_S", "120"))
 
 # Retrieval settings
 TOP_K = 5  # number of passages to retrieve

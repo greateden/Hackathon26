@@ -5,6 +5,8 @@ Backends (selected via LLM_BACKEND in config.py; default is "lexical"):
   - "lexical": no-LLM keyword heuristic, plumbing smoke tests only.
   - "mlx":     mlx_lm.generate against a local MLX model (Apple Silicon).
   - "ollama":  Ollama HTTP API (requires Ollama installed and running).
+  - "openai":  OpenAI-compatible HTTP API (/v1/chat/completions), used to
+               reach mlx_lm.server on the host from anywhere, incl. Docker.
 """
 import json
 import re
@@ -12,7 +14,7 @@ from typing import Dict, List
 
 from config import (
     LLM_BACKEND, OLLAMA_MODEL, OLLAMA_BASE_URL,
-    MLX_MODEL,
+    MLX_MODEL, OPENAI_BASE_URL, JUDGE_MODEL, JUDGE_TIMEOUT_S,
 )
 from labels import normalise_label
 
@@ -222,6 +224,107 @@ class OllamaJudge:
                     "evidence_snippet": "", "error": str(e)}
 
 
+class OpenAICompatJudge:
+    """NLI judge via an OpenAI-compatible HTTP endpoint
+    (/v1/chat/completions + /v1/models).
+
+    Designed for mlx_lm.server serving the Apertus MLX checkpoint on the
+    host (works unchanged from Docker via host.docker.internal), but speaks
+    the generic OpenAI chat API, so any compatible server can be pointed at
+    it via OPENAI_BASE_URL.
+
+    Deliberate policy (2026-10-10): an unreachable endpoint or a model-identity
+    mismatch at init RAISES. This backend exists to run genuine model
+    inference; continuing without a verified endpoint would fabricate verdicts
+    (see AGENTS.md: never quote non-model output as model quality). Per-call
+    failures (timeout, HTTP error, unparseable reply) are recorded as
+    error results (label=None), never defaulted to a label.
+    """
+
+    def __init__(self, model: str = JUDGE_MODEL,
+                 base_url: str = OPENAI_BASE_URL,
+                 timeout: float = JUDGE_TIMEOUT_S):
+        try:
+            import requests
+        except ModuleNotFoundError as e:
+            raise RuntimeError(
+                "LLM_BACKEND=openai needs the 'requests' package "
+                "(pinned in requirements.txt)") from e
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self._requests = requests
+        try:
+            resp = requests.get(f"{self.base_url}/v1/models", timeout=10)
+            resp.raise_for_status()
+            served = self._served_model_ids(resp.json())
+        except Exception as e:
+            raise RuntimeError(
+                f"Apertus endpoint not reachable at {self.base_url}: {e!r}. "
+                "Start the model server first - from the repo root:\n"
+                "    make serve-apertus\n"
+                "(or point OPENAI_BASE_URL at a running OpenAI-compatible "
+                "endpoint). Refusing to fall back to the lexical baseline.") \
+                from e
+        if not served:
+            raise RuntimeError(
+                f"Endpoint {self.base_url} is up but /v1/models lists no "
+                f"models; cannot verify the judge model identity "
+                f"(expected {self.model!r}).")
+        if not any(self.model in s or s in self.model or
+                   self.model.rsplit("/", 1)[-1] in s for s in served):
+            raise RuntimeError(
+                f"Endpoint {self.base_url} serves {served}, which does not "
+                f"match JUDGE_MODEL={self.model!r}. Verify the server "
+                "identity and pass JUDGE_MODEL=<served id> if intentional.")
+        self.served = served
+        print(f"OpenAI-compatible endpoint OK: {self.base_url}; "
+              f"served={served}")
+
+    @staticmethod
+    def _served_model_ids(payload) -> list:
+        """Accept OpenAI-style {"data": [{"id": ...}]} or bare listings."""
+        data = payload.get("data") if isinstance(payload, dict) else payload
+        ids = []
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, str):
+                    ids.append(item)
+                elif isinstance(item, dict) and "id" in item:
+                    ids.append(item["id"])
+        return ids
+
+    def judge(self, claim: str, passages: List[Dict]) -> Dict:
+        evidence = format_evidence(passages)
+        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 400,
+            "stream": False,
+        }
+        try:
+            resp = self._requests.post(
+                f"{self.base_url}/v1/chat/completions", json=payload,
+                timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            raw = data["choices"][0]["message"]["content"]
+            out = parse_nli_response(raw)
+            usage = data.get("usage")
+            if usage:
+                out["usage"] = usage
+            return out
+        except Exception as e:
+            return {"label": None,
+                    "reasoning": f"Endpoint error ({type(e).__name__}): {e}",
+                    "evidence_snippet": "", "error": str(e)}
+
+
 class LexicalJudge:
     """
     No-LLM fallback: crude keyword polarity heuristic. Only useful for smoke-testing
@@ -267,6 +370,8 @@ def build_judge(backend: str = None):
         return MlxJudge()
     if backend == "ollama":
         return OllamaJudge()
+    if backend == "openai":
+        return OpenAICompatJudge()
     if backend == "lexical":
         print("Using LEXICAL fallback judge (no LLM) — plumbing smoke test only")
         return LexicalJudge()

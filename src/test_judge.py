@@ -76,6 +76,28 @@ ev = format_evidence(long_p, max_chars=2000)
 check("x" * 1500 in ev and "y" * 1500 not in ev,
       "evidence block respects max_chars cap")
 
+# --- OpenAI-compatible endpoint judge --------------------------------------
+# Offline, hermetic checks (no server needed): the judge must REFUSE to
+# build when the endpoint is unreachable (no silent lexical fallback) and
+# must tolerate both model-listing shapes.
+import importlib.util
+if importlib.util.find_spec("requests"):
+    from nli_judge import OpenAICompatJudge
+    try:
+        OpenAICompatJudge(base_url="http://127.0.0.1:9")
+        check(False, "openai judge refuses an unreachable endpoint")
+    except RuntimeError as e:
+        check("not reachable" in str(e),
+              "openai judge refuses an unreachable endpoint "
+              "(no silent lexical fallback)")
+    check(OpenAICompatJudge._served_model_ids(
+              {"data": [{"id": "m1"}]}) == ["m1"],
+          "model-listing parse: OpenAI data[].id shape")
+    check(OpenAICompatJudge._served_model_ids(["m2"]) == ["m2"],
+          "model-listing parse: bare id list shape")
+else:
+    print("[skip] requests not installed: openai-judge checks skipped")
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILURES")

@@ -16,9 +16,11 @@ set) before changing `data/example_claims.json`.
     source_file}`. `python3 ingest.py` prints corpus stats.
   - `retriever.py` — SentenceSwissBERT mean-pooling + cosine retrieval;
     entry points `Retriever`, `build_retriever`.
-  - `nli_judge.py` — judge backends (`lexical` / `mlx` / `ollama`) behind
-    one `judge()` interface, plus `format_evidence` and
-    `parse_nli_response`.
+  - `nli_judge.py` — judge backends (`lexical` / `mlx` / `ollama` / `openai`)
+    behind one `judge()` interface, plus `format_evidence` and
+    `parse_nli_response`. `openai` talks to an OpenAI-compatible HTTP
+    endpoint (`OPENAI_BASE_URL`), checks `/v1/models` at startup and fails
+    hard if the endpoint or model id is missing — no lexical fallback.
   - `main.py` — CLI entry point; writes `data/logs/run_*.log` and
     `data/results_*.json`. Retrieval stack is `RETRIEVAL_CONFIG` (env,
     default `legacy` = 526-passage ingest corpus; `v2`/`hybrid` load
@@ -31,6 +33,10 @@ set) before changing `data/example_claims.json`.
     judgement step); `--evidence retrieve` runs the full pipeline over the
     indexed 1977/1985/2007 corpus, which does NOT contain the eval
     booklets — its numbers are plumbing checks, never accuracy.
+    `--evidence retrieve-v2` runs the production booklet-corpus stack end
+    to end (`main.Pipeline`); empty evidence, retrieval failures and
+    unparseable replies are recorded as errors (`pred=None`), never
+    guessed.
   - `labels.py` — the official numeric code mapping (0 = entailment,
     1 = neutral, 2 = contradiction) in both directions. `test_judge.py`
     guards it and the judge parser.
@@ -75,9 +81,15 @@ set) before changing `data/example_claims.json`.
 runnable offline; `make eval-apertus-*` uses `.venv/bin/python` when
 present (that venv carries mlx-lm 0.32, the only setup that can load the
 Apertus architecture; it is git-ignored and rebuildable:
-`python3.12 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0"`).
-`make run`, `make test-docker`, `make test-docker-pipeline` and
-`make eval-lex-docker` go through Docker instead — see "Docker runtime".
+`python3.12 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0" requests`
+— `requests` is needed by the `openai`/`ollama` backends). The Docker
+entry points are `make smoke`, `make test-docker`,
+`make test-docker-pipeline`, `make eval-lex-docker` (lexical baseline) and
+`make run`, `make eval-apertus-docker`,
+`make eval-apertus-oracle-docker` (real model: they call a host inference
+endpoint — start `make serve-apertus` first and stop it afterwards; it
+keeps several GB resident). Endpoint-backed Docker targets fail if the
+endpoint is down — no silent lexical fallback. See "Docker runtime".
 
 ## Commands (from `src/`, no LLM download needed)
 
@@ -98,17 +110,20 @@ python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_st
 python3 diag_two_stage.py                        # booklet-routing failure breakdown
 ```
 
-MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh` or `make eval-apertus-*`)
-download LLM weights and are expensive; they are not required for routine
-checks.
+MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh`, `make serve-apertus` or
+`make eval-apertus-*`) download LLM weights and keep several GB resident;
+they are not required for routine checks, and the server should be stopped
+when idle. Never quote their output without recording the exact model id.
 
 ## Docker runtime (added 2026-10-09)
 
 Portable, reproducible path for non-macOS users and judges. Entry points
-`make run` / `make test-docker` / `make test-docker-pipeline` /
-`make eval-lex-docker` (from the repo root, via `compose.yaml`); native
-paths (`make run-native`, `make test`, `make eval-*`) are unchanged and
-remain the only place Apple Silicon MLX runs.
+`make smoke`, `make run`, `make test-docker`,
+`make test-docker-pipeline`, `make eval-lex-docker` and the
+`make eval-apertus-*-docker` targets (from the repo root, via
+`compose.yaml`); native paths (`make run-native`, `make test`,
+`make eval-*`) are unchanged and remain the only place Apple Silicon MLX
+runs.
 
 - `Dockerfile` (root) — python:3.11-slim + CPU PyTorch from
   `requirements.txt` (pinned; platform markers keep x86-64 and aarch64
@@ -129,30 +144,35 @@ remain the only place Apple Silicon MLX runs.
   so the home-cache layout and `HF_HOME` must stay the same path — they
   are intentionally identical for the tokenizer.json fallback to work.
 - Model endpoints (hard rule): inside a container `LLM_BACKEND` is
-  `lexical` (default; smoke-test baseline only) or `ollama` pointing at
-  an external Ollama-compatible server (`OLLAMA_BASE_URL`, default
-  `http://host.docker.internal:11434` via `extra_hosts:
-  host-gateway`, which is how container→host networking is verified
-  rather than assumed). `LLM_BACKEND=mlx` inside the container fails
-  loudly (mlx_lm is not installed) — never let it fall back to lexical,
-  and never quote lexical container numbers as model quality. Failed or
-  unparseable endpoint replies are recorded as errors (`label: None`),
-  per the existing invariant.
+  `lexical` (default; smoke-test baseline only), `ollama` or `openai`,
+  each pointing at an external server (`OLLAMA_BASE_URL` /
+  `OPENAI_BASE_URL`, default `http://host.docker.internal:8080` via
+  `extra_hosts: host-gateway` — container→host networking is verified,
+  not assumed). The `openai` backend is the supported real-model path: it
+  checks `/v1/models` and fails hard when the endpoint is unreachable or
+  the served model id does not match `LLM_MODEL`.
+  `LLM_BACKEND=mlx` inside the container fails loudly (mlx_lm is not
+  installed) — never let anything fall back to lexical, and never quote
+  lexical container numbers as model quality. Failed or unparseable
+  endpoint replies are recorded as errors (`label: None`), per the
+  existing invariant.
 - Offline use: pre-populate the cache volume, or bind-mount a host
   `~/.cache/huggingface` over it. `RETRIEVAL_CONFIG=legacy` remains the
   default in the image; `v2`/`hybrid` in containers are plumbing-checked
   only, same caveat as native.
 - Verified 2026-10-09 on Apple Silicon via colima (linux/aarch64, Docker
-  29.5): image build; `make test-docker` (all offline checks); full
-  `make run` (legacy corpus mounted read-only + model downloaded to the
-  cache volume + 10 lexical judgments, results JSON on the host); and
-  ollama-backend plumbing verified against a MOCK Ollama-compatible
-  server on the host (container→host networking via host-gateway,
-  /api/tags + /api/chat round-trip, model reply parsed through
-  `parse_nli_response`). UNVERIFIED: Linux x86-64 hosts, Docker
-  Desktop, a real model server (genuine Apertus inference quality —
-  the mock only proves plumbing), and `v2`/`hybrid` quality on the
-  pipeline path. Do not mark those as working without a rerun.
+  29.5): image build; `make test-docker` (all offline checks); a full
+  `make run` with the lexical judge; and ollama-backend plumbing against a
+  MOCK Ollama-compatible server on the host. **2026-10-10: re-verified
+  against a REAL endpoint** — `mlx_lm.server` serving
+  `swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4` on host loopback, reached
+  from the container as `host.docker.internal:8080`: two 60-item dev runs
+  (retrieve-v2 + oracle, 120 calls, 0 endpoint/parse errors; report §4.2),
+  an endpoint-down run (exits non-zero, no lexical fallback), and
+  `requests` present in the image. UNVERIFIED: Linux x86-64 hosts, Docker
+  Desktop, and `v2`/`hybrid` quality on the `main.py` pipeline path (the
+  §4.2 retrieve-v2 run is the eval harness, not the CLI default). Do not
+  mark those as working without a rerun.
 - Host quirks found the hard way (not repo bugs): stale
   `~/.docker/cli-plugins/docker-compose` symlinks pointing at a deleted
   Docker.app, and `credsStore: "desktop"` in `~/.docker/config.json`
@@ -234,9 +254,10 @@ remain the only place Apple Silicon MLX runs.
 - `eval_nli.py --evidence retrieve` still runs over the legacy
   526-passage CLI corpus, so its numbers remain plumbing checks
   (`data/eval/` is git-ignored; regenerate with `fetch_eval_data.py`).
-  The first Apertus run (3 dev items, 2026-10-09, mlx-lm 0.32) loaded
-  the model and parsed 3/3 verdicts — plumbing evidence, NOT a quality
-  result; no full-split run has been recorded yet.
+  Apertus dev-split runs are recorded now (2026-10-10, two × 60 items:
+  retrieve-v2 0.483 acc / 0.466 F1, oracle 0.433 / 0.393, single runs on
+  the seeded plumbing subset via the endpoint path, report §4.2). The
+  1,428-item held-out eval split has not run with any model.
 - The 60-booklet PDF corpus (`make fetch-booklets`, git-ignored
   `data/booklets/`) covers every booklet the eval set cites: 16,618
   passages; 1,470/1,488 (98.8%) gold evidence strings locate inside it.
@@ -255,8 +276,8 @@ remain the only place Apple Silicon MLX runs.
   semantically correct non-annotated passages as misses (§5.4 finding 4).
 - `top_k = 5` burns slots on parallel language duplicates of the same
   passage (report §7B).
-- The `ollama` backend has never executed (needs Ollama running; `requests`
-  is in requirements.txt).
+- Real-model traffic has only been measured through the `openai` backend
+  (report §4.2); the `ollama` backend has run only against a mock server.
 - `run.sh` MEMORY_CHECK uses a percentage threshold that is miscalibrated
   for large-RAM machines (report §4.1); it is opt-in (`MEMORY_CHECK=1`).
 - All reported numbers come from one machine (MPS, float32, single runs);

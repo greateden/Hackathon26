@@ -39,13 +39,14 @@ Exploratory prototype — the plumbing works; the science is still open.
   confusion matrix, pure Python. `--evidence oracle` isolates the
   judgement step from retrieval; `--evidence retrieve` runs the full
   pipeline over the legacy 526-passage CLI corpus — a plumbing check, since
-  those booklets are not in it. Claim→evidence retrieval over the full
+  those booklets are not in it; `--evidence retrieve-v2` runs the production
+  booklet-corpus stack end to end. Claim→evidence retrieval over the full
   booklet corpus is measured by `eval_e2e.py` instead.
   The old 10-claim smoke set (3/10, flawed) is superseded, not extended.
-- The Apertus backend runs: the git-ignored `.venv` carries mlx-lm 0.32,
-  which loads `swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4`. The first run
-  (2026-10-09) passed a 3-item dev smoke with 0 parse errors. That is
-  plumbing evidence — no accuracy claim until a full split is recorded.
+- The Apertus backend runs and has been measured (2026-10-10, dev split,
+  single runs): end-to-end with retrieved evidence **acc 0.483 / macro-F1
+  0.466**; with gold evidence 0.433 / 0.393. Development-set measurements,
+  not held-out submission scores (report §4.2).
 
 Evidence, measurements and explicit caveats: `REPORT_HACKAPERTUS_OST.md`
 (§8 lists everything that is unverified). Official requirements:
@@ -79,23 +80,25 @@ From the repo root (requires Docker; the first dense run downloads the
 embedding model once into a cached volume):
 
 ```bash
-make run             # full pipeline over data/example_claims.json.
-                     # Default judge is the LEXICAL baseline — plumbing
-                     # smoke test only, NOT an Apertus model result.
+make serve-apertus   # (host, separate terminal; needs .venv) serves Apertus
+                     # natively on :8080 — start it for the next two lines
+make run             # full pipeline with REAL Apertus via that endpoint
+                     # (fails fast if the endpoint is down — no lexical fallback)
+make smoke           # same pipeline with the LEXICAL baseline — plumbing
+                     # smoke test only, NOT an Apertus model result
 make test-docker     # offline unit checks inside the container
-make eval-lex-docker # 60-item dev eval, lexical heuristic
-                     # (run `make eval-data` first)
+make eval-apertus-docker        # 60-item dev eval, real Apertus judge,
+                     # retrieved evidence (end-to-end; needs eval data +
+                     # booklet corpus); use eval-apertus-oracle-docker for
+                     # the gold-evidence (judgement-only) variant
 ```
 
-`repos/` and `data/` are mounted, never copied into the image. For
-genuine Apertus inference, start an Ollama-compatible server and point
-the container at it (Apple Silicon MLX only runs natively —
-`make run-native`):
-
-```bash
-# e.g. on the host: ollama serve  +  ollama pull <model>
-LLM_BACKEND=ollama OLLAMA_MODEL=<model> make run
-```
+`repos/` and `data/` are mounted, never copied into the image. MLX never
+runs inside a container: Apple Silicon MLX only runs natively (`make
+serve-apertus`, `make run-native`). Any OpenAI-compatible endpoint works —
+set `OPENAI_BASE_URL`; `LLM_BACKEND=ollama OLLAMA_MODEL=<model> make smoke`
+is the alternative. The model server keeps several GB of RAM resident —
+stop it when you are done.
 
 An empty corpus, an unreachable model endpoint, or an unparseable model
 reply is reported as an error — never silently replaced by a lexical
@@ -135,6 +138,8 @@ make eval-data            # download the official eval set (needs internet)
 make eval-lex-quick       # 60-item dev split, lexical heuristic (plumbing)
 make eval-apertus-quick   # 10-item dev split, Apertus MLX judge (needs .venv)
 make eval-apertus-full    # 1,428-item held-out eval split (long run)
+make serve-apertus        # host endpoint on :8080 (for the Docker Apertus runs)
+make eval-apertus-docker  # 60-item dev eval, real Apertus via Docker (needs serve-apertus)
 make fetch-booklets       # download 60 booklet PDFs -> data/booklets/corpus.json
 make eval-e2e-quick       # 60-item class-balanced retrieval eval (all six configs)
 make eval-e2e-full        # full 1,488-item retrieval eval (~1 min with cached indexes)
@@ -143,7 +148,7 @@ make eval-e2e-full        # full 1,488-item retrieval eval (~1 min with cached i
 Set up the Apertus venv once with:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0"
+python3 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0" requests
 ```
 
 The dev/eval split is a fixed seeded partition of the 1,488-item set

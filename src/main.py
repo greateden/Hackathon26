@@ -27,7 +27,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (TOP_K, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, DATA_DIR,
-                    BOOKLET_CORPUS_JSON, RETRIEVAL_CONFIG)
+                    BOOKLET_CORPUS_JSON, RETRIEVAL_CONFIG,
+                    OPENAI_BASE_URL, JUDGE_MODEL)
 from ingest import build_corpus
 from retriever import build_retriever, LANG_TO_ADAPTER
 from hybrid_retrieval import (TwoStageRetriever, detect_query_language,
@@ -81,15 +82,21 @@ class Pipeline:
     def __init__(self, log: logging.Logger, backend: str = None):
         log.info("=" * 60)
         self.retrieval_config = RETRIEVAL_CONFIG
+
+        # Judge first (2026-10-10): an endpoint-backed judge must fail
+        # fast - it raises before the corpus/index build when the model
+        # server is missing or serves the wrong model, and main.py turns
+        # that into a non-zero exit. Never a silent lexical fallback.
+        log.info("Stage 1: init NLI judge (backend=%s)", backend or LLM_BACKEND)
+        t0 = time.time()
+        self.judge = build_judge(backend)
+        log.info("  judge ready in %.1fs", time.time() - t0)
+
+        log.info("Stage 2: build retrieval stack (%s)", RETRIEVAL_CONFIG)
         if RETRIEVAL_CONFIG in ("v2", "hybrid"):
             self._init_booklet(log)
         else:
             self._init_legacy(log)
-
-        log.info("Stage 3: init NLI judge (backend=%s)", backend or LLM_BACKEND)
-        t0 = time.time()
-        self.judge = build_judge(backend)
-        log.info("  judge ready in %.1fs", time.time() - t0)
 
     def _init_legacy(self, log):
         self.mode = "legacy"
@@ -224,16 +231,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("claim", nargs="*", help="optional one-off claim text")
     ap.add_argument("--backend", default=None,
-                    choices=["lexical", "mlx", "ollama"],
+                    choices=["lexical", "mlx", "ollama", "openai"],
                     help="override LLM_BACKEND")
     ap.add_argument("--year", default=None, help="restrict retrieval to a year")
     args = ap.parse_args()
 
     backend = args.backend or LLM_BACKEND
     log, log_path = make_logger(tag=backend)
-    log.info("backend=%s  mlx_model=%s  ollama_model=%s",
-             backend, MLX_MODEL if backend == "mlx" else "-",
-             OLLAMA_MODEL if backend == "ollama" else "-")
+    log.info("backend=%s  model=%s  endpoint=%s",
+             backend,
+             (MLX_MODEL if backend == "mlx" else
+              JUDGE_MODEL if backend == "openai" else
+              OLLAMA_MODEL if backend == "ollama" else "-"),
+             OPENAI_BASE_URL if backend == "openai" else "-")
 
     if args.claim:
         claims = [{"claim": " ".join(args.claim), "year": args.year}]
@@ -249,8 +259,8 @@ def main():
     try:
         pipeline = Pipeline(log, backend=backend)
     except Exception as e:
-        log.exception("pipeline build failed: %s", e)
-        return
+        log.error("PIPELINE BUILD FAILED: %s", e)
+        sys.exit(1)
 
     results = run(pipeline, claims, log)
     log.info("=" * 60)
@@ -261,6 +271,22 @@ def main():
     if n_err:
         log.warning("%d/%d claims finished with status=error "
                     "(no trustworthy label)", n_err, len(results))
+    lat = sorted(r["elapsed_s"] for r in results if "elapsed_s" in r)
+    tok_in = sum(r.get("usage", {}).get("prompt_tokens", 0)
+                 for r in results)
+    tok_out = sum(r.get("usage", {}).get("completion_tokens", 0)
+                  for r in results)
+    summary = {
+        "n": len(results),
+        "errors": n_err,
+        "mean_latency_s": round(sum(lat) / len(lat), 2) if lat else None,
+        "median_latency_s": (round((lat[(len(lat) - 1) // 2]
+                                    + lat[len(lat) // 2]) / 2, 2)
+                             if lat else None),
+        "prompt_tokens": tok_in,
+        "completion_tokens": tok_out,
+    }
+    log.info("summary: %s", json.dumps(summary))
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_json = DATA_DIR / f"results_{ts}_{backend}.json"
     report = {
@@ -268,7 +294,9 @@ def main():
             "backend": backend,
             "retrieval_config": RETRIEVAL_CONFIG,
             "model": (MLX_MODEL if backend == "mlx" else
+                      JUDGE_MODEL if backend == "openai" else
                       OLLAMA_MODEL if backend == "ollama" else None),
+            "endpoint": OPENAI_BASE_URL if backend == "openai" else None,
             "top_k": TOP_K,
             "timestamp_utc": datetime.now(timezone.utc)
                                 .isoformat(timespec="seconds"),
