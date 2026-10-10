@@ -168,8 +168,12 @@ class Pipeline:
             # Booklet corpus spans all years/languages at once; year/lang
             # filters are a legacy-corpus feature and are ignored here.
             passages = self._retrieve_booklet(claim, top_k)
-        verdict = self.judge.judge(claim, passages)
-        label = verdict.get("label")
+        verdict = (self.judge.judge(claim, passages) if passages else
+                   {"label": None, "error": "no evidence passages retrieved"})
+        label = None if verdict.get("error") else verdict.get("label")
+        if label is not None and label_to_code(label) is None:
+            verdict = {**verdict, "error": "invalid judge label"}
+            label = None
         result = {
             "claim": claim,
             "year_filter": year if self.mode == "legacy" else None,
@@ -210,9 +214,11 @@ def run(pipeline, claims, log):
         t0 = time.time()
         try:
             res = pipeline.verify(claim, year=year)
-        except Exception:
+        except Exception as exc:
             log.exception("verify failed")
-            continue
+            res = {"claim": claim, "label": None, "label_code": None,
+                   "status": "error", "error": f"verify raised: {exc!r}",
+                   "reasoning": "", "evidence_snippet": "", "retrieved": []}
         elapsed = time.time() - t0
 
         label = res["label"]
@@ -263,7 +269,7 @@ def main():
         claims = load_claims(DATA_DIR / "example_claims.json")
         if not claims:
             log.error("no example_claims.json found and no claim given")
-            return
+            return 1
 
     log.info("%d claims to verify", len(claims))
 
@@ -325,7 +331,8 @@ def main():
     }
     out_json.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     log.info("results JSON: %s", out_json)
+    return 1 if n_err else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

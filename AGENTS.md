@@ -28,7 +28,7 @@ set) before changing `data/example_claims.json`.
     all come from the selected config. `baseline` is deliberately
     byte-identical to the pre-ablation default; `test_judge.py` guards that,
     plus the factorial render equivalences (identical rendered (system, user)
-    messages ⇒ identical model inputs; audited per dev item by
+    messages ⇒ identical model inputs; checked per dev item by
     `diag_evidence_ablation.py`, see report §4.4).
   - `main.py` — CLI entry point; writes `data/logs/run_*.log` and
     `data/results_*.json`. Retrieval stack is `RETRIEVAL_CONFIG` (env,
@@ -55,7 +55,7 @@ set) before changing `data/example_claims.json`.
   - `diag_eval_errors.py` — offline error analysis over recorded
     `eval_results_*.json` (per-class confusion, oracle/retrieve flips,
     truncation correlates). No model needed.
-  - `diag_evidence_ablation.py` — offline audit of the evidence-processing
+  - `diag_evidence_ablation.py` — offline analysis of the evidence-processing
     factorial: verifies per dev item that the twin cells render byte-identical
     prompts (retrieve mode never exercises the window; oracle evidence is one
     sub-cap chunk, so style is inert), then classifies recorded oracle flips
@@ -91,6 +91,13 @@ set) before changing `data/example_claims.json`.
   - `diag_two_stage.py` — splits two-stage misses into empty-result /
     wrong-booklet / right-booklet-missed-passage (output behind §5.4/3).
   - `run.sh` — convenience wrapper for the MLX backend.
+- `tests/` — permanent offline regression checks over the evaluation path
+  (`test_project_contract.py`: judge/pipeline contract, the lexical-protocol
+  guards, recorded-benchmark provenance). Run from the repo root:
+  `PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py'`
+  (used by `make test` and `make test-docker`). One-off review or scoring
+  experiments do not belong in `src/` or `tests/` — give them a `tmp/` path
+  outside the tracked tree.
 - `Dockerfile`, `compose.yaml`, `.dockerignore` (root) — portable
   container runtime; see "Docker runtime" below.
 - `requirements.txt` (root, pinned, portable/CPU) and
@@ -135,7 +142,7 @@ python3 eval_e2e.py                              # default 3 configs (emb_v1,emb
 python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage  # all six (~40 s cached, ~4 min cold)
 python3 diag_two_stage.py                        # booklet-routing failure breakdown
 python3 ablation_dev.py --dry-run                # ablation planner, offline
-python3 diag_evidence_ablation.py                # factorial equivalence + oracle-flip audit (offline; needs the eval set + data/ablation_*.json)
+python3 diag_evidence_ablation.py                # factorial equivalence + oracle-flip analysis (offline; needs the eval set + data/ablation_*.json)
 python3 test_judge.py                            # includes prompt-config registry, select_window + factorial render-equivalence checks
 ```
 

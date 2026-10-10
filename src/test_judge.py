@@ -68,6 +68,19 @@ check(r["label"] is None and r.get("error"), "empty response -> error")
 r = parse_nli_response("neutral")
 check(r["label"] == "neutral", "bare leading label word accepted")
 
+# --- strict label parsing (label-parse-v2, 2026-10-10) ----------------------
+check(normalise_label(1.0) is None, "float code 1.0 -> None (v1 cast fixed)")
+check(normalise_label(True) is None, "bool True -> None (int subclass leak)")
+check(normalise_label(1.5) is None, "float 1.5 -> None (no int() cast)")
+check(code_to_label("1.0") is None, "'1.0' string -> None")
+check(code_to_label("01") is None, "'01' string -> None")
+check(code_to_label("+1") is None, "'+1' string -> None")
+check(code_to_label(1) == "neutral", "exact int code still accepted")
+r = parse_nli_response('{"label": 1.5, "reasoning": "x"}')
+check(r["label"] is None and r.get("error"), "JSON with float label -> error")
+r = parse_nli_response('{"label": true, "reasoning": "x"}')
+check(r["label"] is None and r.get("error"), "JSON with bool label -> error")
+
 # --- evidence formatting ------------------------------------------------------
 check(format_evidence([]) == "(No relevant passages found.)",
       "no passages -> explicit empty-evidence marker")

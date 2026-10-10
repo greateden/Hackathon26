@@ -31,8 +31,10 @@ document routing at prediction time is done by the retriever itself, which
 is exactly what `doc_routing_top1` measures in eval_e2e.py.
 """
 import hashlib
+import json
 import math
 import re
+import time
 import unicodedata
 from collections import Counter, defaultdict
 
@@ -55,17 +57,26 @@ def norm_text(s: str) -> str:
 
 
 class BM25:
-    """Minimal BM25 (k1=1.2, b=0.75) over whitespace tokens of normalised text.
+    """Minimal BM25 (k1=1.2, b=0.75).
 
     `top_k(..., restrict=...)` scores only the given document indices;
     without `restrict` results are byte-identical to the original
     eval_e2e.py implementation (kept so the `lexical` baseline stays
     reproducible).
+
+    Tokenisation protocol is explicit (2026-10-10): the query side always
+    uses norm_text, while `norm_docs=False` (protocol "lex-asym-v1")
+    indexes docs as RAW whitespace tokens. That asymmetry is an acknowledged
+    defect preserved only for comparability with the measured §5.4 ranking,
+    NOT a design claim. `norm_docs=True` ("lex-sym-v2") normalises both
+    sides identically and is the deployable form.
     """
 
-    def __init__(self, texts, k1=1.2, b=0.75):
+    def __init__(self, texts, k1=1.2, b=0.75, norm_docs=False):
         self.k1, self.b = k1, b
-        self.doc_tok = [t.split() for t in texts]
+        self.protocol = "lex-sym-v2" if norm_docs else "lex-asym-v1"
+        self.doc_tok = [norm_text(t).split() if norm_docs else t.split()
+                        for t in texts]
         self.doc_len = [len(t) for t in self.doc_tok]
         self.avg_len = (sum(self.doc_len) / len(self.doc_len)) or 1.0
         df = Counter()
@@ -130,9 +141,12 @@ class TwoStageRetriever:
     def __init__(self, corpus, corpus_mat=None, mode="two_stage",
                  doc_top_n=3, cand_per_source=8, cand_global=50,
                  per_doc_cap=0, rrf_k=60.0,
-                 use_lexical=True, use_dense=True, doc_decay=1.0):
+                 use_lexical=True, use_dense=True, doc_decay=1.0,
+                 lex_protocol="asym"):
         assert mode in ("two_stage", "global")
+        assert lex_protocol in ("asym", "sym"), lex_protocol
         self.mode = mode
+        self.lex_protocol = lex_protocol
         self.doc_top_n = doc_top_n
         self.cand_per_source = cand_per_source
         self.cand_global = cand_global
@@ -150,11 +164,20 @@ class TwoStageRetriever:
         self.doc_passage_sets = [set(idxs) for idxs in self.doc_passages]
 
         if use_lexical:
-            self.passage_bm25 = BM25([r["text"] for r in corpus])
+            # `lex_protocol` selects the tokenisation contract for BOTH the
+            # booklet router and the stage-2 passage list. "asym" is the
+            # historically reported behaviour (raw doc tokens vs normalised
+            # query): asymmetric, and wrong whenever a query token differs
+            # from its indexed form only by case or punctuation. It stays the
+            # default so §5.4's recorded numbers remain reproducible; "sym"
+            # is the corrected, deployable channel.
+            norm = lex_protocol == "sym"
+            self.passage_bm25 = BM25([r["text"] for r in corpus],
+                                     norm_docs=norm)
             if mode == "two_stage":
                 doc_texts = [" ".join(corpus[i]["text"] for i in idxs)
                              for idxs in self.doc_passages]
-                self.doc_bm25 = BM25(doc_texts)
+                self.doc_bm25 = BM25(doc_texts, norm_docs=norm)
 
         self.use_dense = bool(use_dense and corpus_mat is not None)
         self.mat = None
@@ -260,16 +283,65 @@ def index_cache_key(corpus, model: str = EMBEDDING_MODEL,
     return h.hexdigest()[:16]
 
 
-def load_index(key: str):
+def load_index(key: str, n_expected=None):
+    """Return cached corpus embeddings, or None when there is no cache.
+
+    Integrity gate (2026-10-10): a cache is trusted only if its shape
+    matches the corpus currently loaded, every value is finite, and -
+    when a provenance manifest exists - the manifest agrees on rows,
+    dimension and model id. A stale or torn cache RAISES instead of
+    silently ranking on garbage vectors; delete it or rebuild explicitly.
+    """
     p = CACHE_DIR / f"emb_{key}.npy"
-    if p.exists():
-        return np.load(p)
-    return None
+    if not p.exists():
+        return None
+    mat = np.load(p)
+    problems = []
+    if mat.ndim != 2:
+        problems.append(f"ndim={mat.ndim}")
+    else:
+        if n_expected is not None and mat.shape[0] != n_expected:
+            problems.append(f"rows={mat.shape[0]} but corpus has "
+                            f"{n_expected}")
+        if not np.isfinite(mat).all():
+            problems.append("contains non-finite values")
+    mp = CACHE_DIR / f"emb_{key}.json"
+    if mp.exists() and mat.ndim == 2:
+        man = json.loads(mp.read_text(encoding="utf-8"))
+        if man.get("n") != mat.shape[0] or man.get("dim") != mat.shape[1]:
+            problems.append("manifest disagrees with array shape")
+        if man.get("model") != EMBEDDING_MODEL:
+            problems.append(f"manifest model {man.get('model')!r} != "
+                            f"current {EMBEDDING_MODEL!r}")
+    if problems:
+        raise ValueError(
+            f"index cache emb_{key}.npy is not trustworthy "
+            f"({'; '.join(problems)}); delete data/cache/emb_{key}.* and "
+            "rebuild the index explicitly")
+    return mat
 
 
 def save_index(key: str, mat):
+    """Atomic write (tmp + replace) of matrix + provenance manifest, so an
+    interrupted build can never leave a torn cache that passes as a hit."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    np.save(CACHE_DIR / f"emb_{key}.npy", np.asarray(mat, dtype=np.float32))
+    mat = np.asarray(mat, dtype=np.float32)
+    npy = CACHE_DIR / f"emb_{key}.npy"
+    tmp = CACHE_DIR / f"emb_{key}.npy.tmp"
+    with tmp.open("wb") as fh:
+        np.save(fh, mat)
+    tmp.replace(npy)
+    man = CACHE_DIR / f"emb_{key}.json"
+    man_tmp = CACHE_DIR / f"emb_{key}.json.tmp"
+    man_tmp.write_text(json.dumps({
+        "key": key,
+        "n": int(mat.shape[0]),
+        "dim": int(mat.shape[1]) if mat.ndim == 2 else None,
+        "model": EMBEDDING_MODEL,
+        "batch": BATCH_SIZE,
+        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }), encoding="utf-8")
+    man_tmp.replace(man)
 
 
 # --------------------------------------------------- CLI query-language aid

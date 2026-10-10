@@ -1,5 +1,12 @@
 # HackApertus — Track 2A (OST) Technical Report
 
+> **Independent audit, 10 October 2026:** see [AUDIT_GPT6_ASTRA.md](AUDIT_GPT6_ASTRA.md)
+> before reusing these conclusions. The lexical retrieval channel has asymmetric
+> tokenisation, dev/eval contain exact duplicate examples, and invalid model
+> outputs can pass the parser. Historical numbers below are retained unchanged;
+> their arithmetic is largely reproducible, but that does not validate the
+> intended baselines, strict output validity or held-out generalisation.
+
 **Project:** Swiss voting-booklet fact-checking prototype
 **Pipeline:** claim → evidence retrieval → NLI/LLM judgement → cited evidence
 **Date:** 2026-10-06
@@ -448,26 +455,65 @@ Note also that passages are language *copies*: `de_2007_017`, `fr_2007_019` and
 `fr_2007_021` cover the same content in two languages, so `top_k = 5` spends slots on
 duplicates instead of widening coverage.
 
-### 5.4 Full-set benchmark of retrieval stacks (2026-10-09)
+### 5.4 Full-set benchmark of retrieval stacks
 
-With the 60-booklet PDF corpus (16,618 passages) and `eval_e2e.py` in place, claim→evidence
-retrieval became measurable as a *task*, not a proxy. Setup: all 1,488 eval items, of which
-1,470 have gold evidence locatable in the extracted text (denominator; the 18 others are
-excluded, never guessed); gold passages are the chunks containing the annotated
-`reference_string` (probe or ≥50% shingle match). Every config searches the **whole**
-corpus with no booklet or language filter; `reference_string` and `booklet_url` are used
-only to label gold, never at query time. Embedding configs: query = claim, encoded with
-the evidence-language adapter, **untranslated** (Ollama was not running; see §8). One run
-per config, ~40 s total on the cached index.
+Two protocol generations have run on the 60-booklet PDF corpus (16,618 passages)
+and they are **not comparable**. The 2026-10-09 run (this section's first form,
+still on disk as `data/eval_results_full_benchmark.json`) is **WITHDRAWN**: it
+crippled the lexical channel and handed the dense channel information no deployed
+system has. Both defects are named in `AUDIT_GPT6_ASTRA.md` — D01 ("asymmetric
+BM25 tokenisation invalidates the intended lexical comparison") and the *What the
+artefacts do not support* entry on the oracle adapter — and both are switches in
+`eval_e2e.py` now:
 
-| config | R@1 | R@3 | R@5 | MRR@5 | doc-route@1 | R@5 cross-lang (n=959) | R@5 same-lang (n=511) |
+1. **`--lex-protocol` (default `sym`; `asym` = the withdrawn behaviour).** `BM25`
+   indexed documents with `t.split()` on raw PDF text while queries went through
+   `norm_text` (lowercased, umlauts folded), so capitalised and accented document
+   tokens (`Agrarpolitik`, `SBB`, `Südzucker`) could not match their own query
+   counterparts. `lex-sym-v2` normalises both sides; `lexical_v2`, and the lexical
+   legs of `hyb_rrf` / `two_stage*`, use it.
+2. **`--adapter-policy` (default `claim` = deployable).** The dense query encoder
+   used to be chosen from each item's *gold* `reference_language`. Evidence
+   language is unknown at prediction time, so that configuration measures a
+   ceiling, not a system; it is still available as `--adapter-policy oracle` and
+   prints a DIAGNOSTIC warning when selected. `claim` encodes with the adapter of
+   the claim's own detected language, the heuristic `main.py` ships.
+
+#### 5.4.1 Deploy protocol, measured 2026-10-10
+
+Task definition unchanged from the first version of this section: all 1,488 eval
+items, of which 1,470 have gold evidence locatable in the extracted text (probe
+1,469 + shingle 1; the other 18 are excluded, never guessed); gold = the chunks
+containing the annotated `reference_string`. Every config searches the **whole**
+corpus with no booklet or language filter, and `reference_string` / `booklet_url`
+label gold only. Dense queries are the untranslated claim (Ollama was not
+running; see §8). Single run per config, 64.4 s total on the cached index.
+
+| deployable config | R@1 | R@3 | R@5 | MRR@5 | top-1 in gold booklet | R@5 cross-lang (n=959) | R@5 same-lang (n=511) |
 |---|---|---|---|---|---|---|---|
-| lexical (BM25) | .0245 | .0442 | .0558 | .0355 | .1415 | .0021 | .1566 |
-| emb_v1 (dense, de_CH adapter) | .0333 | .0639 | .0891 | .0520 | .1619 | .0740 | .1174 |
-| **emb_v2 (dense, evidence-lang adapter)** | **.0966** | **.1673** | **.2122** | **.1375** | **.4483** | **.2002** | **.2348** |
-| hyb_rrf (global BM25+dense, RRF) | .0361 | .0966 | .1320 | .0695 | .1755 | .0865 | .2172 |
-| two_stage_lex (booklet routing, lexical) | .0224 | .0367 | .0463 | .0305 | .1286 | .0010 | .1311 |
-| two_stage (routing, lexical+dense) | .0306 | .0633 | .0762 | .0483 | .1667 | .0083 | .2035 |
+| lexical_v2 (BM25, symmetric) | .0463 | .0728 | .0939 | .0633 | .2034 | .0063 | .2583 |
+| **hyb_rrf (sym BM25 + dense, RRF)** | **.0503** | .0748 | **.0939** | **.0656** | .1952 | .0021 | .2661 |
+| two_stage_lex (booklet routing, sym BM25) | .0388 | .0660 | .0912 | .0565 | .1891 | .0052 | .2524 |
+| two_stage (routing, sym BM25 + dense) | .0463 | .0748 | .0905 | .0617 | .1850 | .0010 | .2583 |
+| emb_v2 (dense, claim-language adapter) | .0429 | .0694 | .0844 | .0578 | .1830 | .0042 | .2348 |
+
+Controls, measured the same day and **none of them a deployable setting** — kept
+so the withdrawal is checkable rather than asserted:
+
+| control | R@1 | R@3 | R@5 | MRR@5 | top-1 in gold booklet | R@5 cross | R@5 same |
+|---|---|---|---|---|---|---|---|
+| BM25 with the withdrawn asym tokeniser (reproduces the 10-09 row) | .0245 | .0442 | .0558 | .0355 | .1415 | .0021 | .1566 |
+| hyb_rrf, asym BM25 + claim-adapter dense | .0354 | .0653 | .0769 | .0507 | .1748 | .0021 | .2172 |
+| emb_v2 with the oracle evidence-language adapter (reproduces the 10-09 row) | .0966 | .1673 | .2122 | .1375 | .4483 | .2002 | .2348 |
+| hyb_rrf, sym BM25 + oracle-adapter dense | .0524 | .1027 | .1401 | .0827 | .2000 | .0730 | .2661 |
+
+The two control pairs are the paired, one-factor checks the audit asked for.
+asym→sym on the lexical channel alone: BM25 .0558 → .0939 R@5, so the broken
+tokeniser cost roughly half of the lexical baseline. oracle→claim on the dense
+channel alone: .2122 → .0844, so most of the apparent "dense beats everything"
+margin came from query-time information a deployed pipeline will not have.
+`emb_v1` (uniform de_CH query adapter) is not the production path and was not
+rerun; its .0891 belongs to the withdrawn run.
 
 Four findings:
 

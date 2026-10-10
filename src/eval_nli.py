@@ -23,11 +23,13 @@ Usage (from src/):
     python3 eval_nli.py --split dev --backend openai --evidence retrieve-v2
 """
 import argparse
+import hashlib
 import json
 import random
 import re
 import sys
 import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (DATA_DIR, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, TOP_K,
                     OPENAI_BASE_URL, JUDGE_MODEL, PROMPT_CONFIG)
-from labels import CODE_TO_LABEL, label_to_code
+from labels import CODE_TO_LABEL, LABEL_PARSE_VERSION, label_to_code
 from nli_judge import (build_judge, get_prompt_config, PROMPT_CONFIGS)
 
 DEFAULT_DATA = DATA_DIR / "eval" / "mnli_swiss_v1.1.jsonl"
@@ -70,6 +72,41 @@ def split_indices(n, split, seed, dev_size):
     if split == "dev":
         return sorted(dev)
     return [i for i in range(n) if i not in dev]
+
+
+def overlap_with_rest(rows, idx):
+    """Dev/eval contamination audit (2026-10-10, report §9). Counts how many
+    selected items share surface material with the held-out remainder:
+    claim, reference_string, booklet_url, the exact (claim, reference, label)
+    triple, and any-overlap "cluster" membership. These fields are
+    gold-labelling material - overlap means the held-out rows are not
+    independent evidence. Computed offline and recorded in meta only; it
+    never feeds scoring or retrieval."""
+    sel = set(idx)
+    rest = [rows[i] for i in range(len(rows)) if i not in sel]
+    claims = Counter(r.get("claim") for r in rest if r.get("claim"))
+    refs = Counter(r.get("reference_string")
+                   for r in rest if r.get("reference_string"))
+    urls = Counter(r.get("booklet_url") for r in rest if r.get("booklet_url"))
+    triples = {(r.get("claim"), r.get("reference_string"),
+                r.get("entailment_label")) for r in rest}
+    n_claim = n_ref = n_url = n_tri = n_cluster = 0
+    for i in idx:
+        r = rows[i]
+        h_c = bool(claims.get(r.get("claim")))
+        h_r = bool(refs.get(r.get("reference_string")))
+        h_u = bool(urls.get(r.get("booklet_url")))
+        h_t = (r.get("claim"), r.get("reference_string"),
+               r.get("entailment_label")) in triples
+        n_claim += h_c
+        n_ref += h_r
+        n_url += h_u
+        n_tri += h_t
+        n_cluster += (h_c or h_r or h_u)
+    return {"n_selected": len(idx), "n_held_out": len(rest),
+            "claim_overlap": n_claim, "reference_overlap": n_ref,
+            "booklet_overlap": n_url, "exact_triple_overlap": n_tri,
+            "cluster_overlap": n_cluster}
 
 
 def oracle_evidence(item, pconf=None):
@@ -210,7 +247,7 @@ def evaluate(items, judge, evidence_for=None, retrieve_for=None):
 def summarise(results):
     # Pure-Python metrics (AGENTS.md: no sklearn/SciPy). Error items count
     # as false negatives for their gold class, never as a predicted class.
-    per_class = {}
+    per_class, f1_raw = {}, {}
     for c in CLASSES:
         tp = sum(1 for r in results if r["gold"] == c and r["pred"] == c)
         fn = sum(1 for r in results if r["gold"] == c and r["pred"] != c)
@@ -218,10 +255,13 @@ def summarise(results):
         p_ = tp / (tp + fp) if tp + fp else 0.0
         r_ = tp / (tp + fn) if tp + fn else 0.0
         f_ = 2 * p_ * r_ / (p_ + r_) if p_ + r_ else 0.0
+        f1_raw[c] = f_
         per_class[c] = {"precision": round(p_, 3), "recall": round(r_, 3),
                         "f1": round(f_, 3), "support": tp + fn}
     present = [c for c in CLASSES if per_class[c]["support"] > 0]
-    macro = (round(sum(per_class[c]["f1"] for c in present) / len(present), 3)
+    # macro-F1 averages FULL-PRECISION per-class F1 (2026-10-10 fix: v1
+    # averaged the 3-decimal display values, a small systematic bias; "m1").
+    macro = (round(sum(f1_raw[c] for c in present) / len(present), 3)
              if present else 0.0)
     confusion = {g: {p: 0 for p in CLASSES + ["ERROR"]} for g in CLASSES}
     for r in results:
@@ -268,6 +308,8 @@ def summarise(results):
 def main():
     ap = argparse.ArgumentParser(description="Track 2A eval harness")
     ap.add_argument("--data", default=str(DEFAULT_DATA))
+    ap.add_argument("--out", default=None,
+                    help="explicit result path (must not already exist)")
     ap.add_argument("--split", choices=["dev", "eval", "all"], default="dev")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--seed", type=int, default=DEV_SEED)
@@ -282,6 +324,8 @@ def main():
                     help="judge prompt/judging config (default: PROMPT_CONFIG"
                          " env or 'baseline')")
     args = ap.parse_args()
+    if args.out and Path(args.out).exists():
+        sys.exit(f"output already exists: {args.out}")
 
     data_path = Path(args.data)
     if not data_path.exists():
@@ -294,6 +338,13 @@ def main():
     items = [rows[i] for i in idx]
     if not items:
         sys.exit("no items selected")
+    mix = Counter(CODE_TO_LABEL[r["entailment_label"]] for r in items)
+    if len(mix) == 1:
+        print(f"WARNING: selected slice contains ONLY '{next(iter(mix))}' "
+              f"({len(items)} items). A single-class slice cannot measure "
+              "accuracy or macro-F1 - the first dataset rows are all "
+              "entailment, so keep --limit >= the full dev split (60).")
+    overlap = overlap_with_rest(rows, idx)
 
     backend = args.backend or LLM_BACKEND
     prompt_config = args.prompt_config or PROMPT_CONFIG
@@ -363,6 +414,12 @@ def main():
             "max_tokens": pconf["max_tokens"],
             "evidence_style": pconf["evidence"],
             "evidence_window": pconf["window"],
+            "label_parse_version": LABEL_PARSE_VERSION,
+            "metrics_version": "m2-full-precision-macro",
+            "dataset_sha256": hashlib.sha256(
+                data_path.read_bytes()).hexdigest(),
+            "class_mix": dict(mix),
+            "overlap_with_rest": overlap,
             "note": ("oracle mode measures the judgement step with gold "
                      "evidence, not retrieval quality"
                      if args.evidence == "oracle" else
@@ -377,10 +434,10 @@ def main():
     tag = f"_{args.split}_{backend}_{args.evidence}"
     if prompt_config != "baseline":
         tag += f"_{prompt_config}"  # ablation runs must not clobber baseline files
-    out = DATA_DIR / (f"eval_results_{datetime.now():%Y%m%d_%H%M%S}"
-                      f"{tag}.json")
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=False),
-                   encoding="utf-8")
+    out = (Path(args.out) if args.out else DATA_DIR /
+           f"eval_results_{datetime.now():%Y%m%d_%H%M%S_%f}{tag}.json")
+    with out.open("x", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, ensure_ascii=False)
 
     print(f"\naccuracy  {summary['accuracy']}  "
           f"(errors: {summary['errors']}/{summary['n']})")
@@ -388,6 +445,9 @@ def main():
     for c, m in summary["per_class"].items():
         print(f"  {c:<14} P={m['precision']:<6} R={m['recall']:<6} "
               f"F1={m['f1']:<6} n={m['support']}")
+    print(f"dev/held-out overlap: cluster {overlap['cluster_overlap']}/"
+          f"{overlap['n_selected']} selected | exact triples "
+          f"{overlap['exact_triple_overlap']} (details in meta)")
     print(f"results JSON: {out}")
 
 

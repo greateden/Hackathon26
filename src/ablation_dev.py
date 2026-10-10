@@ -42,6 +42,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -68,9 +69,12 @@ def run_combo(prompt_config, evidence, backend, limit):
     """Invoke eval_nli.py once; return (list of (path, payload), ok-flag)."""
     here = Path(__file__).resolve().parent
     runs = []
+    out = DATA_DIR / (f"eval_results_{datetime.now():%Y%m%d_%H%M%S}"
+                      f"_dev_{backend}_{evidence}_{prompt_config}_{uuid4().hex}.json")
     cmd = [sys.executable, str(here / "eval_nli.py"),
            "--split", "dev", "--backend", backend,
-           "--evidence", evidence, "--prompt-config", prompt_config]
+           "--evidence", evidence, "--prompt-config", prompt_config,
+           "--out", str(out)]
     if limit:
         cmd += ["--limit", str(limit)]
     print(f"\n=== RUN {prompt_config}/{evidence} "
@@ -82,11 +86,13 @@ def run_combo(prompt_config, evidence, backend, limit):
         print(f"!!! RUN FAILED (exit {proc.returncode}) - aborting the "
               "ablation so partial sets are never compared", flush=True)
         return runs, False
-    newest = max(DATA_DIR.glob("eval_results_*.json"),
-                 key=lambda p: p.stat().st_mtime)
-    payload = json.loads(newest.read_text(encoding="utf-8"))
-    runs.append((newest, payload))
-    print(f"--- done in {elapsed:.0f}s -> {newest.name}", flush=True)
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    meta = payload["meta"]
+    if (meta["backend"], meta["evidence_mode"], meta["prompt_config"],
+            meta["split"]) != (backend, evidence, prompt_config, "dev"):
+        raise RuntimeError(f"run metadata mismatch: {out}")
+    runs.append((out, payload))
+    print(f"--- done in {elapsed:.0f}s -> {out.name}", flush=True)
     return runs, True
 
 
@@ -187,6 +193,8 @@ def main():
                              "file": str(path),
                              "summary": payload["summary"],
                              "labels": labels_of(payload)})
+    if not ok:
+        sys.exit("ablation incomplete; individual run files retained, no comparison produced")
     if not all_runs:
         sys.exit("no successful runs")
 

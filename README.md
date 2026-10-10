@@ -25,10 +25,18 @@ Exploratory prototype — the plumbing works; the science is still open.
   evidence strings — 98.8% — locate inside that text). `make eval-e2e-quick`
   / `eval-e2e-full` (`src/eval_e2e.py`) then measure claim→evidence
   retrieval end-to-end, searching the whole corpus with no booklet filter.
-  Full benchmark (single runs, 2026-10-09, 1,470 items, six configs —
-  report §5.4): dense retrieval with evidence-language adapters leads
-  (R@5 0.212 overall, 0.200 cross-language), ahead of BM25 (0.056);
-  hybrid RRF fusion and two-stage booklet routing both measured worse.
+  Corrected full benchmark (2026-10-10, 1,470 items, single runs,
+  `data/eval_results_full_deploy.json`) under the deploy protocol —
+  symmetric BM25 tokenisation plus the adapter chosen from the claim
+  language (what a deployable pipeline can actually do): BM25 R@5 0.094,
+  hybrid RRF 0.094, dense (untranslated) 0.084. Nothing is clearly ahead at
+  this sample size. The earlier 2026-10-09 ranking (dense 0.212 ahead of
+  BM25 0.056) is WITHDRAWN: it crippled the lexical channel (documents were
+  tokenised case- and umlaut-sensitively while queries were normalised) and
+  gave the dense channel the gold evidence language at query time
+  (`--adapter-policy oracle` — a diagnostic ceiling, not a deployable
+  setting). Both the withdrawn and the corrected measurements, and what each
+  can and cannot establish, are documented in report §5.4.
   Numbers are lower bounds (substring-matched gold). The legacy
   526-passage CLI corpus is unchanged; `RETRIEVAL_CONFIG=v2|hybrid`
   lets `main.py` opt into the booklet-corpus stacks (plumbing verified,
@@ -132,7 +140,7 @@ python3 fetch_booklets.py       # build the 60-booklet PDF corpus (internet, res
 python3 eval_e2e.py --configs lexical            # full-set e2e retrieval eval, no model
 python3 eval_e2e.py --limit 60  # class-balanced 60-item e2e eval, all six configs
 python3 ablation_dev.py --dry-run  # plan the prompt-config ablation (offline)
-python3 diag_evidence_ablation.py  # offline audit: factorial prompt-equivalence + oracle-flip analysis
+python3 diag_evidence_ablation.py  # offline check: factorial prompt-equivalence + oracle-flip analysis
 python3 ablation_dev.py --backend openai  # FULL ablation (t0/strict/select vs a
                      # paired t0 baseline on the fixed dev split) — needs a
                      # live endpoint (start `make serve-apertus` first, in a

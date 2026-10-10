@@ -1,4 +1,4 @@
-# Keep the build context small and reproducible: only src/ +
+# Keep the build context small and reproducible: only src/, tests/ and
 # requirements.txt are COPYed into the image; everything else is either
 # mounted at run time (data/, repos/) or irrelevant to the build.
 .git

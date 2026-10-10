@@ -172,8 +172,14 @@ def build_chat(pconf: Dict, claim: str, passages: List[Dict]):
 
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+# Broken-JSON recovery (2026-10-10 audit fix): capture the COMPLETE value
+# token, never a prefix. The old pattern matched the "1" inside "1.5" (and
+# "neutral" inside "neutral-ish"), so a float/garbage label decoded as a
+# fabricated prediction. Group 1 = exact quoted string value, group 2 = bare
+# numeric/bool literal; both go through strict normalise_label.
 _LABEL_KEY_RE = re.compile(
-    r'"label"\s*:\s*\(?\s*"?(entailment|neutral|contradiction|0|1|2)\b',
+    r'"label"\s*:\s*"([^"]*)"'
+    r'|"label"\s*:\s*(true|false|null|[0-9]+(?:\.[0-9]+)?)(?![0-9.\w])',
     re.IGNORECASE)
 _LEADING_LABEL_RE = re.compile(
     r"\s*(entailment|neutral|contradiction)\b", re.IGNORECASE)
@@ -190,7 +196,13 @@ def parse_nli_response(raw: str) -> Dict:
     *mentions* a label word masquerade as a prediction (see test_judge.py).
     Anything else returns label=None + error="unparseable_response" and the
     harness must report it as a failure, never score it as Neutral.
-    Numeric codes ("0"/"1"/"2") are accepted via labels.normalise_label.
+    Numeric codes are accepted ONLY in strict form (labels.LABEL_PARSE_VERSION
+    = "label-parse-v2.1-strict", 2026-10-10): exact "0"/"1"/"2" strings or
+    exact int codes; floats, booleans and castable junk decode to None. The
+    broken-JSON recovery regex captures the COMPLETE value token, so "1.5"
+    or "neutral-ish" never prefix-match back into a fabricated label.
+    Earlier dev runs (report §4.2/§4.3) used the v1 parser that accepted
+    int()-castable values - attributable via this version tag.
     """
     text = raw.strip()
     if text.startswith("```"):
@@ -210,9 +222,17 @@ def parse_nli_response(raw: str) -> Dict:
         except json.JSONDecodeError:
             pass
 
-    m2 = _LABEL_KEY_RE.search(text) or _LEADING_LABEL_RE.match(text)
+    m2 = _LABEL_KEY_RE.search(text)
+    raw_label = None
     if m2:
-        label = normalise_label(m2.group(1))
+        raw_label = (m2.group(1) if m2.group(1) is not None
+                     else m2.group(2))
+    if raw_label is None:
+        m3 = _LEADING_LABEL_RE.match(text)
+        if m3:
+            raw_label = m3.group(1)
+    if raw_label is not None:
+        label = normalise_label(raw_label)
         if label:
             return {"label": label, "reasoning": text[:200],
                     "evidence_snippet": ""}
@@ -389,8 +409,7 @@ class OpenAICompatJudge:
                 f"Endpoint {self.base_url} is up but /v1/models lists no "
                 f"models; cannot verify the judge model identity "
                 f"(expected {self.model!r}).")
-        if not any(self.model in s or s in self.model or
-                   self.model.rsplit("/", 1)[-1] in s for s in served):
+        if self.model not in served:
             raise RuntimeError(
                 f"Endpoint {self.base_url} serves {served}, which does not "
                 f"match JUDGE_MODEL={self.model!r}. Verify the server "
@@ -406,9 +425,11 @@ class OpenAICompatJudge:
         ids = []
         if isinstance(data, list):
             for item in data:
-                if isinstance(item, str):
+                if isinstance(item, str) and item.strip():
                     ids.append(item)
-                elif isinstance(item, dict) and "id" in item:
+                elif (isinstance(item, dict)
+                      and isinstance(item.get("id"), str)
+                      and item["id"].strip()):
                     ids.append(item["id"])
         return ids
 

@@ -27,7 +27,13 @@ Configurations compared in one pass:
             --translate, claims are first translated into the evidence
             language via Ollama Apertus (cached; falls back to untranslated
             and says so in the report).
-  lexical   BM25 over whitespace tokens - lower-cost baseline.
+  lexical   legacy ASYMMETRIC BM25 (protocol lex-asym-v1): docs indexed as
+            raw whitespace tokens, query normalised. Known tokenisation
+            mismatch, kept ONLY so the historical §5.4 ranking stays
+            reproducible; do not present as the deployable lexical design.
+  lexical_v2
+            deployable SYMMETRIC BM25 (protocol lex-sym-v2): norm_text on
+            BOTH document and query tokens.
   hyb_rrf   hybrid: RRF over global BM25 + global dense candidates
             (query side identical to emb_v2).
   two_stage / two_stage_lex
@@ -38,6 +44,15 @@ Configurations compared in one pass:
             all-lexical variant (no embedding model needed).
             See hybrid_retrieval.py; no gold booklet info at query time.
 
+Adapter policy (--adapter-policy, default "claim" = deployable):
+  claim     dense query adapter chosen from the CLAIM's own language via
+            the same heuristic the CLI uses - no gold field at query time.
+  oracle    adapter chosen from each item's gold reference_language.
+            DIAGNOSTIC ONLY: that information does not exist at prediction
+            time, so oracle runs measure a ceiling, never a deployable
+            system. This is what the pre-2026-10-10 (§5.4) emb_v2/hybrid
+            runs did; the default change is protocol v2.
+
 Metrics: Recall@1/3/5 (any gold passage in top-K), document routing (gold
 document hit by top-1), failure breakdown (wrong booklet vs wrong passage),
 per-claim-language and same-vs-cross-language Recall@5.
@@ -46,6 +61,8 @@ Usage:
   python3 fetch_booklets.py                  # first build data/booklets/
   python3 eval_e2e.py --limit 60             # smoke, class-balanced sample
   python3 eval_e2e.py                         # full 1488-item eval
+  python3 eval_e2e.py --limit 60 --configs lexical,lexical_v2  # BM25 A/B
+  python3 eval_e2e.py --limit 60 --adapter-policy oracle        # DIAGNOSTIC
 """
 import argparse
 import json
@@ -58,13 +75,14 @@ import numpy as np
 
 from config import BOOKLET_CORPUS_JSON, DATA_DIR
 from fetch_booklets import DATASET_PATH, booklet_key, load_dataset
-from hybrid_retrieval import (BM25, TwoStageRetriever, index_cache_key,
+from hybrid_retrieval import (BM25, TwoStageRetriever,
+                              detect_query_language, index_cache_key,
                               load_index, norm_text, save_index)
 from sampling import balanced_sample, label_counts
 
 TOPK = (1, 3, 5)
 
-ALL_CONFIGS = ("lexical", "emb_v1", "emb_v2", "hyb_rrf",
+ALL_CONFIGS = ("lexical", "lexical_v2", "emb_v1", "emb_v2", "hyb_rrf",
                "two_stage", "two_stage_lex")
 
 
@@ -287,12 +305,33 @@ def eval_config(name, records, gold_map, ranks, corpus):
 ADAPTER = {"de": "de_CH", "fr": "fr_CH", "it": "it_CH"}
 
 
+def adapters_for(records, policy):
+    """Dense-query adapter choice per item (see module docstring).
+
+    'oracle' reads the gold reference_language: DIAGNOSTIC ONLY. It
+    measures the ceiling IF the evidence language were known at query time
+    and is what the pre-2026-10-10 §5.4 runs did; it must never be
+    described as a deployable configuration. 'claim' (default) detects the
+    language from the claim text with the CLI's heuristic - no gold field
+    is consulted at prediction time."""
+    if policy == "oracle":
+        return [ADAPTER.get(r["reference_language"], "de_CH")
+                for r in records]
+    return [ADAPTER.get(detect_query_language(r["claim"]), "de_CH")
+            for r in records]
+
+
 def ollama_status():
-    """Quick reachability probe for a local Ollama server."""
+    """Quick reachability probe for the CONFIGURED Ollama endpoint.
+
+    2026-10-10 fix: this used to hardcode localhost:11434, so a container
+    or a custom OLLAMA_BASE_URL was reported as 'not reachable' while
+    actually being up (and vice versa)."""
     import urllib.request
+    from config import OLLAMA_BASE_URL
+    url = OLLAMA_BASE_URL.rstrip("/")
     try:
-        req = urllib.request.Request(
-            "http://localhost:11434/api/tags", method="GET")
+        req = urllib.request.Request(f"{url}/api/tags", method="GET")
         with urllib.request.urlopen(req, timeout=2) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         models = [m.get("name", "") for m in data.get("models", [])]
@@ -325,8 +364,13 @@ def translate_queries(records, config, translate_flag):
     cache = json.loads(cache_path.read_text(encoding="utf-8")) \
         if cache_path.exists() else {}
     out, missing = [None] * len(records), []
+    # Cache keys carry the model id + prompt version ("t2"): a translation
+    # made by a different model or prompt is a DIFFERENT experiment input
+    # and must not silently reuse v1 cache entries.
     for i, r in enumerate(records):
-        key = f"{r['claim_language']}->{r['reference_language']}::{r['claim']}"
+        key = (f"t2::{OLLAMA_MODEL}::"
+               f"{r['claim_language']}->{r['reference_language']}"
+               f"::{r['claim']}")
         if r["claim_language"] == r["reference_language"]:
             out[i] = r["claim"]
         elif key in cache:
@@ -407,6 +451,21 @@ def main(argv=None):
                     help="max passages kept per booklet (0 = no cap)")
     ap.add_argument("--dump-failures", type=int, default=0,
                     help="include up to N top-5 misses per config")
+    ap.add_argument("--adapter-policy", choices=["claim", "oracle"],
+                    default="claim",
+                    help="dense-query adapter choice: 'claim' (default, "
+                         "deployable) = adapter from claim-language "
+                         "detection; 'oracle' = gold reference_language, "
+                         "DIAGNOSTIC ONLY")
+    ap.add_argument("--lex-protocol", choices=["asym", "sym"],
+                    default="asym",
+                    help="tokenisation contract for the lexical channel of "
+                         "every stack that uses one (lexical_v2 is always "
+                         "symmetric; hybrid and two-stage stacks follow this "
+                         "flag). 'asym' (default) = the historically "
+                         "reported lex-asym-v1 behaviour, kept only so §5.4 "
+                         "stays reproducible; 'sym' = lex-sym-v2, the "
+                         "corrected channel to compare against dense")
     ap.add_argument("--out", default=None, help="result JSON path")
     args = ap.parse_args(argv)
 
@@ -447,7 +506,7 @@ def main(argv=None):
     if need_dense:
         from retriever import Retriever
         key = index_cache_key(corpus)
-        corpus_mat = load_index(key)
+        corpus_mat = load_index(key, n_expected=len(corpus))
         cache_note = (f"loaded data/cache/emb_{key}.npy (cached, not rebuilt)"
                       if corpus_mat is not None else
                       f"built now, cached as data/cache/emb_{key}.npy")
@@ -460,32 +519,45 @@ def main(argv=None):
                                                    keepdims=True) + 1e-9))
     print(f"Embedding index: {cache_note}")
 
-    bm25 = BM25([r["text"] for r in corpus]) \
-        if "lexical" in cfg_list else None
+    lex_texts = [r["text"] for r in corpus]
+    bm25 = BM25(lex_texts) if "lexical" in cfg_list else None
+    bm25v2 = BM25(lex_texts, norm_docs=True) \
+        if "lexical_v2" in cfg_list else None
+    if args.adapter_policy == "oracle":
+        print("NOTE: --adapter-policy oracle reads the gold reference "
+              "language at query time: DIAGNOSTIC ONLY, not a deployable "
+              "configuration.")
 
     results = {}
     for cfg in cfg_list:
         t0 = time.time()
+        use_translate = args.translate and args.adapter_policy == "oracle"
         if cfg == "lexical":
             ranks = [bm25.top_k(r["claim"], max(TOPK)) for r in records]
-            note = "BM25 on normalised tokens, no translation"
+            note = ("legacy asymmetric BM25: raw doc tokens vs normalised "
+                    "query (lex-asym-v1)")
+        elif cfg == "lexical_v2":
+            ranks = [bm25v2.top_k(r["claim"], max(TOPK)) for r in records]
+            note = "symmetric BM25: norm_text on docs AND query (lex-sym-v2)"
         elif cfg in ("emb_v1", "emb_v2"):
-            queries, note = translate_queries(records, cfg, args.translate)
+            queries, note = translate_queries(records, cfg, use_translate)
             if cfg == "emb_v1":
                 adapters = ["de_CH"] * len(records)
             else:
-                adapters = [ADAPTER.get(r["reference_language"], "de_CH")
-                            for r in records]
+                adapters = adapters_for(records, args.adapter_policy)
+                note += f"; adapter-policy={args.adapter_policy}"
             ranks = embed_rank(retriever, queries, adapters, corpus_mat,
                                max(TOPK))
         else:
-            # Hybrid configs: query side identical to emb_v2 (evidence-language
-            # adapter, optional translation) so differences isolate the
-            # candidate-generation + fusion change. No gold information is
-            # used: booklet routing is computed from the claim at query time.
+            # Hybrid configs: query side identical to emb_v2 under the SAME
+            # adapter policy (oracle reproduces the historical
+            # evidence-language setup for comparability; claim is the
+            # deployable default). Booklet routing is computed from the
+            # claim at query time - no gold booklet info is consulted.
             ts_kw = dict(doc_top_n=args.doc_top_n,
                          cand_per_source=args.cand,
-                         per_doc_cap=args.per_doc_cap)
+                         per_doc_cap=args.per_doc_cap,
+                         lex_protocol=args.lex_protocol)
             if cfg == "hyb_rrf":
                 ts = TwoStageRetriever(corpus, corpus_mat=corpus_mat,
                                        mode="global", **ts_kw)
@@ -496,9 +568,9 @@ def main(argv=None):
                 ts = TwoStageRetriever(corpus, mode="two_stage",
                                        use_dense=False, **ts_kw)
             queries, note = translate_queries(records, "emb_v2",
-                                              args.translate)
-            adapters = [ADAPTER.get(r["reference_language"], "de_CH")
-                        for r in records]
+                                              use_translate)
+            adapters = adapters_for(records, args.adapter_policy)
+            note += f"; adapter-policy={args.adapter_policy}"
             sims_rows = ([None] * len(records)
                          if cfg == "two_stage_lex" or corpus_mat is None
                          else batched_sims(retriever, queries, adapters,
@@ -508,7 +580,8 @@ def main(argv=None):
                                  sims=sims_rows[i])
                      for i, r in enumerate(records)]
             note += (f"; {cfg} docs={args.doc_top_n} "
-                     f"cand={args.cand} cap={args.per_doc_cap} rrf_k=60")
+                     f"cand={args.cand} cap={args.per_doc_cap} rrf_k=60 "
+                     f"lex={args.lex_protocol}")
         res = eval_config(cfg, records, gold_map, ranks, corpus)
         if args.dump_failures:
             res["failure_examples"] = failure_examples(
@@ -537,6 +610,22 @@ def main(argv=None):
         "corpus": {"passages": len(corpus), "booklets": len(docs),
                    "built_from": "original booklet PDFs only"},
         "embedding_index": cache_note,
+        "adapter_policy": args.adapter_policy,
+        "protocol_versions": {
+            "lexical": "lex-asym-v1 (legacy: raw doc tokens, query "
+                       "normalised - kept for §5.4 comparability only)",
+            "lexical_v2": "lex-sym-v2 (norm_text on both sides)",
+            "hybrid_lexical": (
+                "lex-sym-v2 (norm_text on both sides)"
+                if args.lex_protocol == "sym"
+                else "lex-asym-v1 in every hybrid/two-stage lexical leg "
+                     "(--lex-protocol asym: the §5.4 defect, kept for "
+                     "reproducibility; not a fair lexical baseline)"),
+            "adapters": f"policy={args.adapter_policy}"
+                        + (" | oracle uses the gold reference_language at "
+                           "query time: diagnostic ceiling, NOT deployable"
+                           if args.adapter_policy == "oracle" else ""),
+        },
         "hybrid_params": {"doc_top_n": args.doc_top_n, "cand": args.cand,
                           "per_doc_cap": args.per_doc_cap, "rrf_k": 60},
         "evidence_matching": cov,
@@ -545,6 +634,8 @@ def main(argv=None):
             "reference_string_used_for": "gold-passage labelling only",
             "query_side": "claim (+translation); never the reference",
             "booklet_url_used_for": "gold labelling only, never a filter",
+            "adapter_policy_uses_gold_language":
+                args.adapter_policy == "oracle",
         },
         "configs": results,
     }
