@@ -59,6 +59,11 @@ set) before changing `data/example_claims.json`.
   - `diag_two_stage.py` — splits two-stage misses into empty-result /
     wrong-booklet / right-booklet-missed-passage (output behind §5.4/3).
   - `run.sh` — convenience wrapper for the MLX backend.
+- `Dockerfile`, `compose.yaml`, `.dockerignore` (root) — portable
+  container runtime; see "Docker runtime" below.
+- `requirements.txt` (root, pinned, portable/CPU) and
+  `requirements-macos-mlx.txt` (Apple Silicon MLX extras, never installed
+  in the container) replace the old unpinned `src/requirements.txt`.
 - `data/example_claims.json` — 10 smoke-test claims (flawed; see below).
 - `data/logs/`, `data/results_*.json` — generated outputs, git-ignored.
 - `repos/` — external upstream corpus checkouts (VotingBooklets,
@@ -71,6 +76,8 @@ runnable offline; `make eval-apertus-*` uses `.venv/bin/python` when
 present (that venv carries mlx-lm 0.32, the only setup that can load the
 Apertus architecture; it is git-ignored and rebuildable:
 `python3.12 -m venv .venv && .venv/bin/pip install "mlx-lm==0.32.0"`).
+`make run`, `make test-docker`, `make test-docker-pipeline` and
+`make eval-lex-docker` go through Docker instead — see "Docker runtime".
 
 ## Commands (from `src/`, no LLM download needed)
 
@@ -95,7 +102,64 @@ MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh` or `make eval-apertus-*`)
 download LLM weights and are expensive; they are not required for routine
 checks.
 
-## Invariants and conventions
+## Docker runtime (added 2026-10-09)
+
+Portable, reproducible path for non-macOS users and judges. Entry points
+`make run` / `make test-docker` / `make test-docker-pipeline` /
+`make eval-lex-docker` (from the repo root, via `compose.yaml`); native
+paths (`make run-native`, `make test`, `make eval-*`) are unchanged and
+remain the only place Apple Silicon MLX runs.
+
+- `Dockerfile` (root) — python:3.11-slim + CPU PyTorch from
+  `requirements.txt` (pinned; platform markers keep x86-64 and aarch64
+  CPU wheels small). No MLX, no model weights, no corpus in the image.
+  Runs as non-root user `app`; `/app` and `/home/app` are owned by it
+  (needed: `py_compile` writes `__pycache__` into `/app/src`).
+- Dependency split: `requirements.txt` (portable) vs
+  `requirements-macos-mlx.txt` (Apple Silicon only). The old
+  `src/requirements.txt` (unpinned, mixed MLX) was removed; do not
+  reintroduce a third dependency file. Changing a pin = rebuild + rerun
+  the container checks.
+- Mounts (compose): `./repos` read-only (legacy OCR corpus), `./data`
+  read-write (booklet corpus, eval set, embedding caches, logs, results
+  — host-visible), and named volume `hackapertus_hf-cache` at
+  `/home/app/.cache/huggingface` (= `HF_HOME`). Keep model downloads on
+  the volume, out of the image and out of the repo tree. Note:
+  `retriever.load_tokenizer_compat` globs `~/.cache/huggingface/hub`,
+  so the home-cache layout and `HF_HOME` must stay the same path — they
+  are intentionally identical for the tokenizer.json fallback to work.
+- Model endpoints (hard rule): inside a container `LLM_BACKEND` is
+  `lexical` (default; smoke-test baseline only) or `ollama` pointing at
+  an external Ollama-compatible server (`OLLAMA_BASE_URL`, default
+  `http://host.docker.internal:11434` via `extra_hosts:
+  host-gateway`, which is how container→host networking is verified
+  rather than assumed). `LLM_BACKEND=mlx` inside the container fails
+  loudly (mlx_lm is not installed) — never let it fall back to lexical,
+  and never quote lexical container numbers as model quality. Failed or
+  unparseable endpoint replies are recorded as errors (`label: None`),
+  per the existing invariant.
+- Offline use: pre-populate the cache volume, or bind-mount a host
+  `~/.cache/huggingface` over it. `RETRIEVAL_CONFIG=legacy` remains the
+  default in the image; `v2`/`hybrid` in containers are plumbing-checked
+  only, same caveat as native.
+- Verified 2026-10-09 on Apple Silicon via colima (linux/aarch64, Docker
+  29.5): image build; `make test-docker` (all offline checks); full
+  `make run` (legacy corpus mounted read-only + model downloaded to the
+  cache volume + 10 lexical judgments, results JSON on the host); and
+  ollama-backend plumbing verified against a MOCK Ollama-compatible
+  server on the host (container→host networking via host-gateway,
+  /api/tags + /api/chat round-trip, model reply parsed through
+  `parse_nli_response`). UNVERIFIED: Linux x86-64 hosts, Docker
+  Desktop, a real model server (genuine Apertus inference quality —
+  the mock only proves plumbing), and `v2`/`hybrid` quality on the
+  pipeline path. Do not mark those as working without a rerun.
+- Host quirks found the hard way (not repo bugs): stale
+  `~/.docker/cli-plugins/docker-compose` symlinks pointing at a deleted
+  Docker.app, and `credsStore: "desktop"` in `~/.docker/config.json`
+  with the credential helper missing, break `docker compose build`
+  ("error listing credentials" / "unknown command: compose"). Fix:
+  `brew install docker-compose` + relink the plugin, and clear
+  `credsStore` in that file.
 
 - Label codes are DECIDED (2026-10-09): the official mapping 0 =
   entailment, 1 = neutral, 2 = contradiction lives in `src/labels.py`

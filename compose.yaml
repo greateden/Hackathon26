@@ -1,0 +1,39 @@
+# Portable runtime for HackApertus Track 2A (Linux containers, CPU).
+#
+# Model policy (hard constraint): no MLX inside containers. Judgement is
+# either the lexical smoke-test baseline (LLM_BACKEND=lexical, default,
+# no model needed) or a real model behind an Ollama-compatible HTTP
+# endpoint. Point OLLAMA_BASE_URL at a running server (default assumes
+# Ollama on the host via host.docker.internal, which the extra_hosts
+# entry below makes resolvable on Docker Desktop and on Linux via
+# host-gateway). Never mix the two in reporting: lexical verdicts are
+# not model verdicts.
+
+services:
+  app:
+    build: .
+    image: hackapertus:local
+    working_dir: /app/src
+    environment:
+      LLM_BACKEND: ${LLM_BACKEND:-lexical}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-apertus-8b}
+      RETRIEVAL_CONFIG: ${RETRIEVAL_CONFIG:-legacy}
+    volumes:
+      # Legacy OCR corpus (repos/VotingBooklets-mono) - read-only.
+      # Without it the "legacy" retrieval stack has no corpus and the
+      # pipeline reports zero passages (loudly, not silently).
+      - ./repos:/app/repos:ro
+      # Project data: example claims, booklet corpus + per-config index
+      # caches, eval sets, logs, results. Stays host-visible; nothing
+      # large is copied into the image.
+      - ./data:/app/data
+      # HF model cache (persistent named volume, kept OUT of the image).
+      # The first dense-retrieval run downloads sentence-swissbert here
+      # (needs internet); or pre-populate it for offline use (AGENTS.md).
+      - hf-cache:/home/app/.cache/huggingface
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  hf-cache:

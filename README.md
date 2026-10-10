@@ -53,9 +53,9 @@ Evidence, measurements and explicit caveats: `REPORT_HACKAPERTUS_OST.md`
 
 ## Setup
 
-Requires Python 3.12+, PyTorch, and (on a fresh machine) an internet
-connection to fetch the corpus and the embedding model. The MLX judge
-backend additionally needs Apple Silicon.
+Two ways to run: **Docker** (portable — macOS and Linux; needs only
+Docker, no Python setup) or **native Python 3.12+** (required for the
+Apple Silicon MLX judge).
 
 ```bash
 # 1. External corpus checkouts (~3.1 GB, excluded from Git). Skip any that already exist.
@@ -63,11 +63,46 @@ mkdir -p repos
 git clone --depth 1 https://github.com/Eljuanina/VotingBooklets.git repos/VotingBooklets
 git clone --depth 1 https://github.com/Eljuanina/VotingBooklets-mono.git repos/VotingBooklets-mono
 
-# 2. Python dependencies
-python3 -m pip install -r src/requirements.txt
+# 2. Native Python dependencies (skip if you only use Docker)
+python3 -m pip install -r requirements.txt
+# On Apple Silicon, for the MLX judge backend also:
+python3 -m pip install -r requirements-macos-mlx.txt
 ```
 
-## Running
+`requirements.txt` is the portable, pinned set (CPU PyTorch) used by the
+Docker image; MLX (Apple Metal only) lives in `requirements-macos-mlx.txt`
+and is never installed inside a container.
+
+## Running with Docker
+
+From the repo root (requires Docker; the first dense run downloads the
+embedding model once into a cached volume):
+
+```bash
+make run             # full pipeline over data/example_claims.json.
+                     # Default judge is the LEXICAL baseline — plumbing
+                     # smoke test only, NOT an Apertus model result.
+make test-docker     # offline unit checks inside the container
+make eval-lex-docker # 60-item dev eval, lexical heuristic
+                     # (run `make eval-data` first)
+```
+
+`repos/` and `data/` are mounted, never copied into the image. For
+genuine Apertus inference, start an Ollama-compatible server and point
+the container at it (Apple Silicon MLX only runs natively —
+`make run-native`):
+
+```bash
+# e.g. on the host: ollama serve  +  ollama pull <model>
+LLM_BACKEND=ollama OLLAMA_MODEL=<model> make run
+```
+
+An empty corpus, an unreachable model endpoint, or an unparseable model
+reply is reported as an error — never silently replaced by a lexical
+prediction. Architecture and troubleshooting: `AGENTS.md`, section
+"Docker runtime".
+
+## Running natively (from `src/`)
 
 All commands run from `src/`. First run downloads the sentence-swissbert
 embedding model (~0.5 GB, cached afterwards); no LLM download is needed

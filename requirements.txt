@@ -1,0 +1,14 @@
+# Portable (Linux + macOS CPU) dependencies, pinned for reproducible
+# Docker builds. macOS MLX judge dependencies live in
+# requirements-macos-mlx.txt and are intentionally NOT installed in the
+# image (no Apple Metal inside Linux containers).
+#
+# torch platform markers:
+#   - linux x86_64: +cpu wheel from the PyTorch cpu index (see Dockerfile
+#     --extra-index-url) keeps the image small and CPU-only.
+#   - linux aarch64: plain CPU wheels published on PyPI.
+numpy==2.1.3
+requests==2.32.3
+torch==2.5.1+cpu; platform_system == "Linux" and platform_machine == "x86_64"
+torch==2.5.1; platform_system == "Linux" and platform_machine == "aarch64"
+transformers==4.48.3
