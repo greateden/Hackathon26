@@ -86,14 +86,15 @@ check("y" * 1500 not in ev_fill and "y" * 100 in ev_fill
       "fill style: second passage truncated to fit, cap honoured")
 
 # --- prompt-config registry ---------------------------------------------------
-check(set(PROMPT_CONFIGS) == {"baseline", "t0", "strict", "select"},
-      "registry has exactly baseline/t0/strict/select")
+check(set(PROMPT_CONFIGS) == {"baseline", "t0", "strict", "select",
+                              "fill_only", "window_only"},
+      "registry has exactly baseline/t0/strict/select/fill_only/window_only")
 _b = get_prompt_config("baseline")
 check(_b["temperature"] == 0.1 and _b["max_tokens"] == 400
       and _b["evidence"] == "drop" and not _b["window"],
       "baseline config keeps the 2026-10-10 dev-run settings unchanged")
 check(all(get_prompt_config(c)["temperature"] == 0.0
-          for c in ("t0", "strict", "select")),
+          for c in ("t0", "strict", "select", "fill_only", "window_only")),
       "ablation arms run at temperature 0")
 try:
     get_prompt_config("nope")
@@ -134,6 +135,77 @@ check(len(_window) <= 1900 and len(select_window(_long, "quantum teleport",
       "select_window: cap honoured; no-overlap falls back to the head")
 check(select_window("short text", "whatever claim", 1900) == "short text",
       "short evidence passes through untouched")
+
+# --- factorial arms: single-factor purity + render equivalence ---------------
+# fill_only / window_only each isolate ONE factor of `select` (style vs
+# window). Two equivalence classes must stay byte-identical at render time:
+# window is applied BEFORE build_chat (oracle evidence path only), and oracle
+# evidence is a single chunk that always fits the 2000-char evidence cap.
+_fill = get_prompt_config("fill_only")
+_win = get_prompt_config("window_only")
+check(_fill["evidence"] == "fill" and not _fill["window"]
+      and _fill["system"] == SYSTEM_PROMPT and _fill["temperature"] == 0.0,
+      "fill_only isolates the evidence-style factor (fill, no window, T=0)")
+check(_win["evidence"] == "drop" and _win["window"]
+      and _win["system"] == SYSTEM_PROMPT and _win["temperature"] == 0.0,
+      "window_only isolates the window factor (drop, window on, T=0)")
+
+# long_p above makes the cap bite, so a style change WOULD be visible;
+# a window-flag-only difference must NOT be visible at render time
+# (retrieve-mode equivalence: fill_only == select, window_only == t0).
+check(build_chat(_fill, _claim, long_p)
+      == build_chat(get_prompt_config("select"), _claim, long_p),
+      "fill_only renders identically to select (retrieve-mode equivalence)")
+check(build_chat(_win, _claim, long_p)
+      == build_chat(get_prompt_config("t0"), _claim, long_p),
+      "window_only renders identically to t0 (retrieve-mode equivalence)")
+
+# Oracle-mode equivalence: single 'gold' chunk <= EVIDENCE_MAX_CHARS chars
+# always fits the 2000-char cap -> style inert -> fill_only == t0 and
+# window_only == select, even where the window actually moves.
+from eval_nli import DEFAULT_DATA, DEV_SEED, DEV_SIZE, EVIDENCE_MAX_CHARS
+from eval_nli import load_rows, oracle_evidence, split_indices
+check(EVIDENCE_MAX_CHARS + 13 < 2000,
+      "oracle chunk (<=1900 text + tag) always fits the 2000-char cap "
+      "(basis of oracle style-inertness; regression guard)")
+_item = {"claim": "The government rejects the nuclear phase-out (Atomausstieg).",
+         "reference_string": _long, "reference_language": "de",
+         "vote": "test"}
+check(oracle_evidence(_item, get_prompt_config("t0"))[0]["text"]
+      != oracle_evidence(_item, get_prompt_config("window_only"))[0]["text"],
+      "fixture: window selects a different region than the head cut")
+check(build_chat(get_prompt_config("t0"), _item["claim"],
+                 oracle_evidence(_item, get_prompt_config("t0")))
+      == build_chat(_fill, _item["claim"],
+                    oracle_evidence(_item, _fill)),
+      "fill_only renders identically to t0 (oracle mode: style inert)")
+check(build_chat(get_prompt_config("select"), _item["claim"],
+                 oracle_evidence(_item, get_prompt_config("select")))
+      == build_chat(_win, _item["claim"], oracle_evidence(_item, _win)),
+      "window_only renders identically to select (oracle mode: style inert)")
+
+# Same two equivalence pairs over the real 60 dev items when the eval set is
+# present (skipped, not failed, when absent: test_judge must stay runnable
+# without downloaded data).
+if DEFAULT_DATA.exists():
+    _rows = load_rows(DEFAULT_DATA)
+    _dev = [_rows[i] for i in split_indices(len(_rows), "dev",
+                                             DEV_SEED, DEV_SIZE)]
+    _m1 = sum(
+        1 for _it in _dev
+        if build_chat(get_prompt_config("t0"), _it["claim"],
+                      oracle_evidence(_it, get_prompt_config("t0")))
+        != build_chat(_fill, _it["claim"], oracle_evidence(_it, _fill)))
+    _m2 = sum(
+        1 for _it in _dev
+        if build_chat(get_prompt_config("select"), _it["claim"],
+                      oracle_evidence(_it, get_prompt_config("select")))
+        != build_chat(_win, _it["claim"], oracle_evidence(_it, _win)))
+    check(_m1 == 0 and _m2 == 0,
+          f"oracle render equivalence holds over all {len(_dev)} dev items "
+          f"(mismatches: {_m1}, {_m2})")
+else:
+    print("[skip] eval set absent: dev-wide equivalence loop not run")
 
 # --- OpenAI-compatible endpoint judge --------------------------------------
 # Offline, hermetic checks (no server needed): the judge must REFUSE to

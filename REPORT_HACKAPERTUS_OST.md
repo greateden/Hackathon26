@@ -272,11 +272,94 @@ drop style, oracle window), each paired with same-session `t0` repeats. If the
 retrieve gain survives in `fill_only` alone, the next lever is the evidence
 budget; if the oracle loss survives in `window_only`, window selection is a
 dead end. Either way, contradiction recall (never above 0.263) is the dominant
-class gap to target.
+class gap to target. *(Decoupled offline before any new inference was spent —
+see §4.4.)*
 
 Commands: §9. Artifacts: `data/ablation_20261010_122340_openai.json` plus
 eight per-run files `data/eval_results_20261010_121442…122340_dev_openai_*.json`
 (git-ignored, regenerable via §9).
+
+### 4.4 Factorial de-confounding: which cells were already measured (2026-10-10, offline)
+
+Design. §4.3 left `select`'s two factors — `fill` evidence style and the
+claim-lexical window selector — bundled. Two single-factor arms now exist in
+`PROMPT_CONFIGS` (`src/nli_judge.py`): `fill_only` (T=0, fill style, no
+window) and `window_only` (T=0, drop style, window on), with the same system
+prompt, token cap, dev split and metric path as `t0`. Before spending any
+inference, `src/diag_evidence_ablation.py` compares the *model inputs* the
+four factorial cells would produce, offline: per-item rendered (system, user)
+messages for oracle mode (recomputed from the eval set) and recorded
+per-item `prompt_tokens` for retrieve mode. No model was run for this
+section; `test_judge.py` guards the equivalences (44 offline checks, all
+passing).
+
+Equivalence findings (measured, rerunnable — this is the evidence, not a
+planning assumption):
+
+1. **Retrieve mode never exercises the window.** `select_window` is wired
+   into `eval_nli.oracle_evidence` only; retrieved passages go straight to
+   `format_evidence`. So `fill_only` renders byte-identically to `select`
+   and `window_only` to `t0` at this layer (guarded in `test_judge.py` on a
+   cap-biting fixture).
+2. **Oracle mode cannot exercise the style factor.** Evidence is a single
+   gold chunk of ≤1,900 chars plus tag, always inside `format_evidence`'s
+   2,000-char budget, where `drop` and `fill` behave identically. Verified
+   byte-for-byte: 60/60 dev items render identically for `t0`↔`fill_only`
+   and for `select`↔`window_only`. The window itself moved the selected
+   region on 29/60 items — that is the only real difference in oracle mode.
+3. **Consequence: the whole 2×2 is already pinned by the eight recorded
+   §4.3 runs.** (fill, retrieve) = `select`/retrieve-v2 (0.483/0.467);
+   (drop, retrieve) = `t0`/retrieve-v2 (0.450/0.436, ×2); (fill, oracle) =
+   `t0`/oracle (0.517/0.452, ×2); (drop, oracle) = `select`/oracle
+   (0.417/0.365). Re-running a twin cell re-samples decoding identity, not
+   configuration; we ran none. The retrieve gain is attributable to the
+   evidence-budget factor (style changed the prompt on 43/60 items, and both
+   +2 flips — items 26 and 40, entailment→neutral — sit on changed prompts;
+   no flip occurred on an identical prompt, so none is decoding noise); the
+   −6 oracle loss is attributable to the window factor. Both remain thin
+   samples (n=2 and n=10 flips).
+
+Oracle flip audit (the 10 `select`/oracle flips vs the paired `t0` control;
+8 broke, 2 fixed, net −6, matching 0.517→0.417). All 10 sit inside the
+29-item "window moved" set — none is an unchanged-evidence flip.
+Classification by what the window did (`diag_evidence_ablation.py` output;
+marker counting is our crude negation heuristic, not a claim about
+relevance):
+
+| Item | Pair | Gold | t0→select | Effect | Window audit |
+|---|---|---|---|---|---|
+| 5 | fr→fr | entailment | contradiction→entailment | fixed | window gained 1 negation marker |
+| 8 | fr→fr | entailment | neutral→entailment | fixed | region moved, no marker delta |
+| 19 | de→de | neutral | neutral→entailment | broke | region moved, no marker delta |
+| 25 | fr→fr | neutral | neutral→entailment | broke | region moved, no marker delta |
+| 28 | fr→fr | neutral | neutral→entailment | broke | window gained 1 marker |
+| 30 | it→it | neutral | neutral→entailment | broke | markers cut 10→5 |
+| 36 | it→it | neutral | neutral→contradiction | broke | markers cut 9→6 |
+| 39 | it→it | neutral | neutral→contradiction | broke | markers cut 9→8 |
+| 40 | it→de | neutral | neutral→contradiction | broke | window gained 1 marker |
+| 53 | fr→fr | contradiction | contradiction→neutral | broke | window gained 1 marker |
+
+Measured: every oracle flip is an evidence change (the window displaced text
+the head cut had kept, or vice versa), and displacement hurt more often than
+it helped (8:2). Interpretation: the three it→it items where the window cut
+most of the negation markers (30, 36, 39 — all gold `neutral`) are consistent
+with §4.3's displaced-negation hypothesis. Hypothesis, untested: the seven
+other flips reflect misleading lexical overlap in the selected region or mere
+sensitivity to context displacement; marker counts cannot separate these, and
+no per-item conclusion should be quoted at this n.
+
+Decision. Nothing is promoted; `baseline` remains the production default and
+the 1,428-item eval split untouched. The factorial question that §4.3's
+"Next experiment" asked — does the fill budget or the window explain
+`select`'s movement — is answered by the equivalences above without new
+inference. What remains unmeasured is *improvement*, not attribution: any
+next model run should test a *changed* evidence mechanism (e.g. keeping
+negation markers inside the window budget, or per-item evidence-budget
+ablation), not a replay of an equivalent cell.
+
+Reproduction (offline): `cd src && python3 diag_evidence_ablation.py`
+(reads the saved ablation JSONs + the eval set; exits non-zero if an
+equivalence premise breaks). Guards: `make test`.
 
 ---
 
@@ -522,7 +605,10 @@ plumbing evidence, not a quality result (§8).*
   indicative development measurements, not submission scores; §4.3's paired
   comparisons are deterministic within one session at T=0 but single-run per arm
   (no cross-session variance). The 1,428-item eval split has not been run with any
-  model, and it is not a tuning target.
+  model, and it is not a tuning target. §4.4's equivalences are offline
+  byte-identity checks of rendered inputs on the fixed dev snapshot, not
+  end-to-end reruns; the optional paired determinism probe (§9) has not
+  been run.
 - **Retrieval has been benchmarked once against gold *claim→evidence* pairs** (§5.4:
   full 1,470-item set, 60-booklet corpus, six configs). Single runs, no variance control;
   gold is substring-matched and counts semantically correct but non-annotated passages as
@@ -575,6 +661,15 @@ LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
 #   make ablation-dev
 # Artifacts: data/ablation_20261010_122340_openai.json + the eight per-run
 # eval_results_20261010_12*_dev_openai_*.json files it spawns (git-ignored).
+
+# §4.4 (2026-10-10): the evidence-factorial audit is OFFLINE (no endpoint):
+#   python3 diag_evidence_ablation.py   # + make test for the render guards
+# If end-to-end equivalence must ever be re-verified (NOT needed for factor
+# attribution — the twin cells are byte-identical inputs), run it as a
+# determinism probe paired with same-session t0 controls:
+#   python3 ablation_dev.py --backend openai --configs t0,window_only --evidence oracle --repeats 2 --repeat-configs t0
+# Expected: window_only matches a twin run item-for-item at T=0; any
+# mismatch invalidates the determinism claim, not the design.
 ```
 
 Artifacts produced by the audit: the scripts (`src/eval_retrieval.py`,

@@ -103,6 +103,27 @@ PROMPT_CONFIGS = {
         "temperature": 0.0, "max_tokens": 400,
         "evidence": "fill", "window": True,
     },
+    # 2x2 de-confounding arms (factorial step, 2026-10-10): each isolates ONE
+    # factor of `select`. Equivalence facts verified offline by
+    # diag_evidence_ablation.py, not assumed: `window` is applied only in
+    # eval_nli.oracle_evidence, so in retrieve mode fill_only renders
+    # byte-identically to `select` and window_only to `t0`; in oracle mode a
+    # single gold chunk (<=1900 chars) always fits format_evidence's 2000-char
+    # cap, so the style factor is inert - fill_only renders identically to
+    # `t0`, window_only to `select`. Re-running a cell whose twin is already
+    # recorded is redundant inference, not new evidence; these arms exist to
+    # express the factorial cleanly and to let test_judge.py guard the
+    # equivalences above.
+    "fill_only": {
+        "system": SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.0, "max_tokens": 400,
+        "evidence": "fill", "window": False,
+    },
+    "window_only": {
+        "system": SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.0, "max_tokens": 400,
+        "evidence": "drop", "window": True,
+    },
 }
 
 

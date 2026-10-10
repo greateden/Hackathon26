@@ -25,6 +25,15 @@ Usage (from src/):
     python3 ablation_dev.py --backend openai --limit 5      # plumbing check
     python3 ablation_dev.py --backend openai                 # full 60-item ablation
     python3 ablation_dev.py --configs strict --evidence oracle --limit 10
+
+Factorial arms (2026-10-10): `fill_only` (fill style, no window) and
+`window_only` (drop style, window on) each isolate ONE factor of `select`.
+Run `python3 diag_evidence_ablation.py` offline FIRST: it verifies which
+cells are byte-identical twins of recorded runs (retrieve mode never
+exercises the window; oracle evidence is a single sub-cap chunk, so style
+is inert there), so redundant cells are skipped rather than re-run for
+presentation. Pair NEW cells with same-session t0 controls, e.g.
+    python3 ablation_dev.py --backend openai --configs t0,window_only --evidence oracle --repeats 2 --repeat-configs t0
 """
 import argparse
 import json

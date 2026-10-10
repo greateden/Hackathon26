@@ -22,11 +22,14 @@ set) before changing `data/example_claims.json`.
     endpoint (`OPENAI_BASE_URL`), checks `/v1/models` at startup and fails
     hard if the endpoint or model id is missing — no lexical fallback.
     Also holds the `PROMPT_CONFIGS` registry (`baseline`/`t0`/`strict`/
-    `select`, resolved by `get_prompt_config`, rendered via `build_chat`):
-    system/user prompt text, temperature, max tokens and evidence style
-    (`drop`/`fill`) all come from the selected config. `baseline` is
-    deliberately byte-identical to the pre-ablation default; `test_judge.py`
-    guards that.
+    `select` plus the single-factor factorial arms `fill_only`/`window_only`,
+    resolved by `get_prompt_config`, rendered via `build_chat`): system/user
+    prompt text, temperature, max tokens and evidence style (`drop`/`fill`)
+    all come from the selected config. `baseline` is deliberately
+    byte-identical to the pre-ablation default; `test_judge.py` guards that,
+    plus the factorial render equivalences (identical rendered (system, user)
+    messages ⇒ identical model inputs; audited per dev item by
+    `diag_evidence_ablation.py`, see report §4.4).
   - `main.py` — CLI entry point; writes `data/logs/run_*.log` and
     `data/results_*.json`. Retrieval stack is `RETRIEVAL_CONFIG` (env,
     default `legacy` = 526-passage ingest corpus; `v2`/`hybrid` load
@@ -52,6 +55,13 @@ set) before changing `data/example_claims.json`.
   - `diag_eval_errors.py` — offline error analysis over recorded
     `eval_results_*.json` (per-class confusion, oracle/retrieve flips,
     truncation correlates). No model needed.
+  - `diag_evidence_ablation.py` — offline audit of the evidence-processing
+    factorial: verifies per dev item that the twin cells render byte-identical
+    prompts (retrieve mode never exercises the window; oracle evidence is one
+    sub-cap chunk, so style is inert), then classifies recorded oracle flips
+    by what the window did to the evidence. Needs the eval set and a
+    `data/ablation_*.json` + its per-run files. No model needed; exits
+    non-zero if an equivalence premise breaks.
   - `ablation_dev.py` — prompt-config ablation runner: spawns `eval_nli.py`
     per (config × evidence) combo on the fixed dev split, one result JSON
     per run, prints the comparison table + T=0 determinism check. Refuses
@@ -125,7 +135,8 @@ python3 eval_e2e.py                              # default 3 configs (emb_v1,emb
 python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage  # all six (~40 s cached, ~4 min cold)
 python3 diag_two_stage.py                        # booklet-routing failure breakdown
 python3 ablation_dev.py --dry-run                # ablation planner, offline
-python3 test_judge.py                            # includes prompt-config registry + select_window checks
+python3 diag_evidence_ablation.py                # factorial equivalence + oracle-flip audit (offline; needs the eval set + data/ablation_*.json)
+python3 test_judge.py                            # includes prompt-config registry, select_window + factorial render-equivalence checks
 ```
 
 MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh`, `make serve-apertus` or
@@ -234,19 +245,25 @@ runs.
   or `--prompt-config` (`eval_nli.py`/`main.py`) selects a `PROMPT_CONFIGS`
   entry. `baseline` must stay behaviourally identical to the pre-ablation
   default (guards in `test_judge.py`); the ablation arms (`t0`, `strict`,
-  `select`) each change ONE factor (temperature / system prompt / evidence
-  selection) and are compared against a same-session paired `t0` run, never
-  against the older T=0.1 dev runs. Run procedure: unload other memory-heavy
-  apps (MTPLX) BEFORE starting `make serve-apertus`, stop the server right
-  after, and never auto-kill server processes from scripts. First real-model
-  run exists (2026-10-10, report §4.3): `strict` is REJECTED — predictions
-  collapsed to `neutral` (54–56/60) and all three unparseable responses came
-  from that arm. `select` is kept as an EXPERIMENTAL candidate, not promoted:
-  its retrieve-evidence gain is 2 flipped items, and in retrieve mode `select`
-  only exercises the evidence-style factor (`select_window` is wired into the
-  oracle path only), so its two factors must be decoupled before any
-  attribution. Production default remains `baseline`, and the reserved
-  1,428-item eval split is not a tuning set.
+  `select`, and the later factorial arms `fill_only`/`window_only`) each
+  change ONE factor and are compared against a same-session paired `t0` run,
+  never against the older T=0.1 dev runs. Run procedure: unload other
+  memory-heavy apps (MTPLX) BEFORE starting `make serve-apertus`, stop the
+  server right after, and never auto-kill server processes from scripts.
+  First real-model run exists (2026-10-10, report §4.3): `strict` is REJECTED
+  — predictions collapsed to `neutral` (54–56/60) and all three unparseable
+  responses came from that arm. `select` is kept as an EXPERIMENTAL
+  candidate, not promoted. Its two factors were SINCE decoupled offline
+  (2026-10-10, report §4.4): `fill_only`/`window_only` each isolate one, and
+  per-item render comparison shows every 2×2 cell is byte-identical to an
+  already-recorded run — retrieve mode never exercises the window
+  (`fill_only` ≡ `select`, `window_only` ≡ `t0`), and oracle evidence is one
+  sub-cap chunk so style is inert (`fill_only` ≡ `t0`, `window_only` ≡
+  `select`). Do not rerun an equivalent cell and call it new evidence:
+  identical inputs at T=0 re-sample decoding identity, not configuration —
+  `diag_evidence_ablation.py` checks the equivalences offline and
+  `test_judge.py` guards them. Production default remains `baseline`, and the
+  reserved 1,428-item eval split is not a tuning set.
 - Retrieval-stack ranking is MEASURED (report §5.4, six configs, full
   1,470-item run, `data/eval_results_full_benchmark.json`): global dense
   with evidence-language adapters beats BM25, beats hybrid RRF, beats
@@ -294,7 +311,12 @@ runs.
   §4.2) and an 8-run paired T=0 prompt ablation (report §4.3; best arm
   select/retrieve-v2 0.483 / 0.467, paired control t0 0.450 / 0.436 —
   single runs per arm except the t0 controls, so differences smaller than
-  ~2 items are not yet separable from run identity). The 1,428-item
+  ~2 items are not yet separable from run identity). The 2×2 evidence
+  factorial (fill style vs window selection) has since been decoupled
+  OFFLINE (report §4.4): all four cells are byte-identical twins of recorded
+  runs, so no new inference is owed to identify the factors; only an
+  optional paired probe would re-check end-to-end determinism, and no
+  such probe has been run. The 1,428-item
   held-out eval split has not run with any model.
 - The 60-booklet PDF corpus (`make fetch-booklets`, git-ignored
   `data/booklets/`) covers every booklet the eval set cites: 16,618
@@ -320,6 +342,19 @@ runs.
   for large-RAM machines (report §4.1); it is opt-in (`MEMORY_CHECK=1`).
 - All reported numbers come from one machine (MPS, float32, single runs);
   no variance or seed control.
+
+## Final-summary convention (ChatGPT Handoff)
+
+Every final task summary ends with a compact **ChatGPT Handoff** section for
+an external reviewer who will analyse the results and prepare the next
+implementation prompt. Sections: Current state (what works; the production
+default) / Changes (implementation + affected files) / Evidence (exact
+measurements, sample sizes, test outcomes, artefact paths) / Prediction
+changes (which items flipped, their gold labels, improved or worsened) /
+Uncertainties (untested, confounded, possibly wrong) / Next experiment (one
+specific experiment + expected information gain) / Execution status (model
+servers running or not, manual commands needed). Keep measured facts,
+interpretations and hypotheses clearly separated. British English.
 
 ## Do not modify casually
 

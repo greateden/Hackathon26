@@ -51,6 +51,12 @@ Exploratory prototype — the plumbing works; the science is still open.
   `t0` control and 0.483 / 0.466 for the earlier T=0.1 default run.
   Production default unchanged. These are development measurements, not
   held-out submission scores (report §4.3 lists the caveats).
+- The `select` bundle is now de-confounded: single-factor arms `fill_only`
+  and `window_only` exist, and offline prompt-equivalence analysis
+  (`src/diag_evidence_ablation.py`, report §4.4) shows every 2×2 cell is
+  byte-identical to an already-recorded run — the factors are attributed
+  without spending new inference (fill budget = the +2 retrieve flips;
+  window selection = the −6 oracle flips).
 
 Evidence, measurements and explicit caveats: `REPORT_HACKAPERTUS_OST.md`
 (§8 lists everything that is unverified). Official requirements:
@@ -126,6 +132,7 @@ python3 fetch_booklets.py       # build the 60-booklet PDF corpus (internet, res
 python3 eval_e2e.py --configs lexical            # full-set e2e retrieval eval, no model
 python3 eval_e2e.py --limit 60  # class-balanced 60-item e2e eval, all six configs
 python3 ablation_dev.py --dry-run  # plan the prompt-config ablation (offline)
+python3 diag_evidence_ablation.py  # offline audit: factorial prompt-equivalence + oracle-flip analysis
 python3 ablation_dev.py --backend openai  # FULL ablation (t0/strict/select vs a
                      # paired t0 baseline on the fixed dev split) — needs a
                      # live endpoint (start `make serve-apertus` first, in a
