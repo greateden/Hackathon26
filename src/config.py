@@ -88,3 +88,15 @@ RETRIEVAL_CONFIG = os.environ.get("RETRIEVAL_CONFIG", "legacy")
 
 # NLI labels
 NLI_LABELS = ["entailment", "contradiction", "neutral"]
+
+# Prompt/judging configuration for the LLM judges, selected with
+# PROMPT_CONFIG=... (registry in nli_judge.PROMPT_CONFIGS) and, for
+# eval_nli.py, the --prompt-config flag (the flag wins over the env var).
+#   baseline: current prompt + temperature 0.1 (default - what the two
+#             2026-10-10 dev runs used; kept unchanged as the reference)
+#   t0:       identical prompt, temperature 0.0 (deterministic decode)
+#   strict:   t0 + sharper label definitions + explicit rules for
+#             topic-overlap / missing evidence / both-sides evidence
+#   select:   t0 + context selection (sliding lexical window instead of
+#             head truncation; truncate long chunks instead of dropping)
+PROMPT_CONFIG = os.environ.get("PROMPT_CONFIG", "baseline")

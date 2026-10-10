@@ -43,10 +43,14 @@ Exploratory prototype — the plumbing works; the science is still open.
   booklet-corpus stack end to end. Claim→evidence retrieval over the full
   booklet corpus is measured by `eval_e2e.py` instead.
   The old 10-claim smoke set (3/10, flawed) is superseded, not extended.
-- The Apertus backend runs and has been measured (2026-10-10, dev split,
-  single runs): end-to-end with retrieved evidence **acc 0.483 / macro-F1
-  0.466**; with gold evidence 0.433 / 0.393. Development-set measurements,
-  not held-out submission scores (report §4.2).
+- The Apertus backend runs and has been measured (2026-10-10, seeded
+  60-item dev split; `swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4` served
+  locally via `mlx_lm.server`). Full paired prompt-config ablation in
+  report §4.3: best retrieved-evidence result **acc 0.483 / macro-F1
+  0.467** (experimental `select` arm) vs 0.450 / 0.436 for its paired
+  `t0` control and 0.483 / 0.466 for the earlier T=0.1 default run.
+  Production default unchanged. These are development measurements, not
+  held-out submission scores (report §4.3 lists the caveats).
 
 Evidence, measurements and explicit caveats: `REPORT_HACKAPERTUS_OST.md`
 (§8 lists everything that is unverified). Official requirements:
@@ -121,6 +125,13 @@ python3 eval_retrieval.py       # retrieval-quality evaluation on gold-aligned p
 python3 fetch_booklets.py       # build the 60-booklet PDF corpus (internet, resumable)
 python3 eval_e2e.py --configs lexical            # full-set e2e retrieval eval, no model
 python3 eval_e2e.py --limit 60  # class-balanced 60-item e2e eval, all six configs
+python3 ablation_dev.py --dry-run  # plan the prompt-config ablation (offline)
+python3 ablation_dev.py --backend openai  # FULL ablation (t0/strict/select vs a
+                     # paired t0 baseline on the fixed dev split) — needs a
+                     # live endpoint (start `make serve-apertus` first, in a
+                     # separate terminal, with other memory-heavy apps
+                     # unloaded) and writes one JSON per run; refuses to run
+                     # without the endpoint — no lexical fallback
 LLM_BACKEND=mlx python3 main.py # real LLM judge (MLX); or: ./run.sh [mlx-model-id]
 ```
 
@@ -143,6 +154,12 @@ make eval-apertus-docker  # 60-item dev eval, real Apertus via Docker (needs ser
 make fetch-booklets       # download 60 booklet PDFs -> data/booklets/corpus.json
 make eval-e2e-quick       # 60-item class-balanced retrieval eval (all six configs)
 make eval-e2e-full        # full 1,488-item retrieval eval (~1 min with cached indexes)
+make ablation-smoke       # offline wiring check of the prompt-ablation runner
+make ablation-dev         # full prompt-config ablation on the fixed dev split
+                          # (needs `make serve-apertus` running in a separate
+                          # terminal; ran once with a real endpoint on
+                          # 2026-10-10 — results in report §4.3; the runner
+                          # refuses to start without a live endpoint)
 ```
 
 Set up the Apertus venv once with:

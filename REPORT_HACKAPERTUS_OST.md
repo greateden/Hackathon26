@@ -178,6 +178,106 @@ How to read these honestly:
    container run exits non-zero and names the endpoint — no silent lexical fallback.
 
 Commands: §9. Stop `serve-apertus` when idle — the server keeps several GB resident.
+
+### 4.3 Paired prompt-config ablation with a real model (2026-10-10)
+
+Design. Four `PROMPT_CONFIGS` entries (`src/nli_judge.py`): `baseline` =
+pre-ablation default (T=0.1); `t0` = same prompts at T=0.0; `strict` = T=0.0 +
+restrictive system prompt ("sharing the same topic is NOT entailment; if the
+evidence does not say enough either way, answer neutral"); `select` = T=0.0 +
+`fill` evidence style (truncate-to-fit the 2,000-char budget instead of
+dropping chunks) + claim-lexical window selector. Arms (`t0`, `strict`,
+`select`) ran paired on one seeded 60-item dev split (seed 20261009, identical
+items verified), each on two evidence paths: `retrieve-v2` (production booklet
+stack, dense top-5) and `oracle` (gold `reference_string`). The paired control
+is `t0` — same temperature, same token cap — so arm-vs-arm differences are not
+confounded with temperature; the §4.2 T=0.1 runs are a separate, clearly
+labelled comparison. Runner: `src/ablation_dev.py` (`make ablation-dev`),
+native host client against a host `mlx_lm.server` endpoint serving
+`swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4`; 8 runs / 480 judge calls /
+616.6 s wall time; 0 endpoint errors.
+
+Results (single runs unless marked ×2; recorded in
+`data/ablation_20261010_122340_openai.json`, accuracies recomputed from
+per-item files and matching the summaries):
+
+| Arm | Evidence | Accuracy | Macro-F1 | Per-class F1 (E/N/C) | Errors |
+|---|---|---|---|---|---|
+| t0 (×2, identical) | retrieve-v2 | 0.450 | 0.436 | .510/.429/.370 | 0 |
+| strict | retrieve-v2 | 0.450 | 0.302 | .125/.600/.182 | 2 |
+| select | retrieve-v2 | **0.483** | **0.467** | .531/.500/.370 | 0 |
+| t0 (×2, identical) | oracle | 0.517 | 0.452 | .444/.745/.167 | 0 |
+| strict | oracle | 0.450 | 0.243 | .000/.634/.095 | 1 |
+| select | oracle | 0.417 | 0.365 | .471/.545/.080 | 0 |
+
+Determinism. Both repeated `t0` arms produced **60/60 identical predictions**
+(and identical per-item token counts) in retrieve and oracle mode. At T=0 the
+harness + endpoint chain is reproducible, so between-arm differences are
+attributable to configuration, not sampling noise — within one session only;
+cross-session variance is still unmeasured.
+
+Observations (measured; hypotheses flagged):
+
+1. **`strict` redistributed errors instead of adding information.** It flipped
+   40/60 (retrieve) and 32/60 (oracle) predictions versus its paired control
+   and collapsed the label distribution to `neutral` (54/60 and 56/60
+   predictions). Entailment recall on retrieve fell 0.867 → 0.067 (12 of the
+   13 previously-correct entailment items flipped to `neutral`); contradiction
+   recall 0.263 → 0.105. Accuracy held (0.45 vs 0.45) while macro-F1 fell
+   0.436 → 0.302: the neutral gains were paid for by entailment and
+   contradiction losses. It was also the only arm producing unparseable
+   responses (2 retrieve + 1 oracle; raw replies were not recorded — the
+   hypothesis that the cautious prompt elicited prose refusals is untested).
+   **Rejected.**
+2. **`select` on retrieve-v2 changed 2/60 predictions, both improvements**
+   (two overpredicted `entailment` labels became correct `neutral`). Note the
+   attribution trap: in retrieve mode the window selector never fires —
+   `select_window` is wired into the oracle evidence path only, and retrieved
+   evidence differs under `select` solely through the `fill` budget (mean
+   prompt tokens 808 vs 737: the evidence got *longer*, not shorter). The
+   retrieved-evidence gain is therefore evidence-budget evidence, not
+   window-selection evidence — and at n=2 flips it remains an observation, not
+   a demonstration.
+3. **`select` on oracle flipped 10/60 and lost 6 net** (0.417 vs 0.517). With
+   gold evidence the head truncation already contained the decisive text, and
+   the lexical window displaced it (contradiction F1 0.167 → 0.080; the two
+   `neutral → contradiction` flips suggest displaced negation markers —
+   hypothesis). The same bundled mechanism helped where truncation removed
+   content and hurt where it kept it: bundling formatting and selection hides
+   opposing effects, which is why no attribution is claimed here.
+4. **Language-pair differences are descriptive only** at cell sizes 2–12.
+   Worst pockets: `strict` on it→fr (0.20 vs paired 0.60, retrieve) and near-
+   zero fr→de oracle accuracy. No per-pair conclusion is drawn at n=60.
+5. **No truncation/length driver visible in the proxies.** Wrong items had
+   slightly *longer* prompts than right ones under retrieve (759 vs 709 mean
+   prompt tokens for `t0`), distributions overlapping; the "shorter evidence =
+   better judgement" story is not supported by this data.
+6. **Temperature comparison (separate from the paired control):** the §4.2
+   T=0.1 default on the same 60 items scored 0.483/0.466 (retrieve) and
+   0.433/0.393 (oracle); T=0 (`t0`) flipped 4/60 and 8/60 items respectively.
+   Temperature alone moves 5–13% of items — a reminder that single-run
+   comparisons at n=60 are thin even when each run is deterministic, and that
+   §4.2-vs-§4.3 gaps mix two changes (temperature plus stack/session changes
+   over the day) and must not be read as paired effects.
+
+Decision. The production default stays `baseline`. `select` is retained as an
+experimental candidate, not promoted: its retrieve gain is 2 items, its oracle
+effect is negative, and its two factors are confounded. `strict` is rejected.
+No runs were spent on the reserved 1,428-item eval split, and it is not a
+tuning target.
+
+Next experiment. Decouple `select` factorially on the dev split: a
+`fill_only` arm (T=0, fill style, no window) and a `window_only` arm (T=0,
+drop style, oracle window), each paired with same-session `t0` repeats. If the
+retrieve gain survives in `fill_only` alone, the next lever is the evidence
+budget; if the oracle loss survives in `window_only`, window selection is a
+dead end. Either way, contradiction recall (never above 0.263) is the dominant
+class gap to target.
+
+Commands: §9. Artifacts: `data/ablation_20261010_122340_openai.json` plus
+eight per-run files `data/eval_results_20261010_121442…122340_dev_openai_*.json`
+(git-ignored, regenerable via §9).
+
 ---
 
 ## 5. Retrieval-layer result — and a methodology correction
@@ -417,10 +517,12 @@ plumbing evidence, not a quality result (§8).*
 
 ## 8. Explicitly unverified — do not present these as results
 
-- **No held-out quality measurement yet.** The recorded model runs (§4, §4.2) are
-  single runs on plumbing subsets (10 and 60 dev items). §4.2 numbers are indicative
-  development measurements, not submission scores; the 1,428-item eval split has not
-  been run with any model.
+- **No held-out quality measurement yet.** The recorded model runs (§4, §4.2, §4.3) are
+  single runs on plumbing subsets (10 and 60 dev items). §4.2/§4.3 numbers are
+  indicative development measurements, not submission scores; §4.3's paired
+  comparisons are deterministic within one session at T=0 but single-run per arm
+  (no cross-session variance). The 1,428-item eval split has not been run with any
+  model, and it is not a tuning target.
 - **Retrieval has been benchmarked once against gold *claim→evidence* pairs** (§5.4:
   full 1,470-item set, 60-booklet corpus, six configs). Single runs, no variance control;
   gold is substring-matched and counts semantically correct but non-annotated passages as
@@ -465,6 +567,14 @@ LLM_BACKEND=mlx MLX_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit python3 main.py
 #   make eval-apertus-docker         # end-to-end: retrieved evidence, booklet corpus
 #   make eval-apertus-oracle-docker  # judgement-only: gold evidence
 # Requires the eval data and booklet corpus (eval-data / fetch-booklets).
+
+# §4.3 (2026-10-10): paired prompt-config ablation on the dev split (8 runs,
+# ~10 min). Two terminals, same serve-apertus endpoint; unload memory-heavy
+# apps (MTPLX) before starting the server, stop it afterwards. The runner
+# refuses to start without a live endpoint (no lexical fallback).
+#   make ablation-dev
+# Artifacts: data/ablation_20261010_122340_openai.json + the eight per-run
+# eval_results_20261010_12*_dev_openai_*.json files it spawns (git-ignored).
 ```
 
 Artifacts produced by the audit: the scripts (`src/eval_retrieval.py`,

@@ -5,6 +5,7 @@
 /data/logs/
 /data/results_*.json
 /data/eval_results_*.json
+/data/ablation_*.json
 /data/eval/
 /data/booklets/
 

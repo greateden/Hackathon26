@@ -21,6 +21,12 @@ set) before changing `data/example_claims.json`.
     `parse_nli_response`. `openai` talks to an OpenAI-compatible HTTP
     endpoint (`OPENAI_BASE_URL`), checks `/v1/models` at startup and fails
     hard if the endpoint or model id is missing — no lexical fallback.
+    Also holds the `PROMPT_CONFIGS` registry (`baseline`/`t0`/`strict`/
+    `select`, resolved by `get_prompt_config`, rendered via `build_chat`):
+    system/user prompt text, temperature, max tokens and evidence style
+    (`drop`/`fill`) all come from the selected config. `baseline` is
+    deliberately byte-identical to the pre-ablation default; `test_judge.py`
+    guards that.
   - `main.py` — CLI entry point; writes `data/logs/run_*.log` and
     `data/results_*.json`. Retrieval stack is `RETRIEVAL_CONFIG` (env,
     default `legacy` = 526-passage ingest corpus; `v2`/`hybrid` load
@@ -43,6 +49,16 @@ set) before changing `data/example_claims.json`.
   - `eval_retrieval.py`, `diag_embeddings.py`, `diag_claim_retrieval.py` —
     measurement/diagnostic scripts whose output backs the report. Keep them
     runnable; they are the reproduction path for documented findings.
+  - `diag_eval_errors.py` — offline error analysis over recorded
+    `eval_results_*.json` (per-class confusion, oracle/retrieve flips,
+    truncation correlates). No model needed.
+  - `ablation_dev.py` — prompt-config ablation runner: spawns `eval_nli.py`
+    per (config × evidence) combo on the fixed dev split, one result JSON
+    per run, prints the comparison table + T=0 determinism check. Refuses
+    to start without a live endpoint (`--dry-run` plans offline); never
+    quote its lexical `ablation-smoke` numbers as model quality. First full
+    dev run completed 2026-10-10 (8 paired runs, real Apertus endpoint via
+    `mlx_lm.server`, report §4.3).
   - `fetch_booklets.py` — booklet PDF corpus builder: discovers the unique
     PDFs via the eval set's `booklet_url` field, downloads them (verifies
     `%PDF` magic bytes), extracts text (`pdftotext`, PyMuPDF fallback) and
@@ -108,6 +124,8 @@ python3 eval_e2e.py --configs lexical            # full-set e2e eval without any
 python3 eval_e2e.py                              # default 3 configs (emb_v1,emb_v2,lexical)
 python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage  # all six (~40 s cached, ~4 min cold)
 python3 diag_two_stage.py                        # booklet-routing failure breakdown
+python3 ablation_dev.py --dry-run                # ablation planner, offline
+python3 test_judge.py                            # includes prompt-config registry + select_window checks
 ```
 
 MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh`, `make serve-apertus` or
@@ -212,6 +230,23 @@ runs.
   changes the task being measured. If Ollama is down, `--translate`
   degrades to *untranslated* queries and the report says so — never fake
   a translated run, and never quote degraded numbers as translated ones.
+- Prompt/judgement ablations (2026-10-10): `PROMPT_CONFIG` (env, `config.py`)
+  or `--prompt-config` (`eval_nli.py`/`main.py`) selects a `PROMPT_CONFIGS`
+  entry. `baseline` must stay behaviourally identical to the pre-ablation
+  default (guards in `test_judge.py`); the ablation arms (`t0`, `strict`,
+  `select`) each change ONE factor (temperature / system prompt / evidence
+  selection) and are compared against a same-session paired `t0` run, never
+  against the older T=0.1 dev runs. Run procedure: unload other memory-heavy
+  apps (MTPLX) BEFORE starting `make serve-apertus`, stop the server right
+  after, and never auto-kill server processes from scripts. First real-model
+  run exists (2026-10-10, report §4.3): `strict` is REJECTED — predictions
+  collapsed to `neutral` (54–56/60) and all three unparseable responses came
+  from that arm. `select` is kept as an EXPERIMENTAL candidate, not promoted:
+  its retrieve-evidence gain is 2 flipped items, and in retrieve mode `select`
+  only exercises the evidence-style factor (`select_window` is wired into the
+  oracle path only), so its two factors must be decoupled before any
+  attribution. Production default remains `baseline`, and the reserved
+  1,428-item eval split is not a tuning set.
 - Retrieval-stack ranking is MEASURED (report §5.4, six configs, full
   1,470-item run, `data/eval_results_full_benchmark.json`): global dense
   with evidence-language adapters beats BM25, beats hybrid RRF, beats
@@ -254,10 +289,13 @@ runs.
 - `eval_nli.py --evidence retrieve` still runs over the legacy
   526-passage CLI corpus, so its numbers remain plumbing checks
   (`data/eval/` is git-ignored; regenerate with `fetch_eval_data.py`).
-  Apertus dev-split runs are recorded now (2026-10-10, two × 60 items:
-  retrieve-v2 0.483 acc / 0.466 F1, oracle 0.433 / 0.393, single runs on
-  the seeded plumbing subset via the endpoint path, report §4.2). The
-  1,428-item held-out eval split has not run with any model.
+  Apertus dev-split runs are recorded now (2026-10-10): two T=0.1 single
+  runs (retrieve-v2 0.483 acc / 0.466 F1, oracle 0.433 / 0.393, report
+  §4.2) and an 8-run paired T=0 prompt ablation (report §4.3; best arm
+  select/retrieve-v2 0.483 / 0.467, paired control t0 0.450 / 0.436 —
+  single runs per arm except the t0 controls, so differences smaller than
+  ~2 items are not yet separable from run identity). The 1,428-item
+  held-out eval split has not run with any model.
 - The 60-booklet PDF corpus (`make fetch-booklets`, git-ignored
   `data/booklets/`) covers every booklet the eval set cites: 16,618
   passages; 1,470/1,488 (98.8%) gold evidence strings locate inside it.

@@ -15,6 +15,7 @@ from typing import Dict, List
 from config import (
     LLM_BACKEND, OLLAMA_MODEL, OLLAMA_BASE_URL,
     MLX_MODEL, OPENAI_BASE_URL, JUDGE_MODEL, JUDGE_TIMEOUT_S,
+    PROMPT_CONFIG,
 )
 from labels import normalise_label
 
@@ -41,20 +42,112 @@ USER_TEMPLATE = (
     "entailment, contradiction, or neutral. Reply with JSON only."
 )
 
+# Stricter label definitions (ablation config "strict", 2026-10-10).
+# Motivation (offline analysis of the two dev runs): the judge over-predicts
+# entailment (precision 0.39 retrieve / 0.35 oracle) and collapses
+# contradiction into entailment even when the denial is inside the sent
+# evidence - i.e. topic overlap is being read as support. This prompt keeps
+# the response format identical (label-first JSON) so the ablation isolates
+# the wording, not the output schema.
+STRICT_SYSTEM_PROMPT = (
+    "You are a document-grounded NLI system. Decide whether EVIDENCE from a "
+    "Swiss federal voting booklet supports, contradicts, or is silent about "
+    "a CLAIM.\n\n"
+    "Labels (apply exactly):\n"
+    "- entailment: the EVIDENCE, read as a whole, states or entails what "
+    "the CLAIM asserts. Sharing the same topic is NOT entailment.\n"
+    "- contradiction: the EVIDENCE explicitly denies, rejects or states the "
+    "opposite of what the CLAIM asserts.\n"
+    "- neutral: everything else. If the EVIDENCE does not say enough either "
+    "way, answer neutral - never entailment, never contradiction.\n\n"
+    "Notes:\n"
+    "- A booklet passage may describe the proposal or quote arguments from "
+    "several sides. Describing a position is not endorsing it: judge only "
+    "whether the passage as a whole confirms or denies the CLAIM.\n"
+    "- Many claims are indirect (\"the Federal Council recommends "
+    "that...\", \"according to the message...\"): check that the attributed "
+    "statement actually occurs in the EVIDENCE.\n"
+    "- Judge ONLY using the given evidence, not outside knowledge. If the "
+    "evidence is in another language, translate and compare meaning.\n"
+    "Reply with EXACTLY this JSON and nothing else:\n"
+    '{"label": "entailment"|"contradiction"|"neutral", '
+    '"reasoning": "one short sentence", '
+    '"evidence_snippet": "verbatim key sentence(s) from the evidence"}'
+)
 
-def format_evidence(passages: List[Dict], max_chars: int = 2000) -> str:
-    """Concatenate retrieved passages into an evidence block, capped to max_chars."""
+# Prompt/judging configurations (ablation study 2026-10-10, see AGENTS.md).
+#   evidence: "drop"  = original format_evidence behaviour (whole chunks are
+#                       dropped once the cap is hit) - unchanged default.
+#             "fill"  = chunks are truncated to fit instead of dropped.
+#   window:   eval_nli oracle mode replaces head truncation of the gold
+#             reference_string with a claim-lexical sliding window.
+# temperature/max_tokens are passed to the endpoint per request.
+PROMPT_CONFIGS = {
+    "baseline": {
+        "system": SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.1, "max_tokens": 400,
+        "evidence": "drop", "window": False,
+    },
+    "t0": {
+        "system": SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.0, "max_tokens": 400,
+        "evidence": "drop", "window": False,
+    },
+    "strict": {
+        "system": STRICT_SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.0, "max_tokens": 400,
+        "evidence": "drop", "window": False,
+    },
+    "select": {
+        "system": SYSTEM_PROMPT, "user": USER_TEMPLATE,
+        "temperature": 0.0, "max_tokens": 400,
+        "evidence": "fill", "window": True,
+    },
+}
+
+
+def get_prompt_config(name: str = None) -> Dict:
+    name = name or PROMPT_CONFIG
+    if name not in PROMPT_CONFIGS:
+        raise ValueError(f"unknown PROMPT_CONFIG {name!r}; "
+                         f"valid: {sorted(PROMPT_CONFIGS)}")
+    return PROMPT_CONFIGS[name]
+
+
+def format_evidence(passages: List[Dict], max_chars: int = 2000,
+                    style: str = "drop") -> str:
+    """Concatenate retrieved passages into an evidence block, capped to max_chars.
+
+    style="drop" is the original behaviour (kept byte-identical for the
+    baseline config): a chunk that does not fit is dropped, together with
+    everything after it. style="fill" truncates chunks to fit the remaining
+    budget instead, so long passages still contribute their leading part.
+    """
     if not passages:
         return "(No relevant passages found.)"
     parts, total = [], 0
     for p in passages:
         tag = f"[{p['lang'].upper()}] [{p['id']}]"
+        sep = 2 if parts else 0  # the "\n\n" join costs 2 chars
         chunk = f"{tag}\n{p['text']}"
-        if total + len(chunk) > max_chars:
-            break
+        if total + sep + len(chunk) > max_chars:
+            if style != "fill":
+                break
+            room = max_chars - total - sep - len(tag) - 2  # \n + ellipsis
+            if room < 40:  # too little room to add anything meaningful
+                break
+            chunk = f"{tag}\n{p['text'][:room - 1]}\u2026"
         parts.append(chunk)
-        total += len(chunk)
+        total += sep + len(chunk)
     return "\n\n".join(parts) if parts else "(No relevant passages found.)"
+
+
+def build_chat(pconf: Dict, claim: str, passages: List[Dict]):
+    """Render (system, user) messages from a prompt config (testable seam)."""
+    evidence = format_evidence(passages, style=pconf.get("evidence", "drop"))
+    user_msg = pconf["user"].format(claim=claim, evidence=evidence)
+    return pconf["system"], user_msg
+
 
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -111,8 +204,8 @@ def parse_nli_response(raw: str) -> Dict:
 class MlxJudge:
     """Local NLI judge backed by mlx_lm (Apple Silicon)."""
 
-    def __init__(self, model_id: str = MLX_MODEL, max_tokens: int = 400,
-                 temperature: float = 0.1):
+    def __init__(self, model_id: str = MLX_MODEL, max_tokens: int = None,
+                 temperature: float = None, prompt_config: str = None):
         import mlx_lm
         from mlx_lm import load
         self.model_id = model_id
@@ -146,18 +239,19 @@ class MlxJudge:
             raise RuntimeError(
                 f"Failed to load MLX model {model_id!r}: {msg}\n" + "\n".join(hint_lines)
             ) from e
-        self.max_tokens = max_tokens
-        self.temperature = temperature
+        self.pconf = get_prompt_config(prompt_config)
+        self.max_tokens = max_tokens or self.pconf["max_tokens"]
+        self.temperature = (temperature if temperature is not None
+                            else self.pconf["temperature"])
         print("MLX model loaded.")
 
     def judge(self, claim: str, passages: List[Dict]) -> Dict:
         from mlx_lm import generate
         from mlx_lm.sample_utils import make_sampler
 
-        evidence = format_evidence(passages)
-        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        sys_msg, user_msg = build_chat(self.pconf, claim, passages)
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": sys_msg},
             {"role": "user", "content": user_msg},
         ]
         prompt = self.tokenizer.apply_chat_template(
@@ -184,10 +278,12 @@ class MlxJudge:
 class OllamaJudge:
     """NLI judge via Ollama HTTP API."""
 
-    def __init__(self, model: str = OLLAMA_MODEL, base_url: str = OLLAMA_BASE_URL):
+    def __init__(self, model: str = OLLAMA_MODEL, base_url: str = OLLAMA_BASE_URL,
+                 prompt_config: str = None):
         import requests
         self.model = model
         self.base_url = base_url
+        self.pconf = get_prompt_config(prompt_config)
         self._requests = requests
         try:
             resp = requests.get(f"{base_url}/api/tags", timeout=5)
@@ -200,15 +296,14 @@ class OllamaJudge:
             print(f"WARNING: cannot reach Ollama at {base_url}: {e}")
 
     def judge(self, claim: str, passages: List[Dict]) -> Dict:
-        evidence = format_evidence(passages)
-        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        sys_msg, user_msg = build_chat(self.pconf, claim, passages)
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": sys_msg},
                 {"role": "user", "content": user_msg},
             ],
-            "options": {"temperature": 0.1},
+            "options": {"temperature": self.pconf["temperature"]},
             "stream": False,
         }
         try:
@@ -243,7 +338,8 @@ class OpenAICompatJudge:
 
     def __init__(self, model: str = JUDGE_MODEL,
                  base_url: str = OPENAI_BASE_URL,
-                 timeout: float = JUDGE_TIMEOUT_S):
+                 timeout: float = JUDGE_TIMEOUT_S,
+                 prompt_config: str = None):
         try:
             import requests
         except ModuleNotFoundError as e:
@@ -253,6 +349,7 @@ class OpenAICompatJudge:
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.pconf = get_prompt_config(prompt_config)
         self._requests = requests
         try:
             resp = requests.get(f"{self.base_url}/v1/models", timeout=10)
@@ -295,16 +392,15 @@ class OpenAICompatJudge:
         return ids
 
     def judge(self, claim: str, passages: List[Dict]) -> Dict:
-        evidence = format_evidence(passages)
-        user_msg = USER_TEMPLATE.format(claim=claim, evidence=evidence)
+        sys_msg, user_msg = build_chat(self.pconf, claim, passages)
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": sys_msg},
                 {"role": "user", "content": user_msg},
             ],
-            "temperature": 0.1,
-            "max_tokens": 400,
+            "temperature": self.pconf["temperature"],
+            "max_tokens": self.pconf["max_tokens"],
             "stream": False,
         }
         try:
@@ -364,14 +460,14 @@ class LexicalJudge:
         }
 
 
-def build_judge(backend: str = None):
+def build_judge(backend: str = None, prompt_config: str = None):
     backend = backend or LLM_BACKEND
     if backend == "mlx":
-        return MlxJudge()
+        return MlxJudge(prompt_config=prompt_config)
     if backend == "ollama":
-        return OllamaJudge()
+        return OllamaJudge(prompt_config=prompt_config)
     if backend == "openai":
-        return OpenAICompatJudge()
+        return OpenAICompatJudge(prompt_config=prompt_config)
     if backend == "lexical":
         print("Using LEXICAL fallback judge (no LLM) — plumbing smoke test only")
         return LexicalJudge()

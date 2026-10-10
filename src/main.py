@@ -28,12 +28,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (TOP_K, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, DATA_DIR,
                     BOOKLET_CORPUS_JSON, RETRIEVAL_CONFIG,
-                    OPENAI_BASE_URL, JUDGE_MODEL)
+                    OPENAI_BASE_URL, JUDGE_MODEL, PROMPT_CONFIG)
 from ingest import build_corpus
 from retriever import build_retriever, LANG_TO_ADAPTER
 from hybrid_retrieval import (TwoStageRetriever, detect_query_language,
                               index_cache_key, load_index, save_index)
-from nli_judge import build_judge, format_evidence
+from nli_judge import build_judge, format_evidence, get_prompt_config
 from labels import label_to_code
 
 
@@ -79,17 +79,20 @@ class Pipeline:
     time (the eval's emb_v2 oracle-adapter setting is eval-only on purpose).
     """
 
-    def __init__(self, log: logging.Logger, backend: str = None):
+    def __init__(self, log: logging.Logger, backend: str = None,
+                 prompt_config: str = None):
         log.info("=" * 60)
         self.retrieval_config = RETRIEVAL_CONFIG
+        self.prompt_config = prompt_config or PROMPT_CONFIG
 
         # Judge first (2026-10-10): an endpoint-backed judge must fail
         # fast - it raises before the corpus/index build when the model
         # server is missing or serves the wrong model, and main.py turns
         # that into a non-zero exit. Never a silent lexical fallback.
-        log.info("Stage 1: init NLI judge (backend=%s)", backend or LLM_BACKEND)
+        log.info("Stage 1: init NLI judge (backend=%s, prompt_config=%s)",
+                 backend or LLM_BACKEND, self.prompt_config)
         t0 = time.time()
-        self.judge = build_judge(backend)
+        self.judge = build_judge(backend, prompt_config)
         log.info("  judge ready in %.1fs", time.time() - t0)
 
         log.info("Stage 2: build retrieval stack (%s)", RETRIEVAL_CONFIG)
@@ -234,9 +237,18 @@ def main():
                     choices=["lexical", "mlx", "ollama", "openai"],
                     help="override LLM_BACKEND")
     ap.add_argument("--year", default=None, help="restrict retrieval to a year")
+    ap.add_argument("--prompt-config", default=None,
+                    help="judge prompt/judging config (nli_judge.PROMPT_CONFIGS"
+                         "; default: PROMPT_CONFIG env or 'baseline')")
     args = ap.parse_args()
 
     backend = args.backend or LLM_BACKEND
+    prompt_config = args.prompt_config or PROMPT_CONFIG
+    try:
+        pconf = get_prompt_config(prompt_config)
+    except ValueError as e:
+        print(f"ERROR: {e}")
+        sys.exit(2)
     log, log_path = make_logger(tag=backend)
     log.info("backend=%s  model=%s  endpoint=%s",
              backend,
@@ -257,7 +269,7 @@ def main():
 
     t_total = time.time()
     try:
-        pipeline = Pipeline(log, backend=backend)
+        pipeline = Pipeline(log, backend=backend, prompt_config=prompt_config)
     except Exception as e:
         log.error("PIPELINE BUILD FAILED: %s", e)
         sys.exit(1)
@@ -288,11 +300,17 @@ def main():
     }
     log.info("summary: %s", json.dumps(summary))
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_json = DATA_DIR / f"results_{ts}_{backend}.json"
+    tag = f"_{backend}"
+    if prompt_config != "baseline":
+        tag += f"_{prompt_config}"  # keep ablation runs from clobbering each other
+    out_json = DATA_DIR / f"results_{ts}{tag}.json"
     report = {
         "config": {
             "backend": backend,
             "retrieval_config": RETRIEVAL_CONFIG,
+            "prompt_config": prompt_config,
+            "temperature": pconf["temperature"],
+            "max_tokens": pconf["max_tokens"],
             "model": (MLX_MODEL if backend == "mlx" else
                       JUDGE_MODEL if backend == "openai" else
                       OLLAMA_MODEL if backend == "ollama" else None),

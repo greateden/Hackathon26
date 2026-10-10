@@ -25,6 +25,7 @@ Usage (from src/):
 import argparse
 import json
 import random
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -33,9 +34,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (DATA_DIR, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, TOP_K,
-                    OPENAI_BASE_URL, JUDGE_MODEL)
+                    OPENAI_BASE_URL, JUDGE_MODEL, PROMPT_CONFIG)
 from labels import CODE_TO_LABEL, label_to_code
-from nli_judge import build_judge
+from nli_judge import (build_judge, get_prompt_config, PROMPT_CONFIGS)
 
 DEFAULT_DATA = DATA_DIR / "eval" / "mnli_swiss_v1.1.jsonl"
 DEV_SEED = 20261009
@@ -71,15 +72,82 @@ def split_indices(n, split, seed, dev_size):
     return [i for i in range(n) if i not in dev]
 
 
-def oracle_evidence(item):
+def oracle_evidence(item, pconf=None):
     # Keys mirror retriever output so every judge (incl. LexicalJudge which
     # reads p["score"]) works unchanged on oracle evidence.
+    text = item["reference_string"]
+    if pconf and pconf.get("window"):
+        text = select_window(text, item["claim"], EVIDENCE_MAX_CHARS)
+    else:
+        text = text[:EVIDENCE_MAX_CHARS]
     return [{"id": "gold",
              "lang": (item.get("reference_language") or "?").lower(),
              "year": "?",
              "source_file": item.get("vote", "official-eval-set"),
              "score": 1.0,
-             "text": item["reference_string"][:EVIDENCE_MAX_CHARS]}]
+             "text": text}]
+
+
+# --- claim-lexical evidence window (prompt config "select") -----------------
+# The dev-run error analysis showed the 1900-char HEAD truncation cut
+# decisive negation markers out of the oracle evidence (tail-only markers),
+# while most of the kept head was boilerplate. select_window replaces head
+# truncation with a deterministic lexical-overlap window: among contiguous
+# segment runs that fit the budget, take the one with the most claim-token
+# occurrences; fall back to the head when nothing overlaps (no information
+# advantage). Pure Python, no model, no randomness.
+
+_WORD_RE = re.compile(r"[0-9a-zäöüéèêëààèéïîôùûüçß']{2,}")
+_SEG_SPLIT_RE = re.compile(r"(?<=\n)|(?<=[.!?;])\s+")
+
+
+def _claim_token_pattern(claim):
+    toks = sorted({t for t in _WORD_RE.findall(claim.lower()) if len(t) >= 4},
+                  key=len, reverse=True)
+    if not toks:
+        return None
+    return re.compile(r"(?<![\w'])(" + "|".join(map(re.escape, toks)) +
+                      r")(?![\w'])", re.I)
+
+
+def _segments(text):
+    """Split into paragraph blocks, then into sentence-ish chunks."""
+    segs = []
+    for para in text.split("\n\n"):
+        if len(para) <= 300:
+            segs.append(para)
+        else:
+            segs.extend(s for s in _SEG_SPLIT_RE.split(para) if s.strip())
+    return [s for s in segs if s.strip()]
+
+
+def select_window(text, claim, max_chars):
+    if len(text) <= max_chars:
+        return text
+    pat = _claim_token_pattern(claim)
+    if pat is None:
+        return text[:max_chars]
+    segs = _segments(text)
+    hits = [len(pat.findall(s)) for s in segs]
+    if not any(hits):
+        return text[:max_chars]
+    best_text, best_score = None, -1
+    for i in range(len(segs)):
+        window, size = [], 0
+        for j in range(i, len(segs)):
+            add = len(segs[j]) + (1 if window else 0)
+            if size + add > max_chars:
+                break
+            window.append(segs[j])
+            size += add
+        if not window:
+            continue
+        score = sum(hits[i:i + len(window)])
+        if score > best_score:
+            best_score, best_text = score, " ".join(window)
+    if best_text is None or best_score <= 0 or len(best_text) > max_chars:
+        return text[:max_chars]
+    return best_text
 
 
 def evaluate(items, judge, evidence_for=None, retrieve_for=None):
@@ -209,6 +277,10 @@ def main():
                     choices=["oracle", "retrieve", "retrieve-v2"],
                     default="oracle")
     ap.add_argument("--top-k", type=int, default=TOP_K)
+    ap.add_argument("--prompt-config", default=None,
+                    choices=sorted(PROMPT_CONFIGS),
+                    help="judge prompt/judging config (default: PROMPT_CONFIG"
+                         " env or 'baseline')")
     args = ap.parse_args()
 
     data_path = Path(args.data)
@@ -224,6 +296,8 @@ def main():
         sys.exit("no items selected")
 
     backend = args.backend or LLM_BACKEND
+    prompt_config = args.prompt_config or PROMPT_CONFIG
+    pconf = get_prompt_config(prompt_config)  # unknown name: fail before any model traffic
     retrieve_for = None
     judge = None
     retrieval_desc = "oracle: gold reference_string (judgement step only)"
@@ -246,7 +320,7 @@ def main():
         logging.basicConfig(level=logging.INFO,
                             format="%(asctime)s %(levelname)s %(message)s")
         pipe = main_mod.Pipeline(logging.getLogger("eval-retrieve-v2"),
-                                 backend=backend)
+                                 backend=backend, prompt_config=prompt_config)
         judge = pipe.judge
 
         def retrieve_for(item):
@@ -256,13 +330,17 @@ def main():
 
     print(f"Eval: {len(items)} items | backend={backend} | "
           f"evidence={args.evidence} ({retrieval_desc}) | "
-          f"split={args.split} | seed={args.seed}")
+          f"split={args.split} | seed={args.seed} | "
+          f"prompt={prompt_config} (T={pconf['temperature']}, "
+          f"evidence_style={pconf['evidence']}, window={pconf['window']})")
 
     if judge is None:
-        judge = build_judge(backend)
+        judge = build_judge(backend, prompt_config)
     t0 = time.perf_counter()
     if args.evidence == "oracle":
-        results = evaluate(items, judge, evidence_for=oracle_evidence)
+        results = evaluate(
+            items, judge,
+            evidence_for=lambda it: oracle_evidence(it, pconf))
     else:
         results = evaluate(items, judge, retrieve_for=retrieve_for)
     summary = summarise(results)
@@ -280,6 +358,11 @@ def main():
             "data_file": str(data_path), "n_items": len(items),
             "split": args.split, "seed": args.seed,
             "evidence_mode": args.evidence,
+            "prompt_config": prompt_config,
+            "temperature": pconf["temperature"],
+            "max_tokens": pconf["max_tokens"],
+            "evidence_style": pconf["evidence"],
+            "evidence_window": pconf["window"],
             "note": ("oracle mode measures the judgement step with gold "
                      "evidence, not retrieval quality"
                      if args.evidence == "oracle" else
@@ -291,8 +374,11 @@ def main():
         "summary": summary,
         "items": results,
     }
+    tag = f"_{args.split}_{backend}_{args.evidence}"
+    if prompt_config != "baseline":
+        tag += f"_{prompt_config}"  # ablation runs must not clobber baseline files
     out = DATA_DIR / (f"eval_results_{datetime.now():%Y%m%d_%H%M%S}"
-                      f"_{args.split}_{backend}_{args.evidence}.json")
+                      f"{tag}.json")
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False),
                    encoding="utf-8")
 

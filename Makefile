@@ -10,7 +10,7 @@ MLX_MODEL ?= swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4
 MLX_SERVER_HOST ?= 127.0.0.1
 MLX_SERVER_PORT ?= 8080
 
-.PHONY: help run smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker fetch-booklets eval-e2e-quick eval-e2e-full
+.PHONY: help run smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
 
 help:
 	@echo "run                    - Docker pipeline with REAL Apertus via host endpoint (needs serve-apertus; fails without it)"
@@ -30,6 +30,8 @@ help:
 	@echo "fetch-booklets         - download 60 booklet PDFs + extract passage corpus"
 	@echo "eval-e2e-quick         - 60-item class-balanced end-to-end retrieval eval"
 	@echo "eval-e2e-full          - full 1,488-item end-to-end retrieval eval"
+	@echo "ablation-smoke         - offline wiring check of the ablation harness (dry-run; plumbing only)"
+	@echo "ablation-dev           - FULL prompt-config ablation, fixed dev split (needs serve-apertus; ran 2026-10-10, report §4.3)"
 
 # --- Docker (portable, Linux containers) ----------------------------------
 # `make smoke` runs the LEXICAL baseline (plumbing smoke test only, no
@@ -73,6 +75,25 @@ eval-apertus-docker:
 eval-apertus-oracle-docker:
 	@echo ">> 60-item dev eval, REAL Apertus judge, GOLD evidence (judgement step only - not end-to-end)."
 	LLM_BACKEND=openai OPENAI_BASE_URL=http://host.docker.internal:$(MLX_SERVER_PORT) docker compose run --rm app python3 eval_nli.py --split dev --backend openai --evidence oracle
+
+# --- Prompt-config ablation (src/ablation_dev.py, added 2026-10-10) --------
+# Memory procedure (hard rule): unload other memory-heavy apps (MTPLX etc.)
+# first, start the server in a SEPARATE terminal (`make serve-apertus`), run
+# the ablation, then Ctrl-C the server (verify: lsof -nP -iTCP:8080
+# -sTCP:LISTEN). Do NOT auto-kill server processes from scripts.
+# The runner checks the endpoint up front and refuses to start without it -
+# no silent lexical fallback. Ran once with a real endpoint on 2026-10-10
+# (report §4.3): strict rejected, select kept experimental, default unchanged.
+ablation-dev:
+	@echo ">> FULL prompt ablation on the fixed 60-item dev split:"
+	@echo ">> t0/strict/select x retrieve-v2+oracle, t0 repeated for the"
+	@echo ">> determinism check (8 runs). Needs make serve-apertus running."
+	cd src && python3 ablation_dev.py --backend openai --repeats 2
+
+ablation-smoke:
+	@echo ">> Offline wiring check (no model). Uses the lexical heuristic"
+	@echo ">> for plumbing only - its numbers are NOT model quality."
+	cd src && python3 test_judge.py && python3 ablation_dev.py --dry-run
 
 # --- Native paths (macOS: Apple Silicon MLX lives here, not in Docker) ----
 run-native:
