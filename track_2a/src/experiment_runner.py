@@ -308,6 +308,20 @@ def validate_records(contract, records, events):
             raise ValueError("Failed result cannot carry a scored prediction")
 
 
+def summarise_records(rows):
+    # Paired records nest telemetry under result; the historical scorer does not.
+    stats = summarise([dict(r, error=r["result"].get("error"),
+                            retrieval_s=r["result"].get("retrieval_s")) for r in rows])
+    for field in ("prompt_tokens", "completion_tokens"):
+        values = [(r["result"].get("usage") or {}).get(field) for r in rows]
+        measured = [v for v in values if type(v) is int and v >= 0]
+        total = sum(measured) if measured else None
+        stats[field] = {"measured_total": total, "measured_rows": len(measured),
+                        "missing_rows": len(values) - len(measured)}
+        stats[field + "_total"] = total
+    return stats
+
+
 def summaries(directory, manifest, records, status):
     latest = {}
     for record in records:
@@ -327,14 +341,9 @@ def summaries(directory, manifest, records, status):
         if not rows:
             result["methods"][mode] = {"n": 0, "accuracy": None, "macro_f1": None}
             continue
-        stats = summarise(rows)
+        stats = summarise_records(rows)
         stats["metric_scope"] = "attempted rows, including failures; missing rows excluded"
         stats["citation_verified"] = sum(r["result"].get("citation_verified", False) for r in rows)
-        for field in ("prompt_tokens", "completion_tokens"):
-            values = [r["result"].get("usage", {}).get(field) for r in rows]
-            measured = [v for v in values if type(v) is int]
-            stats[field] = {"measured_total": sum(measured), "measured_rows": len(measured),
-                            "missing_rows": len(values) - len(measured)}
         stats["wall_s_all_attempts"] = sum(r["elapsed_s"] for r in records if r["method"] == mode)
         result["methods"][mode] = stats
     paired = {"full": [], "retrieved": []}
@@ -352,12 +361,12 @@ def summaries(directory, manifest, records, status):
                     result["prediction_changes"].append({"row_index": item["row_index"], "gold": item["gold"],
                         "full": a["pred"], "retrieved": b["pred"],
                         "change": "improved" if b["correct"] else "worsened" if a["correct"] else "both_wrong"})
-    result["paired_success_only"] = {m: summarise(rows) if rows else {"n": 0} for m, rows in paired.items()}
+    result["paired_success_only"] = {m: summarise_records(rows) if rows else {"n": 0} for m, rows in paired.items()}
     write_json(directory / "summary.json", result)
     lines = ["# Paired Apertus v1.5 development results", "", "Status: " + status + ".",
              f"Completed {result['completed']}/{result['planned']}; failed {result['failed']}; missing {result['missing']}.",
              "", "Native MLX only. Docker inference and cross-platform execution remain unverified.",
-             "Nine development examples do not establish generalisation; the historical split contains duplicates.",
+             f"{len(manifest['contract']['items'])} development examples do not establish generalisation; the historical split contains duplicates.",
              "", "| Method | Attempted | Accuracy | Macro-F1 |", "|---|---:|---:|---:|"]
     for mode, metrics in result["methods"].items():
         lines.append(f"| {mode} | {metrics['n']} | {metrics.get('accuracy')} | {metrics.get('macro_f1')} |")

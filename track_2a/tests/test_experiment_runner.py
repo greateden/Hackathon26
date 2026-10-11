@@ -37,6 +37,28 @@ def judge_with(reply=None):
 
 
 class JudgeContracts(unittest.TestCase):
+    def test_citation_soft_hyphen_preserves_strict_provenance(self):
+        request = {"claim": "test", "booklet": "a.pdf", "claim_language": "it",
+                   "booklet_language": "it", "evidence": "full"}
+        booklet = {"source": "a.pdf", "sha256": "s", "language": "it",
+                   "pages": [{"page": 15, "text": "Più abita\u00ad\nzioni a prezzi accessibili."}]}
+        judge = Mock()
+        for snippet, verified in (("Più abitazioni a prezzi accessibili.", True),
+                                  ("Più abitazioni non a prezzi accessibili.", False),
+                                  ("Più abitazioni ... accessibili.", False)):
+            judge.judge.return_value = {"label": "neutral", "evidence_snippet": snippet}
+            result = app.classify(request, judge, booklet=booklet)
+            self.assertEqual(result["citation_verified"], verified)
+            self.assertEqual(result["label"], "neutral")
+        for text in ("abita-\nzioni", "abita zioni", "abita\nzioni"):
+            self.assertNotEqual(app.normalise_citation(text), "abitazioni")
+        # A quotation from an unselected chunk remains unverified.
+        retriever = Mock()
+        retriever.retrieve.return_value = [{"page": 15, "text": "zioni a prezzi accessibili.",
+                                          "source": "a.pdf", "pdf_sha256": "s"}]
+        judge.judge.return_value = {"label": "neutral", "evidence_snippet": "Più abitazioni a prezzi accessibili."}
+        self.assertFalse(app.classify(dict(request, evidence="retrieved"), judge, retriever, booklet)["citation_verified"])
+
     def test_bad_models_response_and_config(self):
         for model in ("Apertus-v1.50", "fake/Apertus-v1.5-70B", "swiss-ai/Apertus-v1.1-8B"):
             self.assertFalse(app.is_apertus_v15(model))
@@ -185,6 +207,37 @@ class RunnerContracts(unittest.TestCase):
             self.assertEqual(runner.execute(self.args, self.prepared), 0)
         for name in ("manifest.json", "predictions.jsonl", "summary.json", "summary.md"):
             self.assertTrue((self.directory / name).is_file())
+
+    def test_nested_usage_in_both_summary_tables(self):
+        self.reply["retrieval_s"] = 0.25
+        self.execute()
+        summary = json.loads((self.directory / "summary.json").read_text())
+        for table in ("methods", "paired_success_only"):
+            for mode in ("full", "retrieved"):
+                stats = summary[table][mode]
+                self.assertEqual(stats["prompt_tokens_total"], 10)
+                self.assertEqual(stats["completion_tokens_total"], 8)
+                self.assertEqual(stats["prompt_tokens"],
+                                 {"measured_total": 10, "measured_rows": 1, "missing_rows": 0})
+                self.assertEqual(stats["mean_retrieval_s"], 0.25)
+
+    def test_usage_coverage_excludes_missing_and_preflight_counts(self):
+        record = {"gold": "neutral", "pred": None, "correct": False, "elapsed_s": 1,
+                  "result": {"input_tokens": 69998, "error": "context_limit"}}
+        for usage in (None, {}, {"prompt_tokens": None}, {"prompt_tokens": True},
+                      {"prompt_tokens": "10"}, {"prompt_tokens": -1}):
+            row = dict(record, result=dict(record["result"], usage=usage))
+            stats = runner.summarise_records([row])
+            self.assertIsNone(stats["prompt_tokens_total"])
+            self.assertEqual(stats["prompt_tokens"],
+                             {"measured_total": None, "measured_rows": 0, "missing_rows": 1})
+        successful = dict(record, pred="neutral", correct=True,
+                          result={"usage": {"prompt_tokens": 10, "completion_tokens": 8}})
+        stats = runner.summarise_records([record, successful])
+        self.assertEqual(stats["prompt_tokens_total"], 10)
+        self.assertEqual(stats["prompt_tokens"]["missing_rows"], 1)
+        self.assertEqual(stats["completion_tokens_total"], 8)
+        self.assertEqual(stats["accuracy"], 0.5)
 
     def test_mismatched_resume_refused(self):
         self.execute()

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
@@ -247,6 +248,13 @@ class SubmissionJudge:
         return out
 
 
+def normalise_citation(text):
+    # A PDF discretionary soft hyphen may split a word across a physical line.
+    # Preserve ordinary hyphens, punctuation, case and all substantive text.
+    text = re.sub(r"(?<=\w)\u00ad(?:[ \t]*\r?\n[ \t]*)?(?=\w)", "", text)
+    return " ".join(text.split())
+
+
 def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     validate_request(request)
     claim = request["claim"]
@@ -273,8 +281,8 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     if not isinstance(snippet, str):
         result.update(label=None, label_code=None, error="invalid_evidence_snippet")
         snippet = ""
-    normal = lambda s: " ".join(s.split())
-    citations = [p for p in selected if snippet.strip() and normal(snippet) in normal(p["text"])]
+    citations = [p for p in selected if snippet.strip()
+                 and normalise_citation(snippet) in normalise_citation(p["text"])]
     result.update(claim=claim, evidence_mode=mode, booklet=booklet["source"], pdf_sha256=booklet["sha256"],
                   claim_language=request["claim_language"], booklet_language=booklet["language"],
                   passages=selected, citations=citations, citation_verified=bool(citations),

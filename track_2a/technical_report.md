@@ -10,10 +10,12 @@ The application accepts a specified official voting booklet and a claim. It
 returns entailment, neutral or contradiction with source passages and page
 references. The current submission implementation targets Apertus v1.5 8B via
 an HTTP endpoint. It supports a full-document baseline and a within-booklet
-retrieval approach. One genuine local 6-bit MLX retrieved-evidence smoke
-returned entailment with a verified page-15 citation (1,007 input and 71 output
-tokens). **Paired v1.5 quality evaluation remains pending.** Earlier
-v1.1 model runs concern a different evidence protocol and remain historical.
+retrieval approach. The first paired local v1.5 6-bit MLX comparison completed
+all 18 calls at an 81,920-token context limit. On nine development examples,
+retrieval achieved accuracy 0.889 and macro-F1 0.886; full-booklet inference
+returned neutral throughout (0.333/0.167). Each arm verified only three
+citations. These small, exposed-sample results do not establish generalisation.
+Earlier v1.1 runs concern a different evidence protocol and remain historical.
 
 ## 2. Architecture
 
@@ -34,7 +36,9 @@ Both arms share the same NLI system/user templates and strict label parser.
 The evidence payload is the experimental difference. The returned label codes
 are 0 entailment, 1 neutral and 2 contradiction. Physical page and PDF hash
 references identify supplied evidence. A generated snippet is marked verified
-only if it occurs in a supplied passage after whitespace normalisation.
+only if it occurs in a supplied passage after whitespace and discretionary
+soft-hyphen normalisation. Ordinary hyphens, punctuation and substantive text
+remain significant; verification never searches unsupplied passages.
 Unverified citations remain explicit rather than being fabricated.
 
 ## 3. Use of Apertus
@@ -44,8 +48,10 @@ The endpoint must advertise the configured `LLM_NAME`; that check alone
 cannot attest the server's underlying weights. Temperature is zero, seed is
 20261011, output allowance is 512 tokens, and the current client explicitly
 disables thinking in both tokenisation and generation requests.
-The same settings apply to both arms. Server-side deterministic decoding and
-model revision still require verification on the actual endpoint.
+The same settings apply to both arms. The paired native runs record the loaded
+model class and revision; all 13 replies completed at both context limits are
+byte-identical. This is limited repeatability evidence, not a cross-platform
+determinism guarantee or verification of the official Docker endpoint.
 
 The submission configuration uses `/tokenize` before generation. Full-document inputs that
 exceed the configured context budget are recorded as errors, never silently
@@ -82,7 +88,8 @@ complement; 25 share claims and 46 share references. These are content checks,
 not model results. The complement is not an independent held-out set. The
 nine-row paired sample covers every language pair, with three rows per label;
 three of its rows have duplicate triples in the complement. It is development
-work only. A grouped split still needs to be designed before final evaluation.
+work only. A larger content-grouped comparison is proposed in §8; an independent
+final evaluation requires new data.
 
 ## 5. Evaluation and observed results
 
@@ -97,27 +104,94 @@ Missing rows remain explicit; a second comparison uses only successful pairs.
 Append-only attempt logs retain earlier failures and raw replies. Exact messages,
 PDF/text hashes, source hashes and server sessions make resumption auditable.
 The cached-only MLX wrapper records the actual loaded class/revision and uses
-its own tokenizer for preflight; its first real launch is still pending.
+its own tokenizer for preflight. Both real runs used mlx-lm 0.32.0 and the
+6-bit revision in §3, with encoder revision
+`7a91fa8a01af56c1f06060f7af3698ef5619e41c`.
 The old non-resumable paired CLI was removed; its plan and coverage helpers remain.
 
 | Configuration | Model / evidence / split / sample | Observed result | Provenance |
 |---|---|---|---|
-| Baseline A (planned comparison) | Apertus v1.5 8B; complete specified PDF; planned dev n=9 | No inference run; accuracy, tokens and latency unmeasured | paired development plan |
-| Approach B (planned comparison) | Apertus v1.5 8B; within-PDF retrieval; same planned dev n=9 | No inference run; accuracy, tokens and latency unmeasured | same plan |
+| Baseline A, 32K | v1.5 MLX 6-bit; complete PDF; dev n=9 | Accuracy 0.111, macro-F1 0.095; 4 completed, 5 context failures | `data/experiments/v15-paired/` |
+| Approach B, 32K | Same model and rows; top-five within-PDF | Accuracy 0.889, macro-F1 0.886; 9 completed | same directory |
+| Baseline A, 80K | v1.5 MLX 6-bit; complete PDF; same dev n=9 | Accuracy 0.333, macro-F1 0.167; 9 completed, all neutral | `data/experiments/v15-paired-80k/` |
+| Approach B, 80K | Same model and rows; top-five within-PDF | Accuracy 0.889, macro-F1 0.886; 9 completed | same directory |
 | Local v1.5 smoke | MLX 6-bit; retrieved; DE→DE; n=1 | Entailment (0); verified page 15; 1,007 input / 71 output tokens; inference 1.384 s, retrieval 2.374 s | `docs/evidence/v15_local_smoke/` |
 | Extraction/retrieval smoke | SentenceSwissBERT; full vs top-five within-PDF; paired dev n=9; no NLI model | Mean reference shingle coverage 0.921 full, 0.204 retrieved | `docs/evidence/booklet_retrieval_smoke_20261011.json` |
 | Historical NLI | Apertus v1.1 4B MLX INT4; global `retrieve-v2`; dev n=60 | Accuracy 0.483, macro-F1 0.466 | `data/eval_results_20261010_082336_dev_openai_retrieve-v2.json` |
 | Historical diagnostic | Same v1.1 model; oracle reference; dev n=60 | Accuracy 0.433, macro-F1 0.393 | `data/eval_results_20261010_082936_dev_openai_oracle.json` |
 
-Historical raw artefacts are locally preserved but git-ignored. They are not
-freshly executed results and cannot substitute for a submission reproduction.
-The new retrieval smoke used the cached `jgrosjean-mathesis/sentence-swissbert`
-on Apple MPS, mean extraction-plus-retrieval time 1.722 seconds per example
-(n=9, first encoder load included). Its exact encoder revision was not exposed
-by the loader and remains unpinned. Paired NLI inference time and token usage remain **unmeasured**; the
-separate n=1 MLX smoke above does not fill either planned evaluation row. The missing unused pooler weights reported at load do
-not enter the mean-pooling computation. No classification improvement or
-prediction flip is claimed for this iteration.
+The original result directories remain byte-for-byte unchanged (14 files).
+An [offline audit](docs/evidence/v15_paired_analysis_20261011.json) records their
+SHA-256 hashes, checks and corrected telemetry separately. No inference was
+rerun for this analysis. Historical results cannot substitute for a submission
+reproduction.
+
+| Context / arm | Completed / attempted | Input tokens reported | Output tokens reported | Original verified citations | Sum of call wall time |
+|---|---:|---:|---:|---:|---:|
+| 32,768 / full | 4/9 | 81,368 (4 rows) | 494 (4 rows) | 0/9 | 56.04 s |
+| 32,768 / retrieved | 9/9 | 9,899 | 1,189 | 3/9 | 32.77 s |
+| 81,920 / full | 9/9 | 287,025 | 1,216 | 3/9 | 232.94 s |
+| 81,920 / retrieved | 9/9 | 9,899 | 1,189 | 3/9 | 33.62 s |
+
+At 80K, retrieval used about 29 times fewer input tokens. Reported inference
+time summed to 231.49 s full and 24.03 s retrieved; call wall time also includes
+retrieval and tokenisation, but excludes server startup and initial encoder
+construction. Prefix caching was active. These are single-machine observations,
+not controlled latency benchmarks. At 32K, rows 192, 171, 533, 187 and 555 failed
+preflight: their input counts plus the 512-token allowance exceeded 32,768.
+No completion was requested for them. On the four successful pairs alone,
+full accuracy/F1 was 0.250/0.200 and retrieval 1.000/1.000; that subset contains
+no entailment examples and is not comparable to the nine-row 80K result.
+
+**Full-booklet neutral collapse.** All nine raw 80K replies explicitly say
+neutral, and the parser preserves them. All messages reconstruct exactly from
+the saved claims and passages; full-page hashes match the manifest. Both arms
+share templates, model, temperature, seed, output limit, parser and disabled
+thinking. The evidence payload alone differs within each run; context is the
+only recorded configuration difference between runs. All 18 prompts match
+across runs, and all 13 replies that completed at 32K recur byte-for-byte at
+80K. Reported input token counts match preflight, and all completed replies stop
+normally. No application truncation, missing-claim or neutral-fallback bug was
+found. Long-input evidence use is a plausible explanation, not an isolated
+cause: row 1328 overlooks page-47 palm-oil restrictions, while rows 1095 and
+1365 quote recommendations yet deny that recommendations are present.
+
+**Citation failures.** Whitespace matching already tolerates line breaks and
+carriage returns. One confirmed false negative is row 1095/full: page 15 splits
+`abitazioni` with U+00AD and a newline. The verifier now removes only such
+within-word discretionary soft hyphens before matching. The saved quotation
+passes this offline check; the original citation scores above are retained.
+The other failures justify rejection: rows 979/full, 1328/full and 555/retrieved
+give English explanations instead of source quotations; 192/full and
+192/retrieved merge or omit text; 979/retrieved reorders text and changes `les`
+to `the`; 187/full paraphrases; 1365/full omits part of the law title.
+Row 1328/retrieved omits a footnote, parenthesis and heading as well as repairing
+an extracted word. Row 533/retrieved spans chunks and rewrites the final clause.
+Row 1365/retrieved adds a sentence beginning absent from its selected chunk,
+although present elsewhere on the page. These are not all hallucinations, but
+none is a verified contiguous quotation from supplied evidence. No fuzzy
+matching, punctuation deletion or search outside retrieved passages was added.
+
+**Accounting defect.** The shared historical scorer reads top-level `usage`
+and `retrieval_s`; paired logs nest them under `result`. This produced incorrect
+zero scalar token totals and null retrieval timing, despite correct nested
+token totals. A paired-record adapter now fills both ordinary and
+successful-pair summaries consistently, with measured/missing row counts and
+null totals when usage is absent. Preflight-only counts are not counted as
+generation usage. Classification scoring is unchanged.
+
+**Prediction review.** At 80K, retrieval improves rows 1095, 1328 and 1365
+(gold contradiction) and 192 and 187 (gold entailment); rows 979, 533 and 555
+remain correctly neutral. Row 171 changes from neutral to contradiction, both
+wrong against gold entailment. Its verified page-33 quotation says rejection
+ends the amendment and listed measures; the model incorrectly treats this as
+contradicting their continuation on approval. The relevant conditional is
+present in the retrieved evidence, so missing evidence cannot explain that
+specific reasoning error. Gold labels remain unchanged. Row 192 also warns
+against equating accuracy with sound reasoning: its gold-matching entailment
+reply confuses a referendum committee's Covid-law rejection with the
+government's approval, although the booklet's initiative-rejection evidence
+is available in the selected page-144 passage.
 
 ## 6. Limitations
 
@@ -125,7 +199,11 @@ Genuine local v1.5 MLX inference is recorded, but clean-checkout submission
 Docker execution and Windows/Linux validation remain pending. Managed NVIDIA server startup is configured but untested. External-endpoint
 mode has no NVIDIA dependency. Neither mode has new real Docker evidence. The MLX tokenizer emitted a regex
 warning in the original logs; its impact is unresolved and no tokenizer change
-was made during cleanup. Nine retrieval examples are a plumbing check, not a quality benchmark.
+was made during cleanup. Nine paired examples provide exploratory quality
+measurements, not a reliable ranking or independent benchmark. Quantisation,
+long-input attention, prompt placement and the tokenizer warning have not been
+isolated experimentally. A verified quotation establishes textual provenance,
+not entailment or correct attribution; short neutral citations may be only headings.
 Text extraction omits image-only content and may lose layout semantics. Retrieval
 can omit decisive evidence. Long full documents can exceed context limits.
 Current development/complement contamination invalidates independent holdout
@@ -160,12 +238,42 @@ corpora and model caches must remain outside the submission bundle.
 
 ## 8. Next steps
 
-Run the offline preflight, then manually start the cached development server and
-execute the saved nine-item paired experiment using [EXPERIMENTS.md](docs/EXPERIMENTS.md).
-Separately validate a clean-checkout Docker run with a provisioned official
-model, pinned image revision and matching context limit.
-This will establish whether full-document coverage improves classification
-and quantify its token/latency cost before any larger evaluation.
+The proposed [81-row plan](docs/evidence/paired_grouped81_plan_20261011.json)
+contains three examples per language-pair/label cell (27 per label), selected
+with seed 20261012 without consulting predictions. Connected components join
+rows sharing a normalised claim **or** reference, irrespective of label.
+Exclude every component touching the historical 60 dev rows and take one row
+per remaining component. The local smoke claim has no exact dataset match.
+There are 594 eligible components (1,281 rows); the selected 81 have no repeated
+normalised claims/references or component overlap with dev. The plan records
+IDs, dataset hash, exclusions and the complete selection rule. No new benchmark
+has been started.
+
+This is a broader exploratory comparison with a frozen configuration, not an
+independent holdout: historical retrieval work used the entire dataset, all
+20 vote dates occur in dev, and exact matching cannot detect every translated
+near-duplicate. A final generalisation test needs new vote/topic-disjoint,
+manually reviewed data. The proposed run would test whether the observed
+retrieval advantage and neutral collapse persist across more distinct content;
+it would not identify their cause. Keep context failures in the denominator
+and inspect citation/rationale validity separately from label accuracy.
+
+For a separately authorised future run, from `track_2a/`, start a matching
+server if none is already running:
+
+```bash
+../.venv/bin/python src/serve_experiments.py --context 81920
+```
+
+Then run the frozen plan into a fresh directory:
+
+```bash
+../.venv/bin/python src/experiment_runner.py run --context 81920 --retries 0 --plan docs/evidence/paired_grouped81_plan_20261011.json --out data/experiments/v15-grouped81-80k
+```
+
+This schedules 162 arm attempts; over-budget inputs fail before generation.
+Neither command was run during this analysis. Stop the manually started server
+afterwards. Official Docker deployment remains a separate unverified task.
 
 ## License
 
