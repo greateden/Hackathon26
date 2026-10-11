@@ -1,12 +1,10 @@
 # syntax=docker/dockerfile:1
 # HackApertus Track 2A - portable (Linux) runtime image.
 #
-# Deliberate design choices (see AGENTS.md "Docker runtime"):
-#   - MLX is NOT installed: Apple-Metal MLX cannot run in a Linux
-#     container. Inside Docker the NLI judge is either the lexical
-#     smoke-test baseline (LLM_BACKEND=lexical, default, no model) or a
-#     genuine model reached through an external HTTP inference endpoint
-#     (LLM_BACKEND=ollama + OLLAMA_BASE_URL, e.g. host Ollama).
+# Deliberate design choices (see docs/RUNNING.md):
+#   - MLX is not installed. Submission Compose runs booklet_app.py against
+#     the managed or external official v1.5 endpoint. The image's default
+#     command remains the historical lexical smoke path.
 #   - No model weights are downloaded at build time. The embedding model
 #     (sentence-swissbert) is fetched at first dense-retrieval run into a
 #     persistent cache volume, or mounted beforehand.

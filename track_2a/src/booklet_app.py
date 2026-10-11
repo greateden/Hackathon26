@@ -3,6 +3,7 @@
 Historical main.py / eval_e2e.py remain separate global-search experiments.
 """
 import argparse
+from contextlib import redirect_stdout
 import hashlib
 import json
 import os
@@ -17,23 +18,17 @@ from labels import LABEL_PARSE_VERSION, label_to_code
 from nli_judge import SYSTEM_PROMPT, USER_TEMPLATE, parse_nli_response
 
 MODEL = "swiss-ai/Apertus-v1.5-8B"
+MLX_MODEL = "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit"
 LANGUAGES = ("de", "fr", "it")
 
 
 def is_apertus_v15(model_id):
-    """True for any packaging of Apertus v1.5, false for v1.1 and non-Apertus ids.
-
-    An endpoint may legitimately serve a different *build* of the same model -
-    e.g. m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit, which mlx_lm.server advertises
-    under its Hugging Face repo id. The recorded model field must still be the
-    checkpoint that produced the verdict, so a v1.1 or unrelated id is refused
-    (AGENTS.md: v1.1 must not be presented as v1.5 evidence).
-    """
-    return "Apertus" in model_id and "v1.5" in model_id
+    """Accept the official model or the explicitly documented MLX conversion."""
+    return model_id in (MODEL, MLX_MODEL)
 
 
 def token_preflight_mode():
-    """'required' (default) = vLLM contract: /tokenize first, usage must match.
+    """'required' (default): /tokenize first, reported usage must match.
 
     'optional' = endpoint without /tokenize (mlx_lm.server answers 404). Input
     length is then not pre-rejected; a reply only counts when the server reports
@@ -123,18 +118,42 @@ class BookletRetriever:
         query = self.encoder.encode([claim], lang_code=adapter)
         scores = cosine_sim_matrix(query, embeddings)
         order = np.argsort(-scores, kind="stable")[:top_k]
-        return [dict(records[i], score=float(scores[i])) for i in order]
+        return [dict(records[i], source=booklet["source"], score=float(scores[i])) for i in order]
 
 
 def evidence_payload(booklet, evidence):
     return "\n\n".join(f"[page {p['page']}]\n{p['text']}" for p in evidence)
 
 
+def build_messages(claim, evidence):
+    return [{"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_TEMPLATE.format(claim=claim, evidence=evidence)}]
+
+
+def validate_request(request):
+    if not isinstance(request, dict):
+        raise ValueError("request must be a JSON object")
+    if not isinstance(request.get("claim"), str) or not request["claim"].strip():
+        raise ValueError("claim must be a non-empty string")
+    if not isinstance(request.get("booklet"), str) or not request["booklet"].strip():
+        raise ValueError("booklet must identify one PDF")
+    for field in ("claim_language", "booklet_language"):
+        if request.get(field) not in LANGUAGES:
+            raise ValueError(field + " must be de, fr or it")
+    if request.get("evidence", "retrieved") not in ("full", "retrieved"):
+        raise ValueError("evidence must be full or retrieved")
+    top_k = request.get("top_k", 5)
+    if type(top_k) is not int or not 1 <= top_k <= 20:
+        raise ValueError("top_k must be an integer from 1 to 20")
+
+
 class SubmissionJudge:
     """vLLM-compatible API with exact token preflight, no implicit truncation."""
-    def __init__(self):
+    def __init__(self, timeout=180):
         import requests
         self.model = os.environ.get("LLM_NAME", MODEL)
+        if os.environ.get("SUBMISSION_MODEL_REQUIRED") == "1" and self.model != MODEL:
+            raise ValueError("Docker submission requires the official Apertus v1.5 8B model")
         if self.model != MODEL and not is_apertus_v15(self.model):
             raise ValueError(f"Submission requires LLM_NAME={MODEL} or a declared "
                              f"Apertus v1.5 checkpoint id; historical models use main.py")
@@ -146,6 +165,7 @@ class SubmissionJudge:
         self.base = base[:-3] if base.endswith("/v1") else base
         self.context = int(os.environ.get("LLM_CONTEXT_TOKENS", "32768"))
         self.max_tokens = 512
+        self.timeout = timeout
         if self.context <= self.max_tokens:
             raise ValueError("LLM_CONTEXT_TOKENS must exceed 512 and match the server limit")
         self.session = requests.Session()
@@ -161,8 +181,7 @@ class SubmissionJudge:
             raise RuntimeError("Apertus v1.5 endpoint preflight failed; check LLM_BASE_URL and credentials") from exc
 
     def judge(self, claim, evidence, seed=20261011):
-        messages = [{"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": USER_TEMPLATE.format(claim=claim, evidence=evidence)}]
+        messages = build_messages(claim, evidence)
         preflight = token_preflight_mode()
         out = {"label": None, "label_code": None, "model": self.model,
                "parser_version": LABEL_PARSE_VERSION, "temperature": 0, "seed": seed,
@@ -174,7 +193,8 @@ class SubmissionJudge:
             count = None
             if preflight == "required":
                 tok = self.session.post(self.base + "/tokenize", json={
-                    "model": self.model, "messages": messages, "add_generation_prompt": True}, timeout=30)
+                    "model": self.model, "messages": messages, "add_generation_prompt": True,
+                    "chat_template_kwargs": {"enable_thinking": False}}, timeout=30)
                 tok.raise_for_status()
                 count = tok.json()["count"]
                 if type(count) is not int or count < 1:
@@ -186,10 +206,15 @@ class SubmissionJudge:
             inference_start = time.perf_counter()
             response = self.session.post(self.base + "/v1/chat/completions", json={
                 "model": self.model, "messages": messages, "temperature": 0,
-                "seed": seed, "max_tokens": self.max_tokens, "stream": False}, timeout=180)
+                "seed": seed, "max_tokens": self.max_tokens, "stream": False,
+                "chat_template_kwargs": {"enable_thinking": False}}, timeout=getattr(self, "timeout", 180))
             out["inference_s"] = time.perf_counter() - inference_start
             response.raise_for_status()
             data = response.json()
+            out["response_model"] = data.get("model")
+            if data.get("model") != self.model:
+                out["error"] = "response_model_mismatch_or_missing"
+                return out
             choice = data["choices"][0]
             raw = choice["message"]["content"]
             out.update(raw_response=raw, usage=data.get("usage") or {}, finish_reason=choice.get("finish_reason"))
@@ -197,16 +222,21 @@ class SubmissionJudge:
             reported = (data.get("usage") or {}).get("prompt_tokens")
             if preflight == "optional":
                 out["input_tokens"] = reported
-                if reported is None:
+                if type(reported) is not int or reported < 1:
                     out["error"] = "missing_usage"
                 elif reported + self.max_tokens > self.context:
                     out["error"] = "context_limit"
-            elif reported != count:
+            elif type(reported) is not int or reported != count:
                 out["error"] = "prompt_token_count_mismatch_or_missing_usage"
+            completion_tokens = out["usage"].get("completion_tokens")
+            if not out.get("error") and (type(completion_tokens) is not int or not 1 <= completion_tokens <= self.max_tokens):
+                out["error"] = "missing_completion_usage"
             if not out.get("error") and choice.get("finish_reason") != "stop":
                 out["error"] = "incomplete_completion"
             if not out.get("error"):
-                out.update(parse_nli_response(raw))
+                parsed = parse_nli_response(raw)
+                out.update({key: parsed[key] for key in ("label", "reasoning", "evidence_snippet", "error")
+                            if key in parsed})
                 if out.get("error"):
                     out["label"] = None
                 out["label_code"] = label_to_code(out["label"])
@@ -218,32 +248,34 @@ class SubmissionJudge:
 
 
 def classify(request, judge, retriever=None, booklet=None, seed=20261011):
-    claim = request.get("claim", "")
-    if not isinstance(claim, str) or not claim.strip():
-        raise ValueError("claim must be a non-empty string")
-    if request.get("claim_language") not in LANGUAGES:
-        raise ValueError("claim_language must be de, fr or it")
+    validate_request(request)
+    claim = request["claim"]
     mode = request.get("evidence", "retrieved")
-    if mode not in ("full", "retrieved"):
-        raise ValueError("evidence must be full or retrieved")
     booklet = booklet or load_booklet(request["booklet"], request["booklet_language"])
+    if booklet["source"] != request["booklet"] or booklet["language"] != request["booklet_language"]:
+        raise ValueError("Loaded booklet does not match the request")
     started = time.perf_counter()
     if mode == "full":
         selected = [dict(p, source=booklet["source"], pdf_sha256=booklet["sha256"])
                     for p in booklet["pages"]]
     else:
         top_k = request.get("top_k", 5)
-        if type(top_k) is not int or not 1 <= top_k <= 20:
-            raise ValueError("top_k must be an integer from 1 to 20")
         selected = (retriever or BookletRetriever()).retrieve(booklet, claim, top_k)
     retrieval_s = time.perf_counter() - started
     if not selected:
         raise ValueError("No evidence extracted/retrieved")
+    pages = {p["page"]: p["text"] for p in booklet["pages"]}
+    if any(p.get("source") != booklet["source"] or p.get("pdf_sha256") != booklet["sha256"]
+           or p.get("page") not in pages or p["text"] not in pages[p["page"]] for p in selected):
+        raise ValueError("Evidence is not from the selected booklet")
     result = judge.judge(claim, evidence_payload(booklet, selected), seed=seed)
     snippet = result.get("evidence_snippet", "")
+    if not isinstance(snippet, str):
+        result.update(label=None, label_code=None, error="invalid_evidence_snippet")
+        snippet = ""
     normal = lambda s: " ".join(s.split())
     citations = [p for p in selected if snippet.strip() and normal(snippet) in normal(p["text"])]
-    result.update(evidence_mode=mode, booklet=booklet["source"], pdf_sha256=booklet["sha256"],
+    result.update(claim=claim, evidence_mode=mode, booklet=booklet["source"], pdf_sha256=booklet["sha256"],
                   claim_language=request["claim_language"], booklet_language=booklet["language"],
                   passages=selected, citations=citations, citation_verified=bool(citations),
                   retrieval_s=retrieval_s)
@@ -257,10 +289,15 @@ def main():
     args = ap.parse_args()
     try:
         request = json.loads(Path(args.input).read_text(encoding="utf-8"))
+        validate_request(request)
+        args.out = args.out or os.environ.get("RESULT_FILE")
         if args.out and Path(args.out).exists():
             raise ValueError("Output exists; choose a new path")
+        if args.out and not Path(args.out).parent.is_dir():
+            raise ValueError("Output directory does not exist")
         judge = SubmissionJudge()  # fail before PDF/embedding downloads
-        result = classify(request, judge)
+        with redirect_stdout(sys.stderr):
+            result = classify(request, judge)
         rendered = json.dumps(result, ensure_ascii=False, indent=2)
         if args.out:
             with open(args.out, "x", encoding="utf-8") as stream:
@@ -268,7 +305,7 @@ def main():
         print(rendered)
         return 1 if result.get("error") else 0
     except Exception as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(f"ERROR: {type(exc).__name__}: check request, endpoint and output configuration", file=sys.stderr)
         return 1
 
 

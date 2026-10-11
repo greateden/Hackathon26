@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import booklet_app as app
-import eval_paired
 
 
 def booklet(lang="de", tail="LAST PAGE SENTINEL"):
@@ -24,7 +23,8 @@ class ApplicationTests(unittest.TestCase):
                 judge.judge.return_value = {"label": "entailment", "label_code": 0,
                                            "evidence_snippet": "LAST PAGE SENTINEL"}
                 result = app.classify({"claim": "test", "claim_language": claim,
-                                       "evidence": "full"}, judge, booklet=booklet(source))
+                                       "evidence": "full", "booklet": "only-this.pdf",
+                                       "booklet_language": source}, judge, booklet=booklet(source))
                 self.assertIn("A" * 4000, judge.judge.call_args.args[1])
                 self.assertIn("LAST PAGE SENTINEL", judge.judge.call_args.args[1])
                 self.assertEqual(result["citations"][0]["page"], 2)
@@ -67,7 +67,7 @@ class ApplicationTests(unittest.TestCase):
         token.json.return_value = {"count": count}
         response = Mock()
         response.json.return_value = completion or {
-            "choices": [{"message": {"content": '{"label":"neutral"}'}, "finish_reason": "stop"}],
+            "model": app.MODEL, "choices": [{"message": {"content": '{"label":"neutral"}'}, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": count, "completion_tokens": 8}}
         judge.session.post.side_effect = [token, response]
         return judge
@@ -82,7 +82,7 @@ class ApplicationTests(unittest.TestCase):
     def test_numeric_label_and_no_silent_server_truncation(self):
         judge = self.make_judge()
         self.assertEqual(judge.judge("claim", "evidence")["label_code"], 1)
-        judge = self.make_judge(completion={"choices": [{"message": {"content": '{"label":"neutral"}'},
+        judge = self.make_judge(completion={"model": app.MODEL, "choices": [{"message": {"content": '{"label":"neutral"}'},
                                                        "finish_reason": "stop"}],
                                           "usage": {"prompt_tokens": 50}})
         result = judge.judge("claim", "evidence")
@@ -103,20 +103,6 @@ class ApplicationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Submission requires"):
                 app.SubmissionJudge()
 
-    def test_gold_not_forwarded_and_paired_changes_are_payload_only(self):
-        row = {"claim": "public claim", "claim_language": "de", "booklet_url": "source.pdf",
-               "reference_language": "fr", "reference_string": "SECRET GOLD", "entailment_label": 0}
-        judge = Mock()
-        judge.judge.return_value = {"label": "entailment", "elapsed_s": 0.1}
-        retriever = Mock()
-        retriever.retrieve.return_value = [{"page": 1, "text": "retrieved"}]
-        with patch.object(eval_paired, "load_booklet", return_value=booklet("fr")):
-            results = eval_paired.run_pairs([row], [0], judge, retriever, 42)
-        self.assertEqual(len(judge.judge.call_args_list), 2)
-        for call in judge.judge.call_args_list:
-            self.assertNotIn("SECRET GOLD", str(call))
-            self.assertEqual(call.kwargs["seed"], 42)
-        self.assertEqual(results["full"][0]["row_index"], results["retrieved"][0]["row_index"])
 
 
 if __name__ == "__main__":

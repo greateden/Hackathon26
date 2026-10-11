@@ -17,19 +17,26 @@ The submission Docker path and self-contained model startup remain unverified.
 
 This directory is the project root required by the
 [official template](https://github.com/HackApertus/project-template/tree/main/track_2a).
-You need GNU Make, Docker with Compose, network access for initial downloads,
-and a separately provisioned Apertus v1.5 8B endpoint.
+You need GNU Make, Docker with Compose, NVIDIA Container Toolkit, a compatible
+NVIDIA GPU with enough VRAM, network/disk capacity for initial downloads, and
+Hugging Face access to the gated official v1.5 checkpoint. Alternatively, use a
+provisioned official endpoint with `make run SUBMISSION_MODE=external`; that mode
+starts only the CPU application and requires no local NVIDIA GPU. GPU memory
+needs and runtime portability remain unverified.
 
-1. Copy `.env.example` to `.env` and set `LLM_BASE_URL`, `LLM_NAME` and, if
-   required, `LLM_API_KEY`. Keep the API key out of Git.
+1. Copy `.env.example` to `.env` and set `HF_TOKEN` after accepting the model's
+   access conditions. Keep credentials out of Git; the internal endpoint is preconfigured.
 2. Edit `data/request.json` to identify the booklet and claim.
 3. Run `make run` from this directory. The repository-root Makefile also forwards here.
 
-Docker builds the CPU application and runs `src/booklet_app.py`. It does not
-start or download the LLM. The endpoint must expose `/v1/models`, `/tokenize`
-and `/v1/chat/completions`. This dependency does **not** satisfy self-contained
-execution. Missing configuration, an unreachable endpoint or an invalid reply
-fails explicitly; there is no heuristic fallback.
+In default managed mode, Docker builds the CPU application, starts the official
+v1.5 vLLM GPU service,
+waits for readiness, then runs `src/booklet_app.py`. The model service downloads
+uncached weights into a persistent Docker volume. Both services stop when the
+application exits, and its exit status is propagated. No separately started
+server or lexical fallback is used. **This managed deployment is configured but
+has not passed a real Docker smoke test.** Apple Silicon Docker cannot run its
+NVIDIA service; the prior native MLX smoke does not establish submission readiness.
 
 [Running instructions](docs/RUNNING.md) cover environment variables, local
 PDFs, result files, Windows limitations and the separate native Mac path.
@@ -73,13 +80,28 @@ For example, this subset comes from the saved local development smoke:
 
 | Path | Model and configuration | Verification |
 |---|---|---|
-| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; external vLLM-compatible server; required token preflight | Application contract tested offline; real Docker inference pending |
-| Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; optional token preflight | One genuine retrieved-evidence run; see saved evidence |
+| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; Managed official vLLM server or explicit external endpoint; required token preflight | Application contract tested offline; real Docker inference pending |
+| Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; new paired runner requires exact token preflight | Historical n=1 smoke used optional preflight; new wrapper runtime pending |
 | Historical research | Apertus v1.1 4B MLX INT4, global retrieval, oracle diagnostics and lexical controls | Archived measurements; not current submission results |
 
 Both current arms use temperature 0, seed 20261011 and a 512-token output
 budget. The successful MLX run explicitly disabled thinking at server startup.
 Its quantisation and serving behaviour differ from the submission target.
+
+## Paired experiment runner
+
+From this directory, use the existing environment:
+
+```bash
+../.venv/bin/python src/experiment_runner.py preflight
+```
+
+Then manually start the cached MLX server in one terminal and run the prepared
+experiment in another. [EXPERIMENTS.md](docs/EXPERIMENTS.md) gives the exact
+commands, resumption rules and optional Docker smoke. The frozen nine-example
+matrix compares full-booklet and retrieved evidence with 18 planned model
+calls. Results are saved immediately under `data/experiments/v15-paired/`.
+Preflight and offline tests do not establish real model or Docker success.
 
 ## Evaluation and repository map
 

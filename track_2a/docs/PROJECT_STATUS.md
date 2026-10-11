@@ -2,10 +2,13 @@
 
 The specified-booklet application has one genuine local Apertus v1.5 8B MLX
 result with a verified citation and token counts. Repository packaging now
-follows `track_2a/`. **Submission readiness is still incomplete:** the model
-server is externally provisioned, and clean-checkout Docker execution and
-cross-platform validation remain pending. No model experiments were run during
-cleanup.
+follows `track_2a/`. **Submission readiness is still incomplete:** Compose now manages the official model
+server, but clean-checkout Docker inference and cross-platform validation remain
+pending. The deployment repair is PARTIAL. Managed mode needs compatible NVIDIA hardware;
+external mode now runs the application without a local GPU service. A cached-only
+paired runner and loader/tokenisation wrapper are implemented and tested offline.
+Their real native and Docker runs remain pending. No model experiments were run
+during this repair. See [runner handoff](RUNNER_REPAIR_20261011.md).
 
 ## Requirements and evidence
 
@@ -15,7 +18,9 @@ checked on 11 October 2026. They require keeping `track_2a/`, Docker through
 `make run`, standard LLM environment variables and at most 100 MB of submitted
 data. They mandate the Apertus family; the stricter v1.5 8B acceptance target,
 six-page report limit and 16 October 12:00 CEST deadline are from the project
-brief. Challenge-specific rules and the current portal still need confirmation.
+brief. The current template and Devpost rules were rechecked: submission goes through
+the event website, and Devpost confirms the deadline. The online-hack page had
+no readable text; challenge-specific rules and portal details remain unconfirmed.
 
 | Requirement | Status | Evidence / limitation |
 |---|---|---|
@@ -26,7 +31,7 @@ brief. Challenge-specific rules and the current portal still need confirmation.
 | All nine DE/FR/IT combinations | Passed for interface/retrieval only | n=9 extraction/retrieval smoke; multilingual NLI quality unverified |
 | `make run` launches Docker from project root | Passed statically; runtime unverified | Make dry-run and Compose configuration pass; no new container run |
 | Clean checkout without preinstalled application dependencies | Unverified | Dockerfile installs application dependencies; fresh image not built in cleanup |
-| Self-contained model startup | Failed / not implemented | Compose consumes an already provisioned endpoint; no model-serving service |
+| Self-contained model startup | Implemented; runtime unverified | Optional managed vLLM overlay, GPU reservation, readiness dependency and stop-on-exit lifecycle |
 | `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed statically / offline | Compose forwarding and endpoint contract checks; no real submission endpoint run |
 | Windows, macOS and Linux submission execution | Unverified | Submission recipe avoids POSIX assignments; Windows needs GNU Make; no OS runtime matrix |
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
@@ -36,12 +41,17 @@ brief. Challenge-specific rules and the current portal still need confirmation.
 
 ## Submission configuration
 
-`make run` → `compose.submission.yaml` → `src/booklet_app.py`.
+`make run` → base `compose.submission.yaml` + `compose.managed.yaml` →
+`src/booklet_app.py`. `make run SUBMISSION_MODE=external` uses only the base file
+and requires a provisioned official endpoint, with no local GPU dependency.
 Target model: `swiss-ai/Apertus-v1.5-8B`; temperature 0; seed 20261011;
 512 output tokens; context default 32,768, which must match the server.
-Set endpoint credentials in `track_2a/.env`; edit `data/request.json`.
-The Docker path retains required `/tokenize` preflight. Native MLX optional
-preflight is a separate development path; see [RUNNING.md](RUNNING.md).
+Set gated-model `HF_TOKEN` in `track_2a/.env`; edit `data/request.json`.
+The default endpoint is the managed Compose service `http://apertus:8000`.
+Requires a compatible NVIDIA GPU/runtime, sufficient VRAM and large initial
+image/weight downloads; no quantised substitution is configured.
+The Docker path retains required `/tokenize` preflight. The new native MLX experiment wrapper also supplies exact token preflight;
+optional preflight belongs to the older n=1 smoke only. See [RUNNING.md](RUNNING.md).
 
 | Configuration | Meaning | Evaluation state |
 |---|---|---|
@@ -80,21 +90,21 @@ preflight is a separate development path; see [RUNNING.md](RUNNING.md).
 
 ## Remaining work
 
-**P0 — execution:** resolve judge-side model provisioning and self-contained
-startup; verify one clean-checkout Docker run with the accepted v1.5 model,
-label, citation and token counts. A provisioned endpoint is not evidence that
-this requirement is met. Confirm hardware, access and challenge-specific rules.
+**P0 — execution (PARTIAL):** managed model startup is implemented. Verify one
+clean-checkout `make run` on a compatible NVIDIA Docker host with authorised
+model access; record the v1.5 label, citation, token counts and service shutdown.
+No real Docker inference or portability claim follows from static validation.
+Confirm judge hardware/access; see [RUNNING.md](RUNNING.md) for dependencies.
 
 **P1 — submission evidence and deliverables:** validate Windows and Linux;
 review code/data licensing, supply team and demo metadata, then complete the
-report and requested PDF within the confirmed limit. After cleanup review,
-authorise the saved paired development experiment (18 calls) on one frozen
-serving configuration. Design a content-grouped independent final split.
+report and requested PDF within the confirmed limit. Run the saved paired development experiment (18 planned calls) manually using
+[EXPERIMENTS.md](EXPERIMENTS.md) on one frozen serving configuration. Design a content-grouped independent final split.
 No paired experiment or PDF was produced in this task.
 
-**P2 — reproducibility and research limitations:** pin encoder, model and image
-revisions; resolve the recorded MLX tokenizer warning and fresh-native dependency
-conflict; assess OCR/layout gaps and historical diagnostic/cache issues.
+**P2 — reproducibility and research limitations:** the new native runner pins encoder/model revisions; production image and encoder
+pinning remain open. Resolve the recorded MLX tokenizer warning and fresh-native
+dependency conflict; assess OCR/layout gaps and historical diagnostic/cache issues.
 Retain uncertain scratch files until their evidence value is settled.
 
 ## Cleanup verification
@@ -103,3 +113,40 @@ See [cleanup record](CLEANUP_20261011.md) for exact moves, unchanged-code hashes
 Compose checks, regression output, Git inventory and final status. Static checks
 do not establish runtime portability or scientific validity. Historical evidence
 files retain original paths and dates; the migration does not rewrite measurements.
+
+## P0 deployment repair verification — 11 October 2026
+
+- Before repair, `docker compose -f track_2a/compose.submission.yaml config --quiet`
+  failed because `LLM_BASE_URL` was required and no model service existed.
+- After repair, the same configuration check passed. Rendered Compose checks
+  passed for defaults and an overridden context/API key/arm64 configuration:
+  model and context agree between services, credentials are forwarded,
+  readiness gates the application, GPU reservation is present, token preflight
+  is required and no model port is published. These are static checks only.
+- `make -n run` resolved the repository-root wrapper to the managed Compose
+  `up --build --abort-on-container-exit --exit-code-from app app` command.
+- One real `make run` attempt failed before any container or download: Docker
+  could not connect to `/Users/liyitian/.colima/default/docker.sock` (absent).
+  Colima status confirmed it was stopped; the host is Apple Silicon arm64,
+  without the NVIDIA device required by this deployment. No end-to-end result.
+- `make test` ran once: all judge/label checks and Python compilation passed;
+  **69 unittest regressions passed** (0.037 s). `git diff --check` passed.
+- No model/application source, prompts, retrieval or evaluation logic changed.
+  No large weights or images downloaded, no benchmarks, no server started,
+  no commit or push. The published image tag remains mutable and untested here.
+
+**Outcome: PARTIAL.** The smallest next action is one clean-checkout `make run`
+on an existing compatible NVIDIA Docker host, with approved Hugging Face access
+and the official weights available or an authorised initial download. Verify
+the label, citation, token counts and service shutdown before declaring PASS.
+
+## Runner repair verification — 11 October 2026
+
+The new three-mode runner passed 24 focused offline tests. The single final
+`make test` passed 53 judge/label checks, source compilation and 92 unittest
+regressions. Actual preflight passed for the frozen nine-row matrix (18 planned
+calls; up to 36 with one retry), including cached inputs and both static
+Compose configurations. No inference, image build or deployment smoke ran.
+Docker is stopped; ports 8000/8080 have no listener. The new MLX wrapper's real
+startup, paired measurements and official Docker execution remain unverified.
+See [repair handoff](RUNNER_REPAIR_20261011.md) and [commands](EXPERIMENTS.md).

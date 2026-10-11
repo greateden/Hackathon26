@@ -31,10 +31,13 @@ def load_tokenizer_compat(model_name: str):
     except TypeError:
         pass
 
+    local_tokenizer = Path(model_name) / "tokenizer.json"
     cache = Path.home() / ".cache/huggingface/hub"
     slug = "models--" + model_name.replace("/", "--")
     matches = sorted(glob.glob(str(cache / slug / "snapshots" / "*" / "tokenizer.json")))
-    if not matches:
+    if local_tokenizer.is_file():
+        tok_file = local_tokenizer
+    elif not matches:
         try:
             from huggingface_hub import hf_hub_download
             tok_file = Path(hf_hub_download(repo_id=model_name, filename="tokenizer.json"))

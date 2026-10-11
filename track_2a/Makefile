@@ -1,6 +1,6 @@
 # Makefile - HackApertus Track 2A (Swiss voting-booklet NLI)
-# Judges: `make run` runs the pipeline in Docker (portable; needs Docker
-# and a configured v1.5 endpoint, no Python setup). Historical native paths + the
+# Judges: `make run` starts the application and v1.5 server in Docker (needs
+# an NVIDIA GPU runtime and gated model access, no Python setup). Historical native paths + the
 # .venv give the Apertus MLX backend (see README.md and AGENTS.md
 # "Docker runtime" for the model-endpoint setup and corpus downloads).
 
@@ -14,7 +14,7 @@ MLX_SERVER_PORT ?= 8080
 .PHONY: help run smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
 
 help:
-	@echo "run                    - Specified-booklet Docker application (configure LLM_BASE_URL; see docs/RUNNING.md)"
+	@echo "run                    - Docker v1.5 application (managed GPU default; SUBMISSION_MODE=external for an endpoint)"
 	@echo "smoke                  - Docker pipeline, lexical baseline only (no model server)"
 	@echo "serve-apertus          - serve the Apertus MLX checkpoint natively (host GPU; separate terminal)"
 	@echo "run-native             - same, natively with python3 (needed for the MLX backend)"
@@ -43,8 +43,17 @@ serve-apertus:
 	@echo "Serving $(MLX_MODEL) on $(MLX_SERVER_HOST):$(MLX_SERVER_PORT) (host GPU, MLX). Leave running; Ctrl-C stops. Historical client: make eval-apertus-docker."
 	"$(VENV_DIR)/bin/mlx_lm.server" --model $(MLX_MODEL) --host $(MLX_SERVER_HOST) --port $(MLX_SERVER_PORT)
 
+SUBMISSION_MODE ?= managed
+ifeq ($(SUBMISSION_MODE),managed)
+SUBMISSION_FILES = -f compose.submission.yaml -f compose.managed.yaml
+else ifeq ($(SUBMISSION_MODE),external)
+SUBMISSION_FILES = -f compose.submission.yaml
+else
+$(error SUBMISSION_MODE must be managed or external)
+endif
+
 run:
-	docker compose -f compose.submission.yaml run --build --rm app
+	docker compose $(SUBMISSION_FILES) up --build --abort-on-container-exit --exit-code-from app app
 
 smoke:
 	docker compose run --rm app python3 main.py
@@ -123,4 +132,3 @@ eval-e2e-quick:
 
 eval-e2e-full:
 	cd src && python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage --dump-failures 10
-

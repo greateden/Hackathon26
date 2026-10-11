@@ -17,7 +17,10 @@ v1.1 model runs concern a different evidence protocol and remain historical.
 
 ## 2. Architecture
 
-`make run` builds and launches the CPU application in Docker. The JSON request
+`make run` builds the CPU application and starts the official model service in
+Docker. `SUBMISSION_MODE=external` instead uses a provisioned official endpoint
+without starting a local GPU service. Both deployments remain runtime-unverified.
+The JSON request
 identifies a PDF and declares booklet and claim languages independently.
 Poppler extracts text with physical page boundaries. Baseline A sends all
 extracted pages. Approach B divides those pages into contiguous chunks and
@@ -39,7 +42,8 @@ Unverified citations remain explicit rather than being fabricated.
 Submission target: `swiss-ai/Apertus-v1.5-8B`, inference only, no fine-tuning.
 The endpoint must advertise the configured `LLM_NAME`; that check alone
 cannot attest the server's underlying weights. Temperature is zero, seed is
-20261011, output allowance is 512 tokens, and thinking mode is not requested.
+20261011, output allowance is 512 tokens, and the current client explicitly
+disables thinking in both tokenisation and generation requests.
 The same settings apply to both arms. Server-side deterministic decoding and
 model revision still require verification on the actual endpoint.
 
@@ -82,11 +86,19 @@ work only. A grouped split still needs to be designed before final evaluation.
 
 ## 5. Evaluation and observed results
 
-The paired runner records accuracy, macro-F1, errors, prompt tokens, inference
-latency, citation validity and reference shingle coverage. The latter is a
+The new `experiment_runner.py` provides offline preflight, resumable native
+runs and a separately requested real Docker smoke. It records accuracy,
+macro-F1, per-class results, errors, token coverage, runtime, citation validity
+and reference shingle coverage. The latter is a
 40-character lexical coverage proxy; it cannot establish semantic evidence
 correctness. Arms use identical examples and alternate order. Context failures
-count as failed predictions and remain visible in the denominators.
+count as failed predictions and remain visible in the attempted-row denominators.
+Missing rows remain explicit; a second comparison uses only successful pairs.
+Append-only attempt logs retain earlier failures and raw replies. Exact messages,
+PDF/text hashes, source hashes and server sessions make resumption auditable.
+The cached-only MLX wrapper records the actual loaded class/revision and uses
+its own tokenizer for preflight; its first real launch is still pending.
+The old non-resumable paired CLI was removed; its plan and coverage helpers remain.
 
 | Configuration | Model / evidence / split / sample | Observed result | Provenance |
 |---|---|---|---|
@@ -110,9 +122,8 @@ prediction flip is claimed for this iteration.
 ## 6. Limitations
 
 Genuine local v1.5 MLX inference is recorded, but clean-checkout submission
-Docker execution and Windows/Linux validation remain pending. Local NVIDIA
-server startup is not orchestrated; the runtime requires a provisioned endpoint,
-so self-contained execution is not satisfied. The MLX tokenizer emitted a regex
+Docker execution and Windows/Linux validation remain pending. Managed NVIDIA server startup is configured but untested. External-endpoint
+mode has no NVIDIA dependency. Neither mode has new real Docker evidence. The MLX tokenizer emitted a regex
 warning in the original logs; its impact is unresolved and no tokenizer change
 was made during cleanup. Nine retrieval examples are a plumbing check, not a quality benchmark.
 Text extraction omits image-only content and may lose layout semantics. Retrieval
@@ -149,9 +160,10 @@ corpora and model caches must remain outside the submission bundle.
 
 ## 8. Next steps
 
-First resolve model provisioning and validate a clean-checkout Docker run
-with pinned model/image revisions and context limit. Once authorised, run the
-saved nine-item paired development experiment on the same serving configuration.
+Run the offline preflight, then manually start the cached development server and
+execute the saved nine-item paired experiment using [EXPERIMENTS.md](docs/EXPERIMENTS.md).
+Separately validate a clean-checkout Docker run with a provisioned official
+model, pinned image revision and matching context limit.
 This will establish whether full-document coverage improves classification
 and quantify its token/latency cost before any larger evaluation.
 
@@ -165,8 +177,11 @@ Repository code and source-data licensing require final review.
 [Official project template](https://github.com/HackApertus/project-template),
 [OST challenge](https://hackapertus.notion.site/track-2a-ost),
 [submission portal](https://hackapertus.ch/online-hack/submissions).
-The template was accessible on 11 October; the other two pages returned access
-errors. The v1.5 requirement and six-page limit are retained from the task
+The template and [Devpost rules](https://hackapertus.devpost.com/rules) were
+accessible on 11 October. Devpost confirms the 16 October, 12:00 CEST deadline;
+the template directs submissions to the event website, not Devpost. The
+online-hack page yielded no readable text, and the challenge/portal pages
+remained inaccessible through the verification tool. The v1.5 requirement and six-page limit are retained from the task
 brief, not claimed independently reverified. The layout was checked against
 template revision `09f8e9e2b588db3325869b23c6d5132f5c3756f7`. Historical
 measurements and caveats are retained in [the archive](docs/archive/README.md).

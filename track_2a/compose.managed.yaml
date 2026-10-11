@@ -1,0 +1,45 @@
+# Optional managed NVIDIA server; external endpoints use the base file alone.
+services:
+  apertus:
+    # Official v1.5 loader; the application's Transformers pin cannot serve it.
+    image: ${APERTUS_IMAGE:-ghcr.io/swiss-ai/vllm_apertus_1.5_release:latest-amd64}
+    platform: ${APERTUS_PLATFORM:-linux/amd64}
+    entrypoint: ["vllm", "serve"]
+    command:
+      - ${LLM_NAME:-swiss-ai/Apertus-v1.5-8B}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --chat-template-content-format
+      - string
+      - --max-model-len
+      - ${LLM_CONTEXT_TOKENS:-32768}
+    environment:
+      HF_HOME: /root/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN:-}
+      VLLM_API_KEY: ${LLM_API_KEY:-}
+    volumes:
+      - apertus-cache:/root/.cache/huggingface
+    shm_size: 2gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).close()"]
+      interval: 10s
+      timeout: 10s
+      start_period: 20m
+      retries: 60
+    # Internal Compose networking only: no host port or separate server needed.
+  app:
+    depends_on:
+      apertus:
+        condition: service_healthy
+
+volumes:
+  apertus-cache:
