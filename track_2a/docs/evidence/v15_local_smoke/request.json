@@ -1,0 +1,8 @@
+{
+  "booklet": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+  "booklet_language": "de",
+  "claim": "Bundesrat und Parlament lehnen die Volksinitiative «Mehr bezahlbare Wohnungen» ab.",
+  "claim_language": "de",
+  "evidence": "retrieved",
+  "top_k": 5
+}

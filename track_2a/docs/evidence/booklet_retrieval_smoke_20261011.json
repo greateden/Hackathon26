@@ -1,0 +1,524 @@
+{
+  "kind": "real-PDF-real-SwissBERT-no-NLI-inference",
+  "n": 9,
+  "model": "jgrosjean-mathesis/sentence-swissbert",
+  "encoder_revision": null,
+  "nli_model": null,
+  "split": "historical-dev-deduplicated",
+  "dataset_sha256": "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd",
+  "items": [
+    {
+      "row_index": 1095,
+      "pair": "de->it",
+      "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+      "pages_with_text": 31,
+      "full_text_chars": 42131,
+      "full_reference_shingle_coverage": 0.781657712970069,
+      "retrieved_reference_shingle_coverage": 0.1738296239447429,
+      "elapsed_extraction_and_retrieval_s": 4.067856749985367,
+      "passages": [
+        {
+          "id": "p17-c2",
+          "page": 17,
+          "text": "ni, entro tale termine il Consiglio federale emana provvisoriamente le\ndisposizioni d’esecuzione in via d’ordinanza.\nArt. 2\nL’Assemblea\nfederale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa.\nArt. 2\nL’Assemblea federale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa.\n\n4\n4\n\nIl numero definitivo della presente disposizione transitoria sarà stabilito dalla Cancelleria\nfederale dopo la votazione popolare.\nIl numero definitivo della presente disposizione transitoria sarà stabilito dalla Cancelleria\nfederale dopo la votazione popolare.\n\n3\n3",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/aSmZ7rOvZDrG/2020-02-09_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+          "score": 0.8336672782897949
+        },
+        {
+          "id": "p13-c2",
+          "page": 13,
+          "text": "niziativa pone fine a\nquesta situazione.\n\nRaccomandazione\ndel comitato\nd’iniziativa\n\nPer tutte queste ragioni, il comitato d’iniziativa racco ­\nmanda di votare:\n\nSì",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/aSmZ7rOvZDrG/2020-02-09_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+          "score": 0.766703724861145
+        },
+        {
+          "id": "p32-c1",
+          "page": 32,
+          "text": "Consiglio federale e Parlamento vi raccomandano\ndi votare come segue il 9 febbraio 2020:\n\nNo\n\nIniziativa popolare\n«Più abitazioni a prezzi accessibili»\n\nSì\n\nModifica del Codice penale e Codice penale\nmilitare (Discriminazione e incitamento\nall’odio basati sull’orientamento sessuale)\n\nSpiegazioni del Consiglio federale\nEdite dalla Cancelleria federale\nChiusura redazionale: 30 ottobre 2019\n\nVoteInfo\nL’applicazione\nsulle votazioni",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/aSmZ7rOvZDrG/2020-02-09_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+          "score": 0.7585310935974121
+        },
+        {
+          "id": "p16-c1",
+          "page": 16,
+          "text": "Primo oggetto: «Più abitazioni a prezzi accessibili»\n\n16\n\n§\n\nTesto\nTesto in votazione\nTesto in\nin votazione\nvotazione\n\nDecreto\nDecreto federale\nfederale\nconcernente\npopolare\n«Più\na\naccessibili»\nDecreto federale\nconcernente\nl’iniziativa\npopolare\nconcernente l’iniziativa\nl’iniziativa\npopolare\n«Più abitazioni\nabitazioni\na prezzi\nprezzi\naccessibili»\n«Più abitazioni a prezzi accessibili»\ndel 22 marzo 2019\ndel 22 marzo 2019\ndel 22 marzo 2019\n\nL’Assemblea federale della Confederazione Svizzera,\nL’Assemblea federale della Confederazione Svizzera,\nvisto l’articolo 139 capoverso 5 della Costituzione federale11;\nvisto l’articolo 139 capoverso 5 della Costituzione federale ;\nesaminata l’iniziativa popolare «Più abitazioni a prezzi accessibili»,\nesaminata l’iniziativa popolare\n«Più abitazioni a prezzi accessibili»,\ndepositata il 18 ottobre 201622;\ndepositata il 18 ottobre 2016 ;\nvisto il messaggio de",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/aSmZ7rOvZDrG/2020-02-09_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+          "score": 0.7430713772773743
+        },
+        {
+          "id": "p3-c1",
+          "page": 3,
+          "text": "3\n\nPrimo oggetto\n\nIniziativa popolare «Più abitazioni a prezzi accessibili»\n4 –5\n8\n12\n16\n\nIn breve\nIn dettaglio\nGli argomenti\nIl testo in votazione\n\nSecondo oggetto\n\nDivieto della discriminazione basata\nsull’orientamento sessuale\nIn breve\nIn dettaglio\nGli argomenti\nIl testo in votazione\n\nI video della\nvotazione:\n\n6 –7\n18\n22\n26\n\nL’applicazione\nsulle votazioni:\nVoteInfo",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/aSmZ7rOvZDrG/2020-02-09_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "480dd90b98de6d9f680a98d0cc165715b939e539e5e31da3dbe34846a610ad6d",
+          "score": 0.7399642467498779
+        }
+      ]
+    },
+    {
+      "row_index": 192,
+      "pair": "fr->de",
+      "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+      "pages_with_text": 144,
+      "full_text_chars": 252095,
+      "full_reference_shingle_coverage": 0.944464609800363,
+      "retrieved_reference_shingle_coverage": 0.007985480943738656,
+      "elapsed_extraction_and_retrieval_s": 2.233770499995444,
+      "passages": [
+        {
+          "id": "p144-c1",
+          "page": 144,
+          "text": "Bundesrat und Parlament empfehlen,\nam 13. Juni 2021 wie folgt zu stimmen:\n\nNein\n\nVolksinitiative für sauberes Trinkwasser\nund gesunde Nahrung\n\nNein\n\nVolksinitiative «Für eine Schweiz\nohne synthetische Pestizide»\n\nJa\n\nCovid-19-Gesetz\n\nJa\n\nCO2 -Gesetz\n\nJa\n\nBundesgesetz über polizeiliche Massnahmen\nzur Bekämpfung von Terrorismus (PMT)\n\nErläuterungen des Bundesrates\nHerausgegeben von der Bundeskanzlei\nRedaktionsschluss: 5. März 2021\n\nVoteInfo\nDie App zu\nden Abstimmungen",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+          "score": 0.7851060628890991
+        },
+        {
+          "id": "p38-c2",
+          "page": 38,
+          "text": "ngeführten Massnahmen länger gelten, muss der Bundesrat innerhalb dieser\nFrist dem Parlament einen Gesetzesentwurf vorlegen. Dies hat\ner im aktuellen Fall mit dem Covid-19-Gesetz getan. Das Parlament hat das Gesetz im September 2020 angenommen und für\ndringlich erklärt. Damit trat es sofort in Kraft. Das Gesetz ist\nbefristet; praktisch alle Regelungen gelten bis Ende 2021.\n\n1\n\nArtikel 185 der Bundesverfassung\n\nArgumente Referendumskomitee\nArgumente Bundesrat und Parlament\nAbstimmungstext\n\n42\n44\n46",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+          "score": 0.7739112973213196
+        },
+        {
+          "id": "p9-c2",
+          "page": 9,
+          "text": "fen.\ncovidgesetz-nein.ch\n\nAbstimmung\nim Nationalrat\n\nAbstimmung\nim Ständerat\n\n153 Ja\n36 Nein\n6 Enthaltungen\n44 Ja\n0 Nein\n0 Enthaltungen",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+          "score": 0.7652593851089478
+        },
+        {
+          "id": "p43-c2",
+          "page": 43,
+          "text": "hmen auch auf ordentlichem parlamentarischem Weg\nhelfen. Er braucht das Gesetz nicht. Er soll dem Souverän\ndienen, nicht ihm befehlen. Das gilt besonders für kommende\nKrisen: Arbeitslosigkeit, Konkurse, Überschuldung und vielleicht Schlimmeres.\nMan kann also getrost ein Nein in die Urne werfen und\nzeigen, wer in der Eidgenossenschaft das Sagen hat. Der\nSouverän!\n\nEmpfehlung des\nReferendumskomitees\n\nDarum empfehlt das Referendumskomitee:\n\nNein\ncovidgesetz-nein.ch\n\nDer Text auf dieser Doppelseite stammt vom Referendumskomitee.\nEs ist für den Inhalt und die Wortwahl verantwortlich. Redaktionsschluss\nText des Referendumskomitees: 8. Februar 2021",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+          "score": 0.763427734375
+        },
+        {
+          "id": "p28-c1",
+          "page": 28,
+          "text": "28\n\nIm Detail\n\nZweite Vorlage: Pestizidverbot\n\nVolksinitiative\n«Für eine Schweiz ohne\nsynthetische Pestizide»\n\nÜbersicht Volksinitiativen\nArgumente Initiativkomitee\nArgumente Bundesrat und Parlament\nAbstimmungstext\n\n14\n32\n34\n36",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/UxUxfYD5ma0h/2021-06-13_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "521e39af06717d2adeb2f787a08b533164921a952c59b7ad3e5b114fcadec744",
+          "score": 0.7521266937255859
+        }
+      ]
+    },
+    {
+      "row_index": 979,
+      "pair": "it->fr",
+      "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+      "pages_with_text": 40,
+      "full_text_chars": 78245,
+      "full_reference_shingle_coverage": 0.9490865852340288,
+      "retrieved_reference_shingle_coverage": 0.15490217273808238,
+      "elapsed_extraction_and_retrieval_s": 1.1200691670237575,
+      "passages": [
+        {
+          "id": "p26-c2",
+          "page": 26,
+          "text": "Les travailleurs de plus de 50 ans et la classe moyenne seraient particulièrement touchés. Mais les jeunes risquent eux aussi de voir leurs\nrentes baisser. En outre, le problème de la compensation du\nrenchérissement, qui touche particulièrement les retraités,\nreste sans solution.\n\n… malgré des\ncotisations en\nforte hausse\n\nL’arnaque que constitue la réforme de la LPP entraînerait\nune hausse des cotisations salariales obligatoires : les actifs\nverseraient chaque année 2,1 milliards de francs en plus aux\ncaisses de pension. Les coûts par travailleur augmenteraient\njusqu’à 2400 francs par an. Les personnes ayant un bas revenu\nseraient particulièrement touchées, alors que ce sont précisément elles qui souffrent le plus de l’augmentation du coût de\nla vie.\n\nUn travail bâclé\nsans rapport avec\nla réalité\n\nLa réforme ne prend pas en compte le fait que les caisses\nde pension accumulent toujours pl",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+          "score": 0.704167366027832
+        },
+        {
+          "id": "p26-c1",
+          "page": 26,
+          "text": "26\n\nDeuxième objet : réforme de la prévoyance professionnelle\n\nArguments\n\nComité référendaire\nLes rentes des caisses de pension diminuent depuis des années et sont trop basses pour de nombreux travailleurs. Avec\nla réforme de la LPP, les assurés risquent de subir une baisse\nsupplémentaire de leur rente pouvant atteindre 3200 francs\npar an. En même temps, ils devraient verser chaque année\n2,1 milliards de francs en plus aux caisses de pension. Bref :\nles assurés payeraient plus pour une rente moins élevée.\nPar contre, l’industrie financière en sortirait gagnante : elle\ncontinuerait d’engranger des milliards sur le dos des assurés.\n\nEncore moins de\nrente …\n\nLes rentes des caisses de pension baissent depuis des\nannées. Pour le même capital, la rente versée n’arrête pas de\nse réduire. Et le pire est à venir. Avec l’arnaque qui se dessine,\nles rentes diminueraient jusqu’à 3200 francs par an. ",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+          "score": 0.6786727905273438
+        },
+        {
+          "id": "p26-c3",
+          "page": 26,
+          "text": "us de réserves excessives aux\ndépens des assurés, ce qui cause une baisse des rentes. Le\nproblème des frais de gestion croissants, qui prive les assurés\nd’une partie de leur argent, n’est pas résolu non plus. La réforme\nengendre au contraire davantage de bureaucratie et des\ndécisions arbitraires concernant les rentes. Même les caisses\nde pension se plaignent de ces problèmes.",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+          "score": 0.6619162559509277
+        },
+        {
+          "id": "p7-c2",
+          "page": 7,
+          "text": "ercevront moins de rente. Par contre, l’industrie\nfinancière engrangera des milliards sur le dos des assurés.\nbaisse-des-rentes.ch\n\nVote du Conseil\nnational\n\nVote du Conseil\ndes États\n\n113 oui\n69 non\n15 abstentions\n29 oui\n8 non\n5 abstentions",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+          "score": 0.6579629182815552
+        },
+        {
+          "id": "p25-c2",
+          "page": 25,
+          "text": "t pourquoi la réforme prévoit de réduire l’écart\nentre les cotisations salariales des travailleurs âgés et celles des\nplus jeunes. Les cotisations en pourcentage du salaire seront\nlégèrement augmentées pour le groupe d’âge des 25-34 ans et\nlégèrement diminuées pour les autres groupes d’âge.\n\nQue se passera-t-il\nen cas de non ?\n\nSans baisse du taux de conversion, les caisses de pension\nqui n’offrent que les prestations minimales continueront d’utiliser les rendements sur les avoirs de vieillesse des actifs pour\npayer les rentes des retraités. Les futures rentes des actifs\ncontinueront d’être inférieures à ce qu’elles pourraient être\nsans financement croisé. En cas de non, les caisses de pension\nen question seront toujours exposées à un risque accru de\ndéficit de financement. Si nécessaire, celui-ci devra être comblé\npar une augmentation des cotisations versées par les travailleurs et leur",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578",
+          "score": 0.6425999402999878
+        }
+      ]
+    },
+    {
+      "row_index": 1328,
+      "pair": "it->de",
+      "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+      "pages_with_text": 55,
+      "full_text_chars": 76140,
+      "full_reference_shingle_coverage": 0.9397076735688186,
+      "retrieved_reference_shingle_coverage": 0.5496345919610232,
+      "elapsed_extraction_and_retrieval_s": 0.861591666995082,
+      "passages": [
+        {
+          "id": "p47-c1",
+          "page": 47,
+          "text": "47\n\nBeschränkte\nZugeständnisse\n\nDie Bedingungen für den Import von Palmöl aus Indone sien sind so ausgestaltet, dass die Schweizer Palmölimporte\ninsgesamt nicht zunehmen sollten. 2 Deshalb sind auch keine\nnegativen Auswirkungen auf die heimische Produktion von\nRapsöl und anderen Ölen zu erwarten. Die Zölle werden nicht\naufgehoben, sondern nur gesenkt, und dies um rund 20 bis\n40 Prozent. Diese Zollrabatte werden pro Jahr für höchstens\n12 500 Tonnen3 gewährt. (Zur aktuellen Situation bezüglich\nindonesischer Exporte und Schweizer Importe von Palmöl, vgl.\nKasten).\n\nZertifiziert nachhaltiges Palmöl\n\nEin Importeur darf indonesisches Palmöl nur zu den tie feren Zöllen einführen, wenn es gemäss den vereinbarten\nAnforderungen an die Nachhaltigkeit produziert worden ist.\nDer Importeur muss einen entsprechenden Nachweis erbringen. Gleichzeitig mit dem Abkommen wird eine Verordnung in\nKraft treten, ",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/jezxrs8DLj5a/2021-03-07_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+          "score": 0.7998819351196289
+        },
+        {
+          "id": "p52-c2",
+          "page": 52,
+          "text": "egenüber ihren Konkurrenten in\nder EU. Ohne ein Abkommen zwischen der Schweiz und Indo nesien wäre etwa eine Schweizer Maschinenbauerin schlechter\ngestellt als ihre Konkurrentin im benachbarten Ausland. Im\nschlimmsten Fall führt das zum Verlust von Aufträgen und\nArbeitsplätzen.\n\nKeine Gefahr für\ndie Landwirtschaft\n\nDie meisten indonesischen Agrarprodukte – zum Beispiel\ntropische Früchte – ergänzen das hiesige Angebot und sind\nkeine Konkurrenz. Zudem sind die Zugeständnisse im Agrarbereich so ausgestaltet, dass sie die Schweizer Landwirtschaft\nnicht gefährden.\n\nKein Freihandel\nmit Palmöl\n\nMit der für Palmöl gefundenen Lösung kann auch die\nSchweiz gut leben, denn zu Freihandel kommt es nicht. Erstens\nwerden die Zölle nicht abgeschafft, sondern nur wenig\ngesenkt. Zweitens geschieht dies nur bis zu einer begrenzten\nMenge. Und drittens werden die Zollrabatte nur für nachweislich nachhaltig pr",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/jezxrs8DLj5a/2021-03-07_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+          "score": 0.7541143298149109
+        },
+        {
+          "id": "p53-c1",
+          "page": 53,
+          "text": "53\n\nWirksame\nKontrollen\n\nWirksame Kontrollen werden sicherstellen, dass Palmöl\nnur dann zum tieferen Zollansatz importiert werden kann,\nwenn es nachhaltig produziert worden ist – das heisst, unter\nEinhaltung der strengen Umwelt- und Sozialauflagen. Den\nNachweis dafür müssen die Importeure erbringen. Ohne diesen\nNachweis wird der Zollrabatt nicht gewährt.\n\nAusgewogenes\nAbkommen\n\nDas Abkommen nützt sowohl der Schweiz als auch\nIndonesien. Es verbessert den Marktzugang und verstärkt die\nRechts- und Planungssicherheit. Es trägt dem Ziel einer nachhaltigen Entwicklung Rechnung und leistet einen wichtigen\nBeitrag zu den globalen Bemühungen um eine nachhaltigere\nPalmölproduktion. Im Rahmen der Entwicklungszusammenarbeit unterstützt die Schweiz Indonesien überdies dabei, dass\nbreite Bevölkerungsschichten vom Abkommen profitieren\nkönnen.\n\nEmpfehlung\nvon Bundesrat\nund Parlament\n\nAus all diesen Grün",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/jezxrs8DLj5a/2021-03-07_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+          "score": 0.7523518800735474
+        },
+        {
+          "id": "p8-c2",
+          "page": 8,
+          "text": "kt in eine mindestens gleich gute Ausgangslage wie\nihre ausländische Konkurrenz. Im Gegenzug schafft die Schweiz\ndie Zölle für indonesische Industrieprodukte ab. Für Agrarprodukte hingegen baut sie die Zölle nur teilweise ab, dies\nzum Schutz der Schweizer Landwirtschaft. Indonesien und die\nSchweiz verpflichten sich zu einem Handel, der mit einer\nnachhaltigen Entwicklung im Einklang steht. Für den Import\nvon indonesischem Palmöl sieht das Abkommen für eine\nbeschränkte Menge gewisse Zollreduktionen vor. Wer Palmöl\nzu diesen Bedingungen importieren will, muss nachweisen,\ndass es unter Einhaltung der vereinbarten Umwelt- und\nSozialauflagen produziert wurde.\nVorlage im Detail\nArgumente\nAbstimmungstext\n\n44\n50\n54",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/jezxrs8DLj5a/2021-03-07_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+          "score": 0.7454073429107666
+        },
+        {
+          "id": "p52-c3",
+          "page": 52,
+          "text": "oduziertes Palmöl gewährt. Damit wird\numwelt- und sozialpolitischen Bedenken Rechnung getragen,\nund die heimische Produktion von Raps- und Sonnenblumenöl\nist nicht gefährdet.",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/jezxrs8DLj5a/2021-03-07_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "a4cc2b811cdd959cbb3353101c226cdbd2398cef17028349c241a833559dc6d2",
+          "score": 0.6868804097175598
+        }
+      ]
+    },
+    {
+      "row_index": 171,
+      "pair": "fr->fr",
+      "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+      "pages_with_text": 48,
+      "full_text_chars": 107443,
+      "full_reference_shingle_coverage": 0.8972523961661342,
+      "retrieved_reference_shingle_coverage": 0.26338658146964855,
+      "elapsed_extraction_and_retrieval_s": 1.2398470420157537,
+      "passages": [
+        {
+          "id": "p33-c2",
+          "page": 33,
+          "text": "age, la vaccination et le traçage\ndes contacts.\n\nQue se passera-t-il\nen cas de rejet\nde la loi ?\n\nLa votation de fin novembre 2021 ne porte que sur la\nmodification du 19 mars 2021 de la loi COVID-19. Les autres\ndispositions de la loi resteront en vigueur quelle que soit l’issue\ndu scrutin. Si ladite modification est rejetée, elle cessera de\nproduire effet un an après son adoption par le Parlement, soit le\n19 mars 20223 . Parmi les mesures concernées figurent l’augmentation du nombre d’indemnités journalières allouées aux\nchômeurs, l’extension des indemnités en cas de RHT et l’indemnisation des organisateurs de manifestations. Il ne sera en outre\nplus possible d’établir des certificats COVID – pas même pour les\nvoyages et les séjours à l’étranger –, ni de mettre en place des\nprogrammes d’encouragement concernant des biens médicaux\nimportants.\n\nMesures qui ne\ndépendent pas\nde la loi COVID-",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/TbPPMZBkuvPm/2021-11-28_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+          "score": 0.9187238216400146
+        },
+        {
+          "id": "p9-c1",
+          "page": 9,
+          "text": "9\n\nLa question qui\nvous est posée\n\nAcceptez-vous la modification du 19 mars 2021\nde la loi fédérale sur les bases légales des\nordonnances du Conseil fédéral visant à surmonter l’épidémie de COVID-19 (loi COVID-19)\n(cas de rigueur, assurance-chômage, accueil\nextra-familial pour enfants, acteurs culturels,\nmanifestations) ?\n\nOui\n\nRecommandation\ndu Conseil fédéral\net du Parlement\n\nLe Parlement a modifié la loi COVID-19 plusieurs fois pour\nmieux protéger les personnes et les entreprises. La modification de mars 2021 étend l’aide économique, qui est cruciale, et\ncomble des lacunes en matière de soutien. Le certificat COVID\nfacilite les voyages à l’étranger et permet la tenue de certaines\nmanifestations.\nadmin.ch/modification-loi-covid-19\n\nNon\n\nRecommandation\ndes comités\nréférendaires\n\nPour les comités, la révision de la loi de mars 2021 est\ninutile et excessive. Selon eux, les lois existantes",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/TbPPMZBkuvPm/2021-11-28_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+          "score": 0.8695113658905029
+        },
+        {
+          "id": "p8-c2",
+          "page": 8,
+          "text": "odifications\nde la loi adoptées par le Parlement en mars 2021.\n\nObjet soumis\nau vote\n\nEn mars 2021, le Parlement a modifié la loi afin d’étendre\nles aides financières aux personnes n’ayant pu être soutenues\njusque-là ou pas suffisamment. Le traçage des contacts, qui\npermet de briser les chaînes de contamination, a été amélioré,\net il a été décidé que la Confédération encouragerait le dépistage du COVID-19 et pourrait prendre en charge les coûts\nafférents. Le Parlement a en outre édicté la base légale nécessaire à l’instauration du certificat COVID qu’il a voulu créer\npour les personnes vaccinées, guéries ou testées négatives, afin\nde faciliter les voyages à l’étranger et de permettre la tenue\nde certaines manifestations.\n\nL’objet en détail\nArguments\nTexte soumis au vote\n\nAbstimmungsbroschuere_28-11-2021_fr.indd 8\n\n30\n34\n38\n\n13.09.2021 15:53:01",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/TbPPMZBkuvPm/2021-11-28_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+          "score": 0.8373770713806152
+        },
+        {
+          "id": "p33-c3",
+          "page": 33,
+          "text": "19\n\nPour lutter contre la pandémie, le Conseil fédéral se\nfonde en premier lieu sur la loi sur les épidémies. Celle-ci\npermet par exemple de rendre le port du masque obligatoire\ndans les transports publics, de fermer certains établissements\nou d’interdire des manifestations. Ces mesures pourront\ncontinuer à s’appliquer ou être réintroduites même si la modification de la loi COVID-19 est rejetée.\n3\n\nAbstimmungsbroschuere_28-11-2021_fr.indd 33\n\nArt. 165 de la Constitution\n\n13.09.2021 15:53:02",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/TbPPMZBkuvPm/2021-11-28_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+          "score": 0.8359808921813965
+        },
+        {
+          "id": "p31-c1",
+          "page": 31,
+          "text": "31\n\nAides financières\nsupplémentaires\n\nAu fil de la pandémie, les besoins en aides financières se\nsont accrus, et les différentes modifications de la loi COVID-19\nen ont tenu compte. Concrètement, le peuple est appelé à\nvoter sur les mesures de soutien financier suivantes :\n–\nextension de l’aide pour les cas de rigueur à d’autres\nentreprises ayant dû fermer temporairement ou ayant\nsubi un important recul de leur chiffre d’affaires en raison\nde la pandémie ;\n–\nextension des allocations pour perte de gain allouées aux\npersonnes exerçant une activité lucrative indépendante ;\ncelles-ci auront droit à une allocation pour perte de gain\nsi leur chiffre d’affaires a reculé de 30 % (contre 40 %\nauparavant) ;\n–\nextension des indemnités en cas de réduction de l’horaire\nde travail (RHT), afin d’éviter des licenciements et de\nsauver des emplois ;\n–\naugmentation du nombre d’indemnités journalières\nall",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/TbPPMZBkuvPm/2021-11-28_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "340fecfcdcdf292824addf73002c60e91a86744648355665035a5356a38d2225",
+          "score": 0.8297351598739624
+        }
+      ]
+    },
+    {
+      "row_index": 533,
+      "pair": "de->fr",
+      "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+      "pages_with_text": 72,
+      "full_text_chars": 119340,
+      "full_reference_shingle_coverage": 0.9393004115226338,
+      "retrieved_reference_shingle_coverage": 0.005798728020950243,
+      "elapsed_extraction_and_retrieval_s": 2.0831445420044474,
+      "passages": [
+        {
+          "id": "p19-c1",
+          "page": 19,
+          "text": "19\n\npement vont également augmenter. Le trafic routier est le\nprincipal émetteur de CO2 en Suisse. À elle seule, la construction\nd’autoroutes entraîne des émissions de CO2 très élevées en\nraison des grandes quantités de béton et d’acier nécessaires.\nOpposition des\npersonnes\ntouchées\n\nLa population locale et parfois même les autorités communales rejettent les projets d’extension. De nombreuses\ncommunes directement concernées s’y opposent, conscientes\ndu trafic supplémentaire qui déferlera sur leurs villages.\n\nPrivilégier des\nsolutions durables\n\nLe Conseil fédéral et le Parlement ont perdu toute mesure. Ce sont les transports publics et le vélo qu’il faut encourager et développer pour préserver l’environnement et réduire\nle trafic routier.\n\nRecommandation\ndu comité\nréférendaire\n\nLe comité référendaire vous recommande donc de voter :\n\nNon\nextension-autoroutes-non.ch\n\nLe comité référendaire ",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+          "score": 0.6827594041824341
+        },
+        {
+          "id": "p18-c2",
+          "page": 18,
+          "text": "le\ntrafic. Compte tenu de la crise climatique, une telle politique\nn’est pas défendable.\n\nPerte d’espaces\nverts et de terres\nagricoles\n\nCes projets autoroutiers entraîneront une perte de plus\nde 400 000 m2 d’espaces verts et de terres agricoles, dont de\ngrandes parties sont aujourd’hui de précieuses forêts et surfaces\nd’assolement. Ce gaspillage de terres sera encore plus important pendant les travaux. Par ailleurs, qui dit augmentation\ndes capacités autoroutières dit encouragement du mitage du\nterritoire. Le bétonnage de la Suisse va donc continuer\nde plus belle.\n\nAugmentation\ndu trafic, du bruit\net des gaz\nd’échappement\n\nL’extension des autoroutes ne désengorge celles-ci qu’à\ncourt terme. Elle provoque à moyen terme une augmentation\ndu trafic, et donc de nouveaux embouteillages après quelques\nannées. Plus de trafic rime également avec plus de bruit.\nAujourd’hui déjà, près d’un million ",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+          "score": 0.6417657136917114
+        },
+        {
+          "id": "p18-c1",
+          "page": 18,
+          "text": "18\n\nPremier objet : aménagement des routes nationales\n\nArguments\n\nComité référendaire\nL’extension prévue des autoroutes est démesurée, en décalage\navec notre époque et excessivement coûteuse. Elle ne résoudra pas les problèmes : l’expérience et les études menées\nmontrent qu’une telle mesure engendre plus de trafic, d’embouteillages, de pollution atmosphérique, de bruit et d’émissions de CO2. Il nous faut une planification des transports\nréfléchie et durable. C’est pourquoi une alliance d’environ\n50 organisations soutient le référendum contre l’extension\ndes autoroutes.\n\nDépenses\nexcessives\n\nL’extension des autoroutes coûtera environ 5 milliards de\nfrancs, auxquels viendront s’ajouter des centaines de millions\npour les travaux d’entretien et de maintenance. Plus de la\nmoitié de cet argent servira à l’extension des autoroutes dans\nles cantons de Genève et de Bâle-Ville, ce qui encouragera ",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+          "score": 0.6415032148361206
+        },
+        {
+          "id": "p18-c3",
+          "page": 18,
+          "text": "de personnes en Suisse\nsouffrent d’un niveau de bruit trop élevé et néfaste pour\nla santé. Si davantage de personnes pâtissent d’un bruit excessif, c’est la collectivité qui en fera les frais, en raison soit de\nl’augmentation des dépenses de santé, soit des coûts des\nmesures de réduction du bruit. Les émissions de gaz d’échap",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+          "score": 0.634377121925354
+        },
+        {
+          "id": "p5-c2",
+          "page": 5,
+          "text": "tion atmosphérique,\nde bruit et d’émissions de CO2, alors qu’il faudrait une planification des transports cohérente.\nextension-autoroutes-non.ch\n\nVote du\nConseil national\n\n107 oui\n87 non\n1 abstention\n\nVote du\nConseil des États\n\n33 oui\n6 non\n5 abstentions",
+          "lang": "fr",
+          "source": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+          "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1",
+          "score": 0.6224165558815002
+        }
+      ]
+    },
+    {
+      "row_index": 187,
+      "pair": "fr->it",
+      "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+      "pages_with_text": 72,
+      "full_text_chars": 121456,
+      "full_reference_shingle_coverage": 0.9684868242325455,
+      "retrieved_reference_shingle_coverage": 0.6155935886987232,
+      "elapsed_extraction_and_retrieval_s": 1.7734376250009518,
+      "passages": [
+        {
+          "id": "p20-c1",
+          "page": 20,
+          "text": "20\n\nGli\nargomenti\n\nPrimo oggetto: Potenziamento delle strade nazionali\n\nConsiglio federale e Parlamento\nLa disponibilità di un’infrastruttura di trasporto moderna ed\nefficiente è di vitale importanza per la popolazione e l’economia. Il volume di traffico sulle strade nazionali è tuttavia più\nche raddoppiato rispetto al 1990; per questo motivo in numerosi tratti si formano regolarmente colonne, che inducono\nautomobilisti e camionisti a ripiegare sulle strade di città,\nvillaggi e quartieri residenziali. Con la Fase di potenziamento\n2023, la Confederazione si propone di decongestionare sei\ntratti autostradali, preservando città e Comuni dal traffico\ncausato dalla ricerca di percorsi alternativi. Questi sei progetti\n– che non prevedono nuove tasse – forniscono un contributo\nimportante al miglioramento della sicurezza stradale. Il Consiglio federale e il Parlamento sostengono il progetto in v",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/wHXT9BH3VlYQ/2024-11-24_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+          "score": 0.8439300060272217
+        },
+        {
+          "id": "p4-c1",
+          "page": 4,
+          "text": "4\n\nPrimo oggetto: Potenziamento delle strade nazionali\n\nIn breve\n\nDecreto federale sulla Fase\ndi potenziamento 2023 delle\nstrade nazionali\n\nContesto\n\nLa disponibilità di infrastrutture di trasporto moderne ed\nefficienti è di vitale importanza per la popolazione e l’economia. La Confederazione investe perciò continuamente nella rete\nferroviaria e stradale. Dal 1990 il volume di traffico sulle strade\nnazionali è più che raddoppiato e provoca regolarmente colonne in diversi tratti della rete. Per evitarle, gli automobilisti\ne i camionisti ripiegano su percorsi che attraversano villaggi e\nquartieri residenziali, compromettendo la sicurezza e la qualità\ndi vita degli abitanti. La Confederazione e i Cantoni hanno il\ncompito di porre rimedio a questa situazione; a tal fine provvedono anche ad ampliare i tratti interessati della rete delle strade\nnazionali, così da decongestionarli.\n\nIl decreto\n",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/wHXT9BH3VlYQ/2024-11-24_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+          "score": 0.8403630256652832
+        },
+        {
+          "id": "p21-c2",
+          "page": 21,
+          "text": "ri residenziali quando vengono svolti i necessari lavori\ndi manutenzione o si verificano gravi incidenti. Anche in questi\ncasi il traffico potrà infatti continuare a scorrere in autostrada.\n\nRaccomandazione\ndel Consiglio\nfederale e del\nParlamento\n\nPer tutte queste ragioni, Consiglio federale e Parlamento\nraccomandano di accettare il decreto federale sulla Fase di\npotenziamento 2023 delle strade nazionali.\n\nSì\nadmin.ch/potenziamento-strade-nazionali",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/wHXT9BH3VlYQ/2024-11-24_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+          "score": 0.8339842557907104
+        },
+        {
+          "id": "p20-c2",
+          "page": 20,
+          "text": "otazione, in particolare per i motivi esposti qui di seguito.\n\nMeno colonne\n\nOgni anno sulle strade nazionali si contano oltre\n48 000 ore di colonne. Le colonne causano costi annuali rilevanti all’economia del nostro Paese. Occorre perciò prendere\nle necessarie contromisure e, ad esempio, ampliare il numero\ndi corsie e costruire nuove gallerie.\n\nMeno traffico sulle\nstrade cantonali e\ncomunali\n\nQuando si formano colonne sulle strade nazionali, le auto\ne i camion cercano di evitarle optando per percorsi alternativi\nche attraversano città, villaggi e quartieri residenziali, con le\nconseguenze negative che ne derivano per gli abitanti in termini di rumore, gas di scarico, disagi per il traffico locale e ritardi\ndei trasporti pubblici. Strade nazionali efficienti, con un traffico scorrevole, prevengono queste situazioni e rendono più\nsicura la circolazione stradale.\n\nPiù sicurezza\n\nLe autostr",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/wHXT9BH3VlYQ/2024-11-24_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+          "score": 0.8320558667182922
+        },
+        {
+          "id": "p20-c3",
+          "page": 20,
+          "text": "ade sono sostanzialmente sicure poiché vengono percorse in unico senso di marcia. Le colonne e il traffico\ncausato da chi cerca di aggirarle provocano invece un numero\nmaggiore di incidenti. Decongestionando i tratti interessati\nsi aumenta così la sicurezza sia sulle strade nazionali sia nei\nvillaggi e nelle città vicini.",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/wHXT9BH3VlYQ/2024-11-24_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "a8d40f5f65411f258a36aa7f64941a8853fe7c23c9cb9d0609d5addd4aa4932a",
+          "score": 0.81622314453125
+        }
+      ]
+    },
+    {
+      "row_index": 555,
+      "pair": "de->de",
+      "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+      "pages_with_text": 72,
+      "full_text_chars": 112664,
+      "full_reference_shingle_coverage": 0.9274921600304096,
+      "retrieved_reference_shingle_coverage": 9.502993442934525e-05,
+      "elapsed_extraction_and_retrieval_s": 1.1832397499820217,
+      "passages": [
+        {
+          "id": "p11-c1",
+          "page": 11,
+          "text": "11\n\nAbstimmungsfrage\n\nEmpfehlung\nvon Bundesrat\nund Parlament\n\nWollen Sie die Volksinitiative\n«200 Franken sind genug! (SRG-Initiative)»\nannehmen?\n\nNein\nBundesrat und Parlament lehnen die Initiative ab. Sie\ngeht ihres Erachtens zu weit. Der Bundesrat hat ein Gegen­\nprojekt beschlossen, das Haushalte und Unternehmen auch\nentlastet. Im Gegensatz zur Initiative ist es massvoll, sodass die\nSRG den Service public weiterhin in allen Sprachregionen\nsichern kann.\nadmin.ch/srg-initiative\n\nEmpfehlung des\nInitiativkomitees\n\nJa\nLaut dem Komitee bezahlen die Bevölkerung und viele\nUnternehmen in der Schweiz die weltweit höchsten Gebühren.\nDiese Höhe sei nicht gerechtfertigt. Mit der Initiative würden\nHaushalte und KMU entlastet und es bliebe allen mehr Geld\nzum Leben. Auch müsse sich die SRG wieder auf ihren Kernauftrag konzentrieren.\nsrg-initiative.ch\n\nAbstimmung\nim Nationalrat\n\n115 Nein\n76 Ja\n5 Entha",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+          "score": 0.6272372007369995
+        },
+        {
+          "id": "p38-c1",
+          "page": 38,
+          "text": "38\n\nZweite Vorlage: SRG-Initiative\n\nArgumente\n\nBundesrat und Parlament\nBundesrat und Parlament lehnen die Initiative ab. Sie geht\nihnen zu weit und hätte tiefe Einschnitte in das Angebot von\nRadio und Fernsehen zur Folge. Auch der Bundesrat sieht\nHandlungsbedarf bei der SRG und hat deshalb ein Gegenprojekt beschlossen, das Haushalte und Unternehmen entlastet.\nDas Gegenprojekt ist ausgewogen: Im Gegensatz zur Initiative\nkann die SRG in der ganzen Schweiz mit mehreren Standorten\npräsent bleiben. Sie kann weiterhin in allen Sprachregionen\ngleichwertige Radio- und Fernsehprogramme und OnlineInhalte anbieten. Bundesrat und Parlament lehnen die Initiative\ninsbesondere aus folgenden Gründen ab:\n\nEntlastungen\nbereits\nbeschlossen\n\nDer Bundesrat hat bereits beschlossen, Haushalte und\nUnternehmen zu entlasten. Ab 2029 beträgt die Abgabe für\nHaushalte nur noch 300 Franken. Diese Abgabensenkung ist\nm",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+          "score": 0.6029521822929382
+        },
+        {
+          "id": "p34-c1",
+          "page": 34,
+          "text": "34\n\nZweite Vorlage: SRG-Initiative\n\nVolkswirtschaftliche\nFolgen\n\nWürde die Abgabe im von der Initiative geforderten\nSinne gesenkt, müssten laut einer Studie von BAK Economics\nbei der SRG schätzungsweise 3000 Arbeitsplätze abgebaut\nwerden. Weitere 3000 gingen indirekt in anderen Unternehmen verloren (Autoren, Darstellerinnen, Produktionsfirmen\nder audiovisuellen Industrie, Bauwirtschaft, Gastgewerbe\netc.).6 Bei Annahme der Initiative könnte die SRG das heutige\nföderale System mit sieben Hauptproduktionsstandorten und\n17 Regionalbüros nicht mehr finanzieren.7 Die Studie geht\ndavon aus, dass die SRG die Produktion auf Kosten der kleineren Sprachregionen an einem einzigen Standort zentralisieren\nmüsste.\n\n6\n\n7\n\nBAK Economics (2024): Die volkswirtschaftliche Bedeutung der SRG.\nEine makroökonomische Wirkungsanalyse im Auftrag des\nBAKOM ( bakom.admin.ch > Medien > Studien)\nDie Hauptproduktionsst",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+          "score": 0.6029122471809387
+        },
+        {
+          "id": "p36-c3",
+          "page": 36,
+          "text": "len. Das ist unfair. Gerade\nJunge haben oft auch weniger Einkommen, vor allem während\nder Aus- und Weiterbildung.",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+          "score": 0.5986291170120239
+        },
+        {
+          "id": "p67-c2",
+          "page": 67,
+          "text": "s-\n\nherige Recht.\n\n2 Die Folgen der kalten Progression zwischen dem letzten Indexstand am 30. Juni vor\n\nder Schlussabstimmung zur Änderung vom 20. Juni 2025 und dem Indexstand am 30.\nJuni des Jahres vor Inkrafttreten dieser Änderung werden gemäss Artikel 39 ausgeglichen.\n\n7",
+          "lang": "de",
+          "source": "https://www.bk.admin.ch/dam/de/sd-web/MDRXrtFaVPNG/2026-03-08_erlaeuterungen_des_bundesrates.pdf",
+          "pdf_sha256": "d0c794f37d6d2cb25e9969ed058e2a7d7c3e2508f7f03e2b5e90415d364f6170",
+          "score": 0.5929566621780396
+        }
+      ]
+    },
+    {
+      "row_index": 1365,
+      "pair": "it->it",
+      "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+      "pages_with_text": 48,
+      "full_text_chars": 85405,
+      "full_reference_shingle_coverage": 0.9448110377924415,
+      "retrieved_reference_shingle_coverage": 0.0608878224355129,
+      "elapsed_extraction_and_retrieval_s": 0.932343916996615,
+      "passages": [
+        {
+          "id": "p31-c2",
+          "page": 31,
+          "text": "este ragioni, Consiglio federale e Parlamento\nraccomandano di accettare la legge sull’Id-e.\n\nSì\nadmin.ch/legge-id-e",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+          "score": 0.8926429152488708
+        },
+        {
+          "id": "p22-c1",
+          "page": 22,
+          "text": "22\n\nSecondo oggetto: Legge sull’Id-e\n\nIn dettaglio\n\nLegge federale sul mezzo d’identificazione elettronico\ne altri mezzi di autenticazione\nelettronici (Legge sull’Id-e)\n\nGli argomenti del comitato referendario \b\nGli argomenti del Consiglio federale\ne del Parlamento \b\nIl testo in votazione \b\n\n28\n30\n32",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+          "score": 0.8059881925582886
+        },
+        {
+          "id": "p19-c2",
+          "page": 19,
+          "text": " conforme al sistema consolidato del federalismo\nfiscale svizzero.\n\nRaccomandazione\ndel Consiglio\nfederale e del\nParlamento\n\nPer tutte queste ragioni, Consiglio federale e Parlamento\nraccomandano di accettare il decreto federale concernente\nl’imposta immobiliare cantonale sulle abitazioni secondarie.\n\nSì\nadmin.ch/imposta-immobiliare",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+          "score": 0.7461395859718323
+        },
+        {
+          "id": "p3-c1",
+          "page": 3,
+          "text": "Sommario\nPrimo oggetto\n\n3\n\nDecreto federale concernente l’imposta immobiliare cantonale\nsulle abitazioni secondarie\nIn breve \b\nIn dettaglio \b\nGli argomenti \b\nIl testo in votazione \b\n\nSecondo oggetto\n\n4–5\n8\n16\n20\n\nLegge federale sul mezzo d’identificazione elettronico e altri\nmezzi di autenticazione elettronici (Legge sull’Id-e)\nIn breve \b\nIn dettaglio \b\nGli argomenti \b\nIl testo in votazione \b\n\nI video della\nvotazione:\nadmin.ch/video-it\n\n6–7\n22\n28\n32\n\nL'applicazione\nsulle votazioni:\nVoteInfo",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+          "score": 0.7420624494552612
+        },
+        {
+          "id": "p43-c1",
+          "page": 43,
+          "text": "43\n\nLegge sull’Id-e\n2 Il Consiglio federale può prevedere che l’infrastruttura di fiducia e l’Id-e siano messi\na disposizione gradualmente nei due anni successivi all’entrata in vigore della presente legge; questo concerne in particolare:\n\na.\n\nl’accessibilità del registro di fiducia agli emittenti o verificatori privati secondo l’articolo 3 capoverso 4;\n\nb.\n\nle funzionalità dell’applicazione di cui all’articolo 8;\n\nc.\n\nil numero di Id-e emessi in linea;\n\nd.\n\nla verifica dell’identità di cui all’articolo 17 capoverso 1 lettera b.\n\nArt. 36\n\nReferendum ed entrata in vigore\n\n1 La presente legge sottostà a referendum facoltativo.\n2 Il Consiglio federale ne determina l’entrata in vigore.\n\n13",
+          "lang": "it",
+          "source": "https://www.bk.admin.ch/dam/it/sd-web/6DaWglL-N7NM/2025-09-28_spiegazioni_del_consigliofederale.pdf",
+          "pdf_sha256": "7b8d069bb8d207a1a8ec9a7af49a765d4c19153dee249b3818261d45bf2d5ed8",
+          "score": 0.737266480922699
+        }
+      ]
+    }
+  ]
+}

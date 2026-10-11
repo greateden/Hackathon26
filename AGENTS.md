@@ -1,3 +1,12 @@
+> **Submission cleanup, 11 October 2026:** the project root is now `track_2a/`.
+> All project-relative paths and commands below refer to that directory.
+> Root `make` forwards there. The existing repository-root `.venv` is preserved
+> and is a fallback for native Make targets. Historical reports and requirements
+> are in `track_2a/docs/archive/`; their dated claims do not override current
+> `track_2a/docs/PROJECT_STATUS.md`. Genuine local v1.5 MLX inference is now
+> evidenced in `track_2a/docs/evidence/v15_local_smoke/`; submission Docker,
+> self-contained model startup and cross-platform execution remain unverified.
+
 # AGENTS.md — working notes for coding agents
 
 > **11 October 2026 submission override:** `make run` now uses
@@ -9,11 +18,20 @@
 > inputs. Do not describe v1.1 as satisfying the current v1.5 acceptance target.
 > See `docs/PROJECT_STATUS.md`, `docs/RUNNING.md`, and `technical_report.md`.
 > No real v1.5 run, Windows execution or new Docker execution is verified yet.
+>
+> **Mac-only development path (added 2026-10-11, unverified):** `booklet_app.py`
+> can also address a local `mlx_lm.server` serving
+> `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`. That endpoint has no `/tokenize`
+> and advertises models by Hugging Face repo id, hence the two new knobs
+> `LLM_TOKEN_PREFLIGHT` (default `required` = old behaviour) and a `LLM_NAME`
+> that may name another Apertus v1.5 build. Both must stay off the Docker
+> submission path, and the served id must still pass the `/v1/models` check.
+> See `docs/RUNNING.md` ("Local Apple Silicon development endpoint").
 
 
 Code is the source of truth for implementation detail. This file records
 what is *not* obvious from the code. Before touching retrieval or judgement
-logic, read `REPORT_HACKAPERTUS_OST.md` §5 (retrieval measurements) and §8
+logic, read `docs/archive/REPORT_HACKAPERTUS_OST.md` §5 (retrieval measurements) and §8
 (explicitly unverified claims), and §6 (problems with the smoke-test claim
 set) before changing `data/example_claims.json`.
 
@@ -291,7 +309,7 @@ runs.
   routing without a rerun and a report entry. `RETRIEVAL_CONFIG=v2` in
   the CLI is plumbing-verified only; keep `legacy` as the default until
   the pipeline path itself is benchmarked.
-- v1.5 compliance check (2026-10-09): `challenge_spec.md` requires local
+- v1.5 compliance check (2026-10-09): `docs/archive/challenge_spec.md` requires local
   open-source models (Apertus, SwissBERT) but mandates no version; HF has
   no MLX/GGUF conversion of Apertus v1.5 (v1.1 conversions only), and
   mlx-lm 0.32 is the only working loader here. Pinning
@@ -380,7 +398,7 @@ interpretations and hypotheses clearly separated. British English.
   the clone commands in `README.md`; treat as read-only.
 - `data/example_claims.json` — its flaws are deliberately documented in
   report §6; change it only with a stated reason.
-- `REPORT_HACKAPERTUS_OST.md` numbers — only change by rerunning the
+- `docs/archive/REPORT_HACKAPERTUS_OST.md` numbers — only change by rerunning the
   relevant script and updating both number and provenance. Never "improve"
   a figure by hand, and do not present planned functionality as
   implemented.

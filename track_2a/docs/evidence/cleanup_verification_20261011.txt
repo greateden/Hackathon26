@@ -1,0 +1,81 @@
+Command: make test (repository-root wrapper; preserved .venv)
+No model experiment.
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C track_2a test
+cd src && "/Users/liyitian/Documents/Hackathon26/.venv/bin/python" test_judge.py && "/Users/liyitian/Documents/Hackathon26/.venv/bin/python" -m py_compile *.py
+[ok] entailment -> 0
+[ok] neutral -> 1
+[ok] contradiction -> 2
+[ok] None label -> None (no silent neutral)
+[ok] unknown label -> None
+[ok] code 0 -> entailment
+[ok] code '1' (str) -> neutral
+[ok] invalid code 9 -> None
+[ok] normalise: case/whitespace tolerated
+[ok] normalise: int code
+[ok] normalise: None
+[ok] mapping round-trip covers 0/1/2
+[ok] valid JSON parses
+[ok] fenced JSON with numeric code '0' normalises to entailment
+[ok] truncated JSON recovers quoted label
+[ok] prose mentioning a label word mid-sentence is an error, not a prediction (regression guard for the old keyword fallback)
+[ok] invalid label value -> error
+[ok] empty response -> error
+[ok] bare leading label word accepted
+[ok] float code 1.0 -> None (v1 cast fixed)
+[ok] bool True -> None (int subclass leak)
+[ok] float 1.5 -> None (no int() cast)
+[ok] '1.0' string -> None
+[ok] '01' string -> None
+[ok] '+1' string -> None
+[ok] exact int code still accepted
+[ok] JSON with float label -> error
+[ok] JSON with bool label -> error
+[ok] no passages -> explicit empty-evidence marker
+[ok] evidence block respects max_chars cap
+[ok] fill style: second passage truncated to fit, cap honoured
+[ok] registry has exactly baseline/t0/strict/select/fill_only/window_only
+[ok] baseline config keeps the 2026-10-10 dev-run settings unchanged
+[ok] ablation arms run at temperature 0
+[ok] unknown prompt-config name rejected with valid list
+[ok] baseline build_chat renders the original prompt verbatim
+[ok] strict config swaps only the system prompt (single-factor ablation)
+[ok] fixture: decisive marker only beyond the head-truncation boundary
+[ok] select_window reaches the tail marker the head cut would drop
+[ok] select_window: cap honoured; no-overlap falls back to the head
+[ok] short evidence passes through untouched
+[ok] fill_only isolates the evidence-style factor (fill, no window, T=0)
+[ok] window_only isolates the window factor (drop, window on, T=0)
+[ok] fill_only renders identically to select (retrieve-mode equivalence)
+[ok] window_only renders identically to t0 (retrieve-mode equivalence)
+[ok] oracle chunk (<=1900 text + tag) always fits the 2000-char cap (basis of oracle style-inertness; regression guard)
+[ok] fixture: window selects a different region than the head cut
+[ok] fill_only renders identically to t0 (oracle mode: style inert)
+[ok] window_only renders identically to select (oracle mode: style inert)
+[ok] oracle render equivalence holds over all 60 dev items (mismatches: 0, 0)
+[ok] openai judge refuses an unreachable endpoint (no silent lexical fallback)
+[ok] model-listing parse: OpenAI data[].id shape
+[ok] model-listing parse: bare id list shape
+
+all judge/label checks passed
+PYTHONPATH=src "/Users/liyitian/Documents/Hackathon26/.venv/bin/python" -m unittest discover -s tests -p 'test_*.py'
+...Paired item 1/1 complete
+..................................................................
+----------------------------------------------------------------------
+Ran 69 tests in 0.035s
+
+OK
+
+Exit code: 0
+
+Post-move verification:
+PASS: required Track 2A directories/files present; active Markdown links resolve.
+PASS: src/, tests/, tracked data and .env.example preserve pre-cleanup bytes.
+PASS: original v1.5 raw evidence hashes match published source manifest.
+PASS: both Compose configs; submission mount/context/command/default checks.
+PASS: missing LLM_BASE_URL rejects configuration; make run dry-runs agree.
+PASS: no candidate file >10 MB or known credential-pattern matches.
+PASS: git diff --check; Git index unchanged (no staging).
+Git-eligible files: 79; bytes at inventory: 581898.
+Git-eligible data bytes: 3685.
+Historical large blob: 51,050,624-byte embedding cache; history retained.

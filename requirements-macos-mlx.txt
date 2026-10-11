@@ -1,7 +1,0 @@
-# macOS-specific native judge dependencies (Apple Silicon / Metal).
-# Install ONLY into the local .venv, never into the Docker image:
-#   python3.12 -m venv .venv && .venv/bin/pip install -r requirements-macos-mlx.txt
-# mlx-lm 0.32.0 is the verified pin that can load the Apertus
-# architecture (make eval-apertus-* uses this .venv).
-mlx==0.32.3
-mlx-lm==0.32.0
