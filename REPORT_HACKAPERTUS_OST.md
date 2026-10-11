@@ -1,6 +1,6 @@
 # HackApertus — Track 2A (OST) Technical Report
 
-> **Independent audit, 10 October 2026:** see [AUDIT_GPT6_ASTRA.md](AUDIT_GPT6_ASTRA.md)
+> **Independent audit, 10 October 2026:** see [docs/research_integrity_history.md](docs/research_integrity_history.md)
 > before reusing these conclusions. The lexical retrieval channel has asymmetric
 > tokenisation, dev/eval contain exact duplicate examples, and invalid model
 > outputs can pass the parser. Historical numbers below are retained unchanged;
@@ -461,7 +461,7 @@ Two protocol generations have run on the 60-booklet PDF corpus (16,618 passages)
 and they are **not comparable**. The 2026-10-09 run (this section's first form,
 still on disk as `data/eval_results_full_benchmark.json`) is **WITHDRAWN**: it
 crippled the lexical channel and handed the dense channel information no deployed
-system has. Both defects are named in `AUDIT_GPT6_ASTRA.md` — D01 ("asymmetric
+system has. Both defects are named in `docs/research_integrity_history.md` — D01 ("asymmetric
 BM25 tokenisation invalidates the intended lexical comparison") and the *What the
 artefacts do not support* entry on the oracle adapter — and both are switches in
 `eval_e2e.py` now:
@@ -751,3 +751,26 @@ entailment-default bias. Retrieval and judgement remain joint bottlenecks, and a
 these numbers remain single-run development measurements, not held-out scores.
 
 
+
+
+## 11. Submission interface correction (11 October 2026)
+
+The specified task input is a booklet **and** a claim. Earlier global-search
+runs answer a different research question. They remain unchanged historical
+experiments; their rankings do not select the best within-booklet pipeline.
+`booklet_app.py` now extracts the specified PDF with physical page references
+and supports `full` and `retrieved` evidence through one v1.5 endpoint client.
+Because the caller supplies the booklet language, using that language's
+SwissBERT adapter is legitimate in this interface. It remains an oracle control
+in the older task where the booklet is unknown. No old scores are relabelled.
+
+`eval_paired.py` samples only historical development rows, deduplicates their
+normalised content, and changes only the evidence payload between arms. It
+records context failures rather than truncating. The saved plan in
+`docs/evidence/paired_dev_plan_20261011.json` contains the current dataset hash,
+row IDs, label/pair counts and a fresh content-overlap audit. These current
+counts supersede assumptions from older snapshots, not their historical records.
+No v1.5 NLI measurement has run: no configured endpoint, no cached v1.5 weights,
+and the Docker daemon is stopped. See `docs/PROJECT_STATUS.md` and
+`technical_report.md` for current scope and blockers. Historical sections above
+may contain superseded interpretations; retain their dated provenance.

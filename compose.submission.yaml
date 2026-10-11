@@ -1,0 +1,21 @@
+# Submission runtime. Historical experiments use compose.yaml.
+services:
+  app:
+    build: .
+    image: hackapertus:local
+    working_dir: /app/src
+    command: ["python3", "booklet_app.py"]
+    environment:
+      LLM_NAME: ${LLM_NAME:-swiss-ai/Apertus-v1.5-8B}
+      LLM_BASE_URL: ${LLM_BASE_URL:?Set LLM_BASE_URL to a reachable Apertus v1.5 8B vLLM endpoint}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-32768}
+      REQUEST_FILE: ${REQUEST_FILE:-/app/data/request.json}
+    volumes:
+      - ./data:/app/data
+      - hf-cache:/home/app/.cache/huggingface
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  hf-cache:

@@ -21,3 +21,8 @@ __pycache__/
 
 # macOS metadata
 .DS_Store
+
+# Local endpoint credentials
+.env
+.env.*
+!.env.example

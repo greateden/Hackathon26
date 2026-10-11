@@ -1,5 +1,16 @@
 # AGENTS.md — working notes for coding agents
 
+> **11 October 2026 submission override:** `make run` now uses
+> `compose.submission.yaml` and `src/booklet_app.py`, requiring a configured
+> `swiss-ai/Apertus-v1.5-8B` endpoint. It accepts a specified booklet and claim.
+> `src/main.py`, its `legacy` default, and global-search experiments remain
+> historical research paths. Their no-booklet-filter rule applies to those
+> experiments only. The supplied booklet and its language are valid application
+> inputs. Do not describe v1.1 as satisfying the current v1.5 acceptance target.
+> See `docs/PROJECT_STATUS.md`, `docs/RUNNING.md`, and `technical_report.md`.
+> No real v1.5 run, Windows execution or new Docker execution is verified yet.
+
+
 Code is the source of truth for implementation detail. This file records
 what is *not* obvious from the code. Before touching retrieval or judgement
 logic, read `REPORT_HACKAPERTUS_OST.md` §5 (retrieval measurements) and §8

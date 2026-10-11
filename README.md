@@ -1,3 +1,24 @@
+# Submission application — current entry point
+
+Run `make run` after setting the v1.5 endpoint variables in `.env` and editing
+`data/request.json`. Docker builds the application; no preparatory Make targets
+are needed. Input is a **specified booklet plus claim**, with `full` or
+`retrieved` evidence. The runtime requires a provisioned vLLM-compatible
+`swiss-ai/Apertus-v1.5-8B` endpoint. Local v1.5 server startup is not yet
+orchestrated or verified.
+
+- [Current project status](docs/PROJECT_STATUS.md): verified work and blockers.
+- [Running and evaluation](docs/RUNNING.md): prerequisites, input and output.
+- [Submission report draft](technical_report.md).
+- [Research integrity history](docs/research_integrity_history.md).
+
+**The material below documents the historical research pipeline.** Its
+`main.py`, v1.1 serving instructions, global-search results and old references
+to the production path do not describe the new `make run` application.
+Historical measurements are retained without relabelling them as v1.5 results.
+
+---
+
 # Swiss voting-booklet claim verification (Track 2A prototype)
 
 Given a claim about a Swiss voting booklet (Abstimmungsbuechlein), the

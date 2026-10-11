@@ -1,10 +1,10 @@
 # Makefile - HackApertus Track 2A (Swiss voting-booklet NLI)
 # Judges: `make run` runs the pipeline in Docker (portable; needs Docker
-# only, no Python setup). On Apple Silicon, `make run-native` + the
+# and a configured v1.5 endpoint, no Python setup). Historical native paths + the
 # .venv give the Apertus MLX backend (see README.md and AGENTS.md
 # "Docker runtime" for the model-endpoint setup and corpus downloads).
 
-VENV_PY := $(shell test -x .venv/bin/python && echo $(CURDIR)/.venv/bin/python || echo python3)
+VENV_PY = $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
 
 MLX_MODEL ?= swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4
 MLX_SERVER_HOST ?= 127.0.0.1
@@ -13,7 +13,7 @@ MLX_SERVER_PORT ?= 8080
 .PHONY: help run smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
 
 help:
-	@echo "run                    - Docker pipeline with REAL Apertus via host endpoint (needs serve-apertus; fails without it)"
+	@echo "run                    - Specified-booklet Docker application (configure LLM_BASE_URL; see docs/RUNNING.md)"
 	@echo "smoke                  - Docker pipeline, lexical baseline only (no model server)"
 	@echo "serve-apertus          - serve the Apertus MLX checkpoint natively (host GPU; separate terminal)"
 	@echo "run-native             - same, natively with python3 (needed for the MLX backend)"
@@ -34,23 +34,16 @@ help:
 	@echo "ablation-dev           - FULL prompt-config ablation, fixed dev split (needs serve-apertus; ran 2026-10-10, report §4.3)"
 
 # --- Docker (portable, Linux containers) ----------------------------------
-# `make smoke` runs the LEXICAL baseline (plumbing smoke test only, no
-# model). `make run` runs the pipeline with REAL Apertus inference: the
-# judge calls an OpenAI-compatible endpoint on the HOST (MLX never runs
-# inside the container). Start the server first - `make serve-apertus`
-# in a separate terminal - or point OPENAI_BASE_URL at any running
-# OpenAI-compatible endpoint. `make run` exits non-zero when the
-# endpoint is unreachable: there is no silent fallback to the lexical
-# baseline, so its results are always genuine model verdicts.
+# `make run` uses the specified-booklet v1.5 endpoint application below.
+# `make smoke` and the MLX server are historical research entry points.
+# The v1.1 MLX server is not a prerequisite for the submission application.
 serve-apertus:
 	@test -x .venv/bin/mlx_lm.server || { echo "ERROR: .venv/bin/mlx_lm.server missing."; echo "Rebuild: python3.12 -m venv .venv && .venv/bin/pip install 'mlx-lm==0.32.0' requests"; exit 1; }
-	@echo "Serving $(MLX_MODEL) on $(MLX_SERVER_HOST):$(MLX_SERVER_PORT) (host GPU, MLX). Leave running; Ctrl-C stops. Clients: make run / make eval-apertus-docker."
+	@echo "Serving $(MLX_MODEL) on $(MLX_SERVER_HOST):$(MLX_SERVER_PORT) (host GPU, MLX). Leave running; Ctrl-C stops. Historical client: make eval-apertus-docker."
 	.venv/bin/mlx_lm.server --model $(MLX_MODEL) --host $(MLX_SERVER_HOST) --port $(MLX_SERVER_PORT)
 
 run:
-	@echo ">> Docker + REAL Apertus inference via host endpoint, booklet corpus (RETRIEVAL_CONFIG=v2)."
-	@echo ">> Needs the model server (make serve-apertus). No/unknown endpoint => exit 1, no lexical fallback."
-	LLM_BACKEND=openai RETRIEVAL_CONFIG=v2 OPENAI_BASE_URL=http://host.docker.internal:$(MLX_SERVER_PORT) docker compose run --rm app python3 main.py
+	docker compose -f compose.submission.yaml run --build --rm app
 
 smoke:
 	docker compose run --rm app python3 main.py

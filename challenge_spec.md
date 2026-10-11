@@ -2,7 +2,8 @@
 
 > Source: https://hackapertus.notion.site/track-2a-ost
 > Retrieved: 2026-10-06
-> **This file is the authoritative source for task requirements.**
+> **Historical local transcription, not independently verified current requirements.**
+> See docs/PROJECT_STATUS.md for source-access limits and the current acceptance target.
 
 ---
 

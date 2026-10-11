@@ -1,10 +1,14 @@
+> Historical evidence ledger, migrated 11 October 2026. Findings below describe the
+> dated audit, not current closure status. See PROJECT_STATUS.md for this iteration.
+> Original baseline and reproduction evidence are retained; no measurements were rerun here.
+
 # Independent full-repository audit — HackApertus Track 2A OST
 
 Date: 10 October 2026. Baseline commit: `7456228e37591efff3af20b35e32eb70d319631f`.
 
 **Post-audit cleanup (10 Oct 2026, after this report was written):** the
 artefacts named throughout this document — `src/test_audit.py`,
-`src/audit_offline.py`, `data/audit_gpt6_astra.json` and their successor
+`src/audit_offline.py`, `the retired one-off audit JSON` and their successor
 `tests/test_retrieval_audit.py` — were one-off audit tooling and have been
 removed from the tree. The permanent regression checks that replaced them
 live in `tests/test_project_contract.py` (run `make test` from the repo
@@ -36,7 +40,7 @@ Runtime: macOS 27.2 arm64; both interpreters are Python 3.12.4. System packages:
 
 The current dataset has 1,488 rows: E=495, N=498, C=495. Dev is E=15, N=26, C=19; eval has 1,428 rows and disjoint row indices. Corpus: 16,618 unique passage IDs, 60 documents, DE=5,184 / FR=5,792 / IT=5,642. Cache: `(16618, 768)`, float32, all finite, key `92f67a425caeafc5`. Coverage recomputation matches the saved benchmark: 1,469 probe matches, one shingle match and 18 exclusions.
 
-Machine-readable evidence, hashes, exact dev indices and historical flips: `data/audit_gpt6_astra.json`. Reproduce with `src/audit_offline.py`; this reads the reserved rows only for integrity/coverage checks, never for tuning or new retrieval rankings. The upstream checkouts are now real Git repositories, contrary to the historical report: VotingBooklets `945fb346016fd08d73b6b658b8cebcd301e0bef8`; VotingBooklets-mono `d619ad386fdf2afd30a92f1b8f77a6cff35641a1`.
+Machine-readable evidence, hashes, exact dev indices and historical flips: `the retired one-off audit JSON`. Reproduce with `src/audit_offline.py`; this reads the reserved rows only for integrity/coverage checks, never for tuning or new retrieval rankings. The upstream checkouts are now real Git repositories, contrary to the historical report: VotingBooklets `945fb346016fd08d73b6b658b8cebcd301e0bef8`; VotingBooklets-mono `d619ad386fdf2afd30a92f1b8f77a6cff35641a1`.
 
 ## Confirmed defects
 
@@ -283,9 +287,9 @@ Executed after corrections:
 | `src/test_audit.py` | 20 independent offline/regression tests. |
 | `src/audit_offline.py` | Read-only integrity and defect reproduction script. |
 | `Makefile` | Run the new tests in native/container offline test targets. No container target was executed. |
-| `data/audit_gpt6_astra.json` | New audit evidence; no historical artefact replacement. |
+| `the retired one-off audit JSON` | New audit evidence; no historical artefact replacement. |
 | `REPORT_HACKAPERTUS_OST.md` | Audit caveat/link above historical claims; numbers retained. |
-| `AUDIT_GPT6_ASTRA.md` | This report and proposed semantic corrections. |
+| `docs/research_integrity_history.md` | This report and proposed semantic corrections. |
 
 No commits, package changes, external repository edits, model downloads, historical result edits or cleanup/deletions were made. No change was made to `example_claims.json`, default prompts, embeddings, adapters, scoring formulas or split membership. The corrected endpoint check may reject previously tolerated model aliases until an exact advertised ID is explicitly configured.
 
@@ -350,6 +354,6 @@ Next specific experiment: a predeclared paired **dev-only BM25 preprocessing che
 5. **Potentially invalidated measurements:** lexical-containing retrieval comparisons do not measure the intended BM25; future 1,428-row scores cannot be independent holdout estimates. Historical strict-parser validity is unknowable without raw outputs. Only two lexical F1 displays show the independently measured 0.001 rounding discrepancy; 60-item Apertus headline arithmetic matches.
 6. **Prediction changes:** none from this audit. Historical select flips verified: retrieve improves 26/40 (gold neutral); oracle improves 5/8 (gold entailment), worsens 19/25/28/30/36/39/40 (gold neutral) and 53 (gold contradiction).
 7. **Uncertainties/next three actions:** agree a versioned evaluation/parser contract; verify corrected BM25 on dev only; repair dependency/provenance/diagnostic guarantees before an approved endpoint smoke. Actual cache drift, false-positive gold rate and cross-platform execution remain unverified.
-8. **Files/artefacts:** this report; `src/test_audit.py`; `src/audit_offline.py`; `data/audit_gpt6_astra.json`; `data/eval/mnli_swiss_v1.1.jsonl`; `data/booklets/corpus.json`; `data/cache/emb_92f67a425caeafc5.npy`; `data/eval_results_full_benchmark.json`; `data/ablation_20261010_122340_openai.json` and its eight referenced per-run files; the two `082336`/`082936` baseline NLI files.
+8. **Files/artefacts:** this report; `src/test_audit.py`; `src/audit_offline.py`; `the retired one-off audit JSON`; `data/eval/mnli_swiss_v1.1.jsonl`; `data/booklets/corpus.json`; `data/cache/emb_92f67a425caeafc5.npy`; `data/eval_results_full_benchmark.json`; `data/ablation_20261010_122340_openai.json` and its eight referenced per-run files; the two `082336`/`082936` baseline NLI files.
 9. **Execution status:** no model, weight loader, model-serving process or Docker workload started. MTPLX was already running and was left untouched. Port 8080 had no listener at inspection. No commits made.
 10. **Decisions requiring approval:** changes to parser/scoring/split/retrieval semantics and fresh validation protocol; model loading/inference, embedding rebuilds and heavy Docker work. No permission question blocks delivery of this completed audit; these are the boundary for the next iteration.
