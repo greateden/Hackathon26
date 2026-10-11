@@ -181,8 +181,21 @@ _LABEL_KEY_RE = re.compile(
     r'"label"\s*:\s*"([^"]*)"'
     r'|"label"\s*:\s*(true|false|null|[0-9]+(?:\.[0-9]+)?)(?![0-9.\w])',
     re.IGNORECASE)
+# Leading-label rule, tightened 2026-10-11. `\b` matched at a hyphen or a
+# slash too, so a reply that REFUSED TO CHOOSE decoded as its leading word:
+# "neutral-ish"/"contradiction-like" -> neutral/contradiction and
+# "entailment/neutral"/"neutral/contradiction" -> entailment/neutral. Those
+# are not verdicts, and scoring them against a gold label invents accuracy.
+# The lookahead therefore ends the token at a joiner (hyphen, slash, tilde,
+# pipe, backslash, or any word char). Delimiters that genuinely end a token
+# -- ".", ":", ";", ",", newline, space -- still pass, so a delimited
+# explanation ("Neutral: insufficient evidence") stays a prediction. A reply
+# that spells the alternative out with spaces ("neutral or contradiction")
+# still decodes as its leading word: at that boundary no rule separates a
+# refusal from a legitimate explanation, and over-rejecting would silently
+# move the measurement the other way.
 _LEADING_LABEL_RE = re.compile(
-    r"\s*(entailment|neutral|contradiction)\b", re.IGNORECASE)
+    r"\s*(entailment|neutral|contradiction)(?![\w/~\\|-])", re.IGNORECASE)
 
 
 def parse_nli_response(raw: str) -> Dict:
@@ -191,16 +204,20 @@ def parse_nli_response(raw: str) -> Dict:
     Strict by design (2026-10-09): a reply yields a label only if
       (a) it contains a JSON object with a valid "label", or
       (b) a "label": <value> pair can still be recovered from broken JSON, or
-      (c) the reply starts with a bare label word.
+      (c) the reply starts with a bare label word whose token ENDS there.
     The old substring keyword fallback was removed: it let prose that merely
     *mentions* a label word masquerade as a prediction (see test_judge.py).
     Anything else returns label=None + error="unparseable_response" and the
     harness must report it as a failure, never score it as Neutral.
     Numeric codes are accepted ONLY in strict form (labels.LABEL_PARSE_VERSION
-    = "label-parse-v2.1-strict", 2026-10-10): exact "0"/"1"/"2" strings or
-    exact int codes; floats, booleans and castable junk decode to None. The
-    broken-JSON recovery regex captures the COMPLETE value token, so "1.5"
-    or "neutral-ish" never prefix-match back into a fabricated label.
+    = "label-parse-v3-strict"): exact "0"/"1"/"2" strings or exact int codes;
+    floats, booleans and castable junk decode to None. The broken-JSON
+    recovery regex captures the COMPLETE value token, so "1.5" never
+    prefix-matches back into a fabricated label, and since v3 the leading
+    label word is held to the same rule: a token JOINED to something else
+    ("neutral-ish", "entailment/neutral", "contradiction-like",
+    "neutral/contradiction") is a refusal to choose, not a prediction, and
+    decodes to None.
     Earlier dev runs (report §4.2/§4.3) used the v1 parser that accepted
     int()-castable values - attributable via this version tag.
     """

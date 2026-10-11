@@ -29,7 +29,16 @@ CODE_TO_LABEL = {code: name for name, code in LABEL_TO_CODE.items()}
 # now captures the complete value token and runs it through the same strict
 # rules. Runs recorded as "label-parse-v2-strict" still contain that leak;
 # only v2.1-onward runs are fully strict.
-LABEL_PARSE_VERSION = "label-parse-v2.1-strict"
+# v3 (2026-10-11): closes the OTHER leak, the plain-text one. The
+# leading-label rule's `\b` boundary also matched at "-", "/", "~" and "|",
+# so a reply that refused to choose ("neutral-ish", "entailment/neutral",
+# "contradiction-like", "neutral/contradiction") decoded as its leading word
+# and was scored against the gold label - a JSON reply had to carry a strict
+# label, but a plain-text refusal never reached that check. A leading label
+# now counts only when its token ends there. Dev runs recorded before this
+# bump (report §4.2/§4.3, under v2.1) contain those refusals-as-predictions,
+# so they are not comparable item-for-item with v3 runs.
+LABEL_PARSE_VERSION = "label-parse-v3-strict"
 
 _VALID_CODE_STRS = frozenset("012")
 

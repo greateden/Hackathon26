@@ -39,6 +39,7 @@ from config import (DATA_DIR, LLM_BACKEND, MLX_MODEL, OLLAMA_MODEL, TOP_K,
                     OPENAI_BASE_URL, JUDGE_MODEL, PROMPT_CONFIG)
 from labels import CODE_TO_LABEL, LABEL_PARSE_VERSION, label_to_code
 from nli_judge import (build_judge, get_prompt_config, PROMPT_CONFIGS)
+from sampling import balanced_sample
 
 DEFAULT_DATA = DATA_DIR / "eval" / "mnli_swiss_v1.1.jsonl"
 DEV_SEED = 20261009
@@ -267,6 +268,10 @@ def summarise(results):
     for r in results:
         confusion[r["gold"]][r["pred"] if r["pred"] in CLASSES else "ERROR"] += 1
     lat = sorted(r["elapsed_s"] for r in results if r["pred"])
+    # Error items cost wall-clock time too - a 120 s endpoint timeout is the
+    # worst case - and `lat` excludes them. Report both bases so a slow,
+    # failure-heavy run cannot read as a fast one.
+    lat_all = sorted(r["elapsed_s"] for r in results)
     ret = [r.get("retrieval_s") for r in results
            if r.get("retrieval_s") is not None]
     kinds = {}
@@ -297,6 +302,14 @@ def summarise(results):
         "median_latency_s": (round((lat[(len(lat) - 1) // 2]
                                     + lat[len(lat) // 2]) / 2, 2)
                              if lat else None),
+        "mean_latency_s_all": (round(sum(lat_all) / len(lat_all), 2)
+                               if lat_all else None),
+        "median_latency_s_all": (round((lat_all[(len(lat_all) - 1) // 2]
+                                        + lat_all[len(lat_all) // 2]) / 2, 2)
+                                 if lat_all else None),
+        "latency_basis": ("mean/median_latency_s exclude error items; the "
+                          "_all keys cover every item, so a run whose errors "
+                          "were slow (timeouts) stays visible"),
         "mean_retrieval_s": round(sum(ret) / len(ret), 3) if ret else None,
         "prompt_tokens_total": sum(
             r.get("usage", {}).get("prompt_tokens", 0) for r in results),
@@ -313,6 +326,12 @@ def main():
     ap.add_argument("--split", choices=["dev", "eval", "all"], default="dev")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--seed", type=int, default=DEV_SEED)
+    ap.add_argument("--sampler", choices=["prefix", "balanced"],
+                    default="prefix",
+                    help="how --limit cuts the split: dataset order (default, "
+                         "reproduces the recorded dev runs) or class-stratified. "
+                         "The first dataset rows are all entailment, so a "
+                         "prefix slice is not a usable accuracy sample.")
     ap.add_argument("--backend", default=None,
                     choices=["lexical", "mlx", "ollama", "openai"])
     ap.add_argument("--evidence",
@@ -333,18 +352,31 @@ def main():
                  "Run: python3 fetch_eval_data.py")
     rows = load_rows(data_path)
     idx = split_indices(len(rows), args.split, args.seed, DEV_SIZE)
-    if args.limit:
-        idx = idx[:args.limit]
-    items = [rows[i] for i in idx]
+    if args.sampler == "balanced":
+        # Class-stratified draw of --limit items from the split (whole split
+        # if no limit), re-ordered into file order by the sampler itself.
+        # Selection happens before the overlap check so the provenance
+        # describes the items actually evaluated, not the prefix they came
+        # from. The dev split keeps its seed but not its exact 60 items.
+        pool = [(i, rows[i]) for i in idx]
+        picked = balanced_sample([rec for _, rec in pool],
+                                 args.limit or len(pool), seed=args.seed)
+        by_id = {id(rec): i for i, rec in pool}
+        sel = sorted(by_id[id(rec)] for rec in picked)
+    else:
+        sel = list(idx[:args.limit] if args.limit else idx)
+    items = [rows[i] for i in sel]
     if not items:
         sys.exit("no items selected")
     mix = Counter(CODE_TO_LABEL[r["entailment_label"]] for r in items)
-    if len(mix) == 1:
-        print(f"WARNING: selected slice contains ONLY '{next(iter(mix))}' "
-              f"({len(items)} items). A single-class slice cannot measure "
-              "accuracy or macro-F1 - the first dataset rows are all "
-              "entailment, so keep --limit >= the full dev split (60).")
-    overlap = overlap_with_rest(rows, idx)
+    if len(mix) < len(CLASSES):
+        print(f"WARNING: selected slice covers {len(mix)}/{len(CLASSES)} "
+              f"class(es): {dict(mix)}. Macro-F1 then averages only the "
+              "classes present, so the run is not comparable with a "
+              "full-coverage one. The first dataset rows are all entailment: "
+              "keep --limit at the full dev split (60, prefix order) or add "
+              "--sampler balanced.")
+    overlap = overlap_with_rest(rows, sel)
 
     backend = args.backend or LLM_BACKEND
     prompt_config = args.prompt_config or PROMPT_CONFIG
@@ -381,7 +413,8 @@ def main():
 
     print(f"Eval: {len(items)} items | backend={backend} | "
           f"evidence={args.evidence} ({retrieval_desc}) | "
-          f"split={args.split} | seed={args.seed} | "
+          f"split={args.split} ({args.sampler}) | seed={args.seed} | "
+          f"mix={dict(mix)} | "
           f"prompt={prompt_config} (T={pconf['temperature']}, "
           f"evidence_style={pconf['evidence']}, window={pconf['window']})")
 
@@ -408,6 +441,7 @@ def main():
             "retrieval": retrieval_desc,
             "data_file": str(data_path), "n_items": len(items),
             "split": args.split, "seed": args.seed,
+            "sampler": args.sampler,
             "evidence_mode": args.evidence,
             "prompt_config": prompt_config,
             "temperature": pconf["temperature"],
@@ -434,6 +468,11 @@ def main():
     tag = f"_{args.split}_{backend}_{args.evidence}"
     if prompt_config != "baseline":
         tag += f"_{prompt_config}"  # ablation runs must not clobber baseline files
+    if args.sampler != "prefix":
+        # A stratified slice shares no items with a prefix slice of the same
+        # size: keep it out of the same filename stem, or a smoke run gets
+        # compared against the recorded dev numbers it cannot be compared to.
+        tag += f"_{args.sampler}"
     out = (Path(args.out) if args.out else DATA_DIR /
            f"eval_results_{datetime.now():%Y%m%d_%H%M%S_%f}{tag}.json")
     with out.open("x", encoding="utf-8") as fh:
