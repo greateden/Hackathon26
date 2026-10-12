@@ -103,6 +103,34 @@ class ApplicationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Submission requires"):
                 app.SubmissionJudge()
 
+    def test_cscs_optional_preflight_uses_standard_v1_completion_path(self):
+        session = Mock()
+        session.headers = {}
+        session.get.return_value.json.return_value = {"data": [{"id": app.CSCS_MODEL}]}
+        response = Mock()
+        response.json.return_value = {
+            "model": app.CSCS_MODEL,
+            "choices": [{"message": {"content": '{"label":"neutral"}'},
+                         "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 40, "completion_tokens": 8, "total_tokens": 48}}
+        session.post.return_value = response
+        env = {"LLM_NAME": app.CSCS_MODEL,
+               "LLM_BASE_URL": "https://api.inference.cscs.ch/v1/",
+               "LLM_API_KEY": "test-key", "LLM_TOKEN_PREFLIGHT": "optional",
+               "SUBMISSION_MODEL_REQUIRED": "1", "LLM_CONTEXT_TOKENS": "32768"}
+        with patch.dict(app.os.environ, env), patch("requests.Session", return_value=session):
+            judge = app.SubmissionJudge()
+            result = judge.judge("claim", "evidence")
+        session.get.assert_called_once_with("https://api.inference.cscs.ch/v1/models", timeout=10)
+        self.assertEqual(session.post.call_count, 1)
+        args, kwargs = session.post.call_args
+        self.assertEqual(args[0], "https://api.inference.cscs.ch/v1/chat/completions")
+        self.assertNotIn("chat_template_kwargs", kwargs["json"])
+        self.assertNotIn("seed", kwargs["json"])
+        self.assertEqual(result["label"], "neutral")
+        self.assertEqual(result["input_tokens"], 40)
+        self.assertEqual(result["finish_reason"], "stop")
+
 
 
 if __name__ == "__main__":

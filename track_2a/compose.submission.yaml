@@ -10,7 +10,7 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-http://apertus:8000}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-32768}
-      LLM_TOKEN_PREFLIGHT: required
+      LLM_TOKEN_PREFLIGHT: ${LLM_TOKEN_PREFLIGHT:-required}
       SUBMISSION_MODEL_REQUIRED: "1"
       RESULT_FILE: ${RESULT_FILE:-}
       REQUEST_FILE: ${REQUEST_FILE:-/app/data/request.json}

@@ -24,6 +24,12 @@ provisioned official endpoint with `make run SUBMISSION_MODE=external`; that mod
 starts only the CPU application and requires no local NVIDIA GPU. GPU memory
 needs and runtime portability remain unverified.
 
+For the opt-in CSCS Apertus v1.5 70B backend, set
+`CSCS_INFERENCE_API_KEY` outside the repository, edit `data/request.json`, and
+run `make run-cscs`. This uses the external Docker application and the existing
+optional token-preflight contract because CSCS does not document `/tokenize`.
+See [RUNNING.md](docs/RUNNING.md) for the exact checks and limitations.
+
 1. Copy `.env.example` to `.env` and set `HF_TOKEN` after accepting the model's
    access conditions. Keep credentials out of Git; the internal endpoint is preconfigured.
 2. Edit `data/request.json` to identify the booklet and claim.
@@ -81,12 +87,15 @@ For example, this subset comes from the saved local development smoke:
 | Path | Model and configuration | Verification |
 |---|---|---|
 | Submission Docker | `swiss-ai/Apertus-v1.5-8B`; Managed official vLLM server or explicit external endpoint; required token preflight | Application contract tested offline; real Docker inference pending |
+| CSCS external (opt-in) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | Direct API smoke passed; booklet/retrieval Docker run pending |
 | Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; new paired runner requires exact token preflight | Historical n=1 smoke used optional preflight; new wrapper runtime pending |
 | Historical research | Apertus v1.1 4B MLX INT4, global retrieval, oracle diagnostics and lexical controls | Archived measurements; not current submission results |
 
-Both current arms use temperature 0, seed 20261011 and a 512-token output
-budget. The successful MLX run explicitly disabled thinking at server startup.
-Its quantisation and serving behaviour differ from the submission target.
+The managed and native arms use temperature 0, seed 20261011 and a 512-token
+output budget. The CSCS optional path uses the standard OpenAI-compatible
+fields, so it does not send the vLLM-specific thinking control or seed. The
+successful MLX run explicitly disabled thinking at server startup. Its
+quantisation and serving behaviour differ from the submission target.
 
 ## Paired experiment runner
 

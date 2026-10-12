@@ -347,7 +347,7 @@ class RunnerContracts(unittest.TestCase):
                 return SimpleNamespace(returncode=0, stdout="secret-value")
             return SimpleNamespace(returncode=0, stdout="git-fixture")
         response = Mock()
-        response.json.return_value = {"data": [{"id": app.MODEL}]}
+        response.json.return_value = {"data": [{"id": config["services"]["app"]["environment"]["LLM_NAME"]}]}
         with patch.object(runner.shutil, "which", return_value="available"), patch.object(runner, "command", side_effect=run), \
              patch("requests.get", return_value=response):
             return runner.smoke(self.args)
@@ -371,6 +371,18 @@ class RunnerContracts(unittest.TestCase):
     def test_smoke_success_double_is_not_static_success(self):
         result = dict(self.reply, **self.request, model=app.MODEL, response_model=app.MODEL)
         self.assertEqual(self.smoke(outcome=result), 0)
+
+    def test_cscs_external_smoke_accepts_70b_and_optional_preflight(self):
+        config = {"services": {"app": {"environment": {
+            "LLM_NAME": app.CSCS_MODEL, "LLM_BASE_URL": "https://api.inference.cscs.ch/v1",
+            "LLM_API_KEY": "secret-value", "LLM_CONTEXT_TOKENS": "32768",
+            "LLM_TOKEN_PREFLIGHT": "optional"}}}}
+        result = dict(self.reply, **self.request, model=app.CSCS_MODEL,
+                      response_model=app.CSCS_MODEL)
+        self.assertEqual(self.smoke(configuration=config, outcome=result), 0)
+        manifest = json.loads((self.directory / "manifest.json").read_text())
+        self.assertEqual(manifest["model"], app.CSCS_MODEL)
+        self.assertEqual(manifest["configuration"]["LLM_TOKEN_PREFLIGHT"], "optional")
 
     def test_smoke_timeout(self):
         import subprocess

@@ -16,8 +16,9 @@ import time
 from urllib.parse import urlparse
 import uuid
 
-from booklet_app import (MLX_MODEL, MODEL, BookletRetriever, SubmissionJudge, build_messages,
-                         classify, digest, evidence_payload, load_booklet, validate_request)
+from booklet_app import (MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
+                         build_messages, classify, digest, evidence_payload, load_booklet,
+                         validate_request)
 from config import EMBEDDING_MODEL, PROJECT_ROOT
 from eval_nli import DEFAULT_DATA, load_rows, summarise
 from eval_paired import coverage
@@ -145,8 +146,8 @@ def static_checks():
                 continue
             config = json.loads(proc.stdout)
             app = config["services"]["app"]
-            if app["environment"]["LLM_TOKEN_PREFLIGHT"] != "required":
-                issues.append("Submission token preflight must be required")
+            if app["environment"]["LLM_TOKEN_PREFLIGHT"] not in ("required", "optional"):
+                issues.append("Submission token preflight must be required or optional")
             if len(files) == 1 and ("apertus" in config["services"] or app.get("depends_on") or app.get("deploy")):
                 issues.append("External endpoint unexpectedly requires a model/GPU service")
     if shutil.which("make"):
@@ -488,7 +489,7 @@ def smoke(args):
         if (directory / "manifest.json").exists():
             raise ValueError("Choose a new smoke output directory")
         manifest = {"schema": SCHEMA, "mode": "submission-smoke", "created_utc": now(),
-                    "deployment": args.deployment, "model": MODEL,
+                    "deployment": args.deployment, "model": None,
                     "git_revision": command(["git", "rev-parse", "HEAD"]).stdout.strip()}
         write_json(directory / "manifest.json", manifest)
         (directory / "predictions.jsonl").touch()
@@ -515,8 +516,13 @@ def smoke(args):
             return finish("BLOCKED", "Compose configuration failed")
         configuration = json.loads(configured.stdout)
         app_env = configuration["services"]["app"]["environment"]
-        if app_env["LLM_NAME"] != MODEL:
-            return finish("BLOCKED", "Submission smoke requires the official v1.5 8B model")
+        expected_model = app_env["LLM_NAME"]
+        manifest["model"] = expected_model
+        write_json(directory / "manifest.json", manifest)
+        if expected_model not in OFFICIAL_MODELS:
+            return finish("BLOCKED", "Submission smoke requires an allowlisted official v1.5 model")
+        if args.deployment == "managed" and expected_model != MODEL:
+            return finish("BLOCKED", "Managed submission smoke requires the official v1.5 8B model")
         if args.deployment == "managed":
             info = command(["docker", "info", "--format", "{{json .Runtimes}}"])
             if "nvidia" not in info.stdout:
@@ -534,8 +540,8 @@ def smoke(args):
                 headers = {"Authorization": "Bearer " + app_env["LLM_API_KEY"]} if app_env.get("LLM_API_KEY") else {}
                 response = requests.get(probe_base + "/v1/models", headers=headers, timeout=10)
                 response.raise_for_status()
-                if MODEL not in [r["id"] for r in response.json()["data"]]:
-                    return finish("BLOCKED", "External endpoint does not list the official v1.5 model")
+                if expected_model not in [r["id"] for r in response.json()["data"]]:
+                    return finish("BLOCKED", "External endpoint does not list the configured official v1.5 model")
             except Exception:
                 return finish("BLOCKED", "External endpoint unavailable or credentials rejected")
         request_path = args.request.resolve()
@@ -568,7 +574,8 @@ def smoke(args):
         if not result_path.exists():
             return finish("BLOCKED", "make run produced no result; inspect Docker startup, GPU, access and bind-mount permissions")
         result = json.loads(result_path.read_text())
-        if proc.returncode or result.get("error") or result.get("model") != MODEL or result.get("response_model") != MODEL:
+        if (proc.returncode or result.get("error") or result.get("model") != expected_model
+                or result.get("response_model") != expected_model):
             return finish("FAIL", "Application or model verification failed", result)
         if not result.get("citation_verified") or result.get("label_code") not in (0, 1, 2):
             return finish("FAIL", "No valid label with a verified citation", result)

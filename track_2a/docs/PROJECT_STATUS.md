@@ -10,6 +10,12 @@ paired runner and loader/tokenisation wrapper are implemented and tested offline
 Their real native and Docker runs remain pending. No model experiments were run
 during this repair. See [runner handoff](RUNNER_REPAIR_20261011.md).
 
+The CSCS API has separately passed a direct transport smoke with
+`swiss-ai/Apertus-v1.5-70B`: model listing, one chat completion, parsed NLI
+output, usage and finish reason. The application now exposes this as an opt-in
+external backend through `make run-cscs`. That direct smoke is not evidence that
+the booklet/retrieval Docker path has run successfully against CSCS.
+
 ## Requirements and evidence
 
 The structural authority is the [Track 2A README](https://github.com/HackApertus/project-template/blob/09f8e9e2b588db3325869b23c6d5132f5c3756f7/track_2a/README.md)
@@ -33,6 +39,7 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 | Clean checkout without preinstalled application dependencies | Unverified | Dockerfile installs application dependencies; fresh image not built in cleanup |
 | Self-contained model startup | Implemented; runtime unverified | Optional managed vLLM overlay, GPU reservation, readiness dependency and stop-on-exit lifecycle |
 | `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed statically / offline | Compose forwarding and endpoint contract checks; no real submission endpoint run |
+| CSCS v1.5 70B external backend | API smoke passed; pipeline pending | `/v1/models` and one `/v1/chat/completions` succeeded; no `/tokenize` dependency in optional mode |
 | Windows, macOS and Linux submission execution | Unverified | Submission recipe avoids POSIX assignments; Windows needs GNU Make; no OS runtime matrix |
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
@@ -50,8 +57,10 @@ Set gated-model `HF_TOKEN` in `track_2a/.env`; edit `data/request.json`.
 The default endpoint is the managed Compose service `http://apertus:8000`.
 Requires a compatible NVIDIA GPU/runtime, sufficient VRAM and large initial
 image/weight downloads; no quantised substitution is configured.
-The Docker path retains required `/tokenize` preflight. The new native MLX experiment wrapper also supplies exact token preflight;
-optional preflight belongs to the older n=1 smoke only. See [RUNNING.md](RUNNING.md).
+The managed Docker path retains required `/tokenize` preflight. The new native
+MLX experiment wrapper also supplies exact token preflight. Optional preflight is
+now used by the opt-in CSCS backend: it relies on completion usage and finish
+reason and never silently falls back. See [RUNNING.md](RUNNING.md).
 
 | Configuration | Meaning | Evaluation state |
 |---|---|---|

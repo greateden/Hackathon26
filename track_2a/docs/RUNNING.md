@@ -59,11 +59,35 @@ make run SUBMISSION_MODE=external
 ```
 
 Only the base Compose file is used; it has no GPU reservation or model-service
-dependency. The endpoint must implement `/tokenize` and report matching prompt
-usage. Its configured context must match the application budget. A URL override
-alone does not select external mode: use `SUBMISSION_MODE=external` explicitly.
+dependency. The default `LLM_TOKEN_PREFLIGHT=required` contract requires
+`/tokenize` and matching prompt usage. An endpoint without `/tokenize` may
+explicitly set `LLM_TOKEN_PREFLIGHT=optional`; the application then sends no
+tokenisation request and accepts a verdict only when the completion reports
+positive integer prompt and completion token usage with `finish_reason=stop`.
+Its configured context must match the application budget. A URL override alone
+does not select external mode: use `SUBMISSION_MODE=external` explicitly.
 Container-to-endpoint networking remains to be tested on the target host.
 The third-party MLX conversion is refused by this submission path.
+
+### CSCS Apertus v1.5 70B
+
+The CSCS OpenAI-compatible endpoint is an opt-in external backend. It advertises
+`swiss-ai/Apertus-v1.5-70B` but does not document `/tokenize`, so use the
+existing optional preflight path. Keep the API key outside the repository:
+
+```bash
+export CSCS_INFERENCE_API_KEY='...'
+make run-cscs
+```
+
+`run-cscs` sets `LLM_NAME=swiss-ai/Apertus-v1.5-70B`,
+`LLM_BASE_URL=https://api.inference.cscs.ch/v1`, maps the key to
+`LLM_API_KEY`, selects `LLM_TOKEN_PREFLIGHT=optional`, and runs external mode.
+Both a base URL ending in `/v1` and one without it resolve to exactly
+`/v1/models` and `/v1/chat/completions`; `/v1/v1/...` is not produced.
+Edit `data/request.json` before running. This can send a paid remote inference
+request. The verified one-call API smoke establishes transport and parsing only;
+the full booklet/retrieval application path has not yet been run against CSCS.
 
 ## Input and output
 

@@ -148,6 +148,11 @@ To use an already running official v1.5 endpoint, configure `LLM_BASE_URL`,
 ../.venv/bin/python src/experiment_runner.py submission-smoke --deployment external --out data/experiments/submission-external
 ```
 
+This external smoke also accepts the allowlisted CSCS 70B model and optional
+token preflight. Configure the CSCS values documented in RUNNING.md first; the
+smoke records the selected model and preflight mode, and still requires exact
+response-model identity, usage, a parsed label and a verified citation.
+
 This invokes `make run` itself, with an isolated request/result file under the
 output directory. Managed mode checks Docker's NVIDIA runtime and requires
 `HF_TOKEN`; external mode probes model identity/access without a local GPU.

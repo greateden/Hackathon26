@@ -11,10 +11,11 @@ MLX_MODEL ?= swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4
 MLX_SERVER_HOST ?= 127.0.0.1
 MLX_SERVER_PORT ?= 8080
 
-.PHONY: help run smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
+.PHONY: help run run-cscs smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
 
 help:
 	@echo "run                    - Docker v1.5 application (managed GPU default; SUBMISSION_MODE=external for an endpoint)"
+	@echo "run-cscs               - Docker application with CSCS Apertus v1.5 70B (requires CSCS_INFERENCE_API_KEY)"
 	@echo "smoke                  - Docker pipeline, lexical baseline only (no model server)"
 	@echo "serve-apertus          - serve the Apertus MLX checkpoint natively (host GPU; separate terminal)"
 	@echo "run-native             - same, natively with python3 (needed for the MLX backend)"
@@ -54,6 +55,14 @@ endif
 
 run:
 	docker compose $(SUBMISSION_FILES) up --build --abort-on-container-exit --exit-code-from app app
+
+run-cscs:
+	@test -n "$$CSCS_INFERENCE_API_KEY" || { echo "ERROR: set CSCS_INFERENCE_API_KEY outside the repository."; exit 1; }
+	@LLM_NAME=swiss-ai/Apertus-v1.5-70B \
+	 LLM_BASE_URL=https://api.inference.cscs.ch/v1 \
+	 LLM_API_KEY="$$CSCS_INFERENCE_API_KEY" \
+	 LLM_TOKEN_PREFLIGHT=optional \
+	 $(MAKE) run SUBMISSION_MODE=external
 
 smoke:
 	docker compose run --rm app python3 main.py

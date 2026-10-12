@@ -14,7 +14,7 @@ retrieval. In an 81-example, nine-language-pair development comparison using
 local v1.5 6-bit MLX at 81,920 tokens, retrieval achieved accuracy 0.802 and
 macro-F1 0.807, versus 0.519 and 0.479 for full-document inference. Retrieval
 used 96.3% fewer input tokens. Of 162 planned calls, 161 completed; one
-retrieval reply hit the output limit and counts as an error. These are
+retrieval reply hit the output limit and counts as an error. These arve
 exploratory, historically exposed data, not an independent holdout. The earlier
 nine-example comparison and v1.1 experiments are retained as historical evidence.
 

@@ -19,23 +19,24 @@ from labels import LABEL_PARSE_VERSION, label_to_code
 from nli_judge import SYSTEM_PROMPT, USER_TEMPLATE, parse_nli_response
 
 MODEL = "swiss-ai/Apertus-v1.5-8B"
+CSCS_MODEL = "swiss-ai/Apertus-v1.5-70B"
 MLX_MODEL = "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit"
+OFFICIAL_MODELS = (MODEL, CSCS_MODEL)
 LANGUAGES = ("de", "fr", "it")
 
 
 def is_apertus_v15(model_id):
-    """Accept the official model or the explicitly documented MLX conversion."""
-    return model_id in (MODEL, MLX_MODEL)
+    """Accept only the explicitly supported official models or MLX conversion."""
+    return model_id in OFFICIAL_MODELS + (MLX_MODEL,)
 
 
 def token_preflight_mode():
     """'required' (default): /tokenize first, reported usage must match.
 
-    'optional' = endpoint without /tokenize (mlx_lm.server answers 404). Input
+    'optional' = endpoint without /tokenize (including CSCS and mlx_lm.server). Input
     length is then not pre-rejected; a reply only counts when the server reports
     finish_reason='stop' plus a prompt token count, so truncation is still an
-    error rather than a silent verdict. Only set this for a local development
-    endpoint - the Docker submission path keeps 'required'.
+    error rather than a silent verdict.
     """
     return os.environ.get("LLM_TOKEN_PREFLIGHT", "required")
 
@@ -149,20 +150,20 @@ def validate_request(request):
 
 
 class SubmissionJudge:
-    """vLLM-compatible API with exact token preflight, no implicit truncation."""
+    """OpenAI-compatible API with explicit model and token-usage checks."""
     def __init__(self, timeout=180):
         import requests
         self.model = os.environ.get("LLM_NAME", MODEL)
-        if os.environ.get("SUBMISSION_MODEL_REQUIRED") == "1" and self.model != MODEL:
-            raise ValueError("Docker submission requires the official Apertus v1.5 8B model")
-        if self.model != MODEL and not is_apertus_v15(self.model):
-            raise ValueError(f"Submission requires LLM_NAME={MODEL} or a declared "
-                             f"Apertus v1.5 checkpoint id; historical models use main.py")
+        if os.environ.get("SUBMISSION_MODEL_REQUIRED") == "1" and self.model not in OFFICIAL_MODELS:
+            raise ValueError("Docker submission requires an allowlisted official Apertus v1.5 model")
+        if not is_apertus_v15(self.model):
+            raise ValueError("Submission requires an allowlisted Apertus v1.5 checkpoint id; "
+                             "historical models use main.py")
         if token_preflight_mode() not in ("required", "optional"):
             raise ValueError("LLM_TOKEN_PREFLIGHT must be 'required' or 'optional'")
         base = os.environ.get("LLM_BASE_URL", "").rstrip("/")
         if not base:
-            raise ValueError("Set LLM_BASE_URL to an Apertus v1.5 8B vLLM endpoint; no lexical fallback")
+            raise ValueError("Set LLM_BASE_URL to an Apertus v1.5 OpenAI-compatible endpoint; no lexical fallback")
         self.base = base[:-3] if base.endswith("/v1") else base
         self.context = int(os.environ.get("LLM_CONTEXT_TOKENS", "32768"))
         self.max_tokens = 512
@@ -177,7 +178,7 @@ class SubmissionJudge:
             response = self.session.get(self.base + "/v1/models", timeout=10)
             response.raise_for_status()
             if self.model not in [r["id"] for r in response.json()["data"]]:
-                raise ValueError("endpoint does not list the required Apertus v1.5 8B model")
+                raise ValueError("endpoint does not list the configured Apertus v1.5 model")
         except requests.RequestException as exc:
             raise RuntimeError("Apertus v1.5 endpoint preflight failed; check LLM_BASE_URL and credentials") from exc
 
@@ -205,10 +206,16 @@ class SubmissionJudge:
                     out["error"] = "context_limit"
                     return out
             inference_start = time.perf_counter()
-            response = self.session.post(self.base + "/v1/chat/completions", json={
+            payload = {
                 "model": self.model, "messages": messages, "temperature": 0,
-                "seed": seed, "max_tokens": self.max_tokens, "stream": False,
-                "chat_template_kwargs": {"enable_thinking": False}}, timeout=getattr(self, "timeout", 180))
+                "max_tokens": self.max_tokens, "stream": False}
+            if preflight == "required":
+                payload.update(seed=seed, chat_template_kwargs={"enable_thinking": False})
+            else:
+                # Keep hosted APIs on the standard OpenAI-compatible request surface.
+                out["seed"] = None
+            response = self.session.post(self.base + "/v1/chat/completions", json=payload,
+                                         timeout=getattr(self, "timeout", 180))
             out["inference_s"] = time.perf_counter() - inference_start
             response.raise_for_status()
             data = response.json()
