@@ -25,6 +25,13 @@ experiment provides no evidence that either experimental retrieval method
 improves NLI accuracy. Dense within-booklet SwissBERT retrieval remains the
 production default.
 
+A subsequent 15-case post-hoc diagnostic obtained 15/15 correct labels with
+manually constructed sufficient evidence, 14/15 after adding distractors and
+11/15 after moving the same decisive evidence behind them. The latter contrast
+preserved both evidence and input-token counts. These selected-case results
+motivate further sufficiency and ordering controls; they do not establish a
+generalisable accuracy improvement or a deployable retrieval method.
+
 ## 1. Research question and application
 
 Swiss voting booklets are multilingual, structurally repetitive and often place
@@ -33,6 +40,8 @@ find not only the topic but the correct proposition, number, condition and
 speaker. Our research question is whether hybrid lexical–dense retrieval or
 proposition-aware reranking improves classification over the existing dense
 SwissBERT retriever.
+The follow-up diagnostic asks whether observed errors persist under sufficient
+evidence, competing arguments and a controlled change in passage order.
 
 `make run` builds the CPU application and addresses a configured Apertus v1.5
 endpoint through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. The request names
@@ -69,7 +78,7 @@ development evidence, not independent held-out estimates.
 
 ### 2.1 Cohorts and purposes
 
-Three studies must not be conflated:
+Four studies must not be conflated:
 
 1. **Full booklet versus retrieval (n=81).** The content-grouped development
    sample compares complete-PDF prompting with top-five within-booklet dense
@@ -84,6 +93,10 @@ Three studies must not be conflated:
    SwissBERT, B: dense plus BM25 reciprocal rank fusion, and C: B followed by
    proposition-aware reranking. It excludes components exposed by the earlier
    grouped study, but is still drawn from the historically inspected dataset.
+4. **Evidence sensitivity (n=15; 60 calls).** Ten discordant cases and five
+   controls from the retrieval ablation compare recorded top-five evidence,
+   manually constructed sufficient evidence, added distractors and reordered
+   blocks. Two of the initial 17 cases were excluded after source adjudication.
 
 Every ablation row was located in its booklet by the exact 60-character
 reference probe. This confirms corpus coverage for this sample, not semantic
@@ -214,9 +227,106 @@ Reference matching therefore neither captures all useful evidence nor measures
 whether the decisive proposition is prominent, correctly attributed and
 interpreted by the judge.
 
+### 5.1 Evidence sufficiency and ordering diagnostic
+
+We tested whether the selected errors remained when the judge received concise,
+sufficient evidence, and whether competing passages or their placement changed
+its predictions. The 15 retained cases contain eight entailments and seven
+contradictions, with no neutral gold labels. Row 455 was excluded because the
+claim conflates exercising due diligence with proving it as a liability defence;
+row 550 was excluded because a short excerpt cannot establish booklet-wide
+absence. Historical dataset labels and results were preserved.
+
+Condition A supplied the original recorded SwissBERT top-five passages. B used
+manually constructed exact PDF excerpts, retaining speaker, proposal, quantities
+and necessary conditions. C appended two reviewed non-decisive distractors to B.
+D moved the complete B block after those distractors, preserving both internal
+orders. These condition letters are separate from the retrieval methods in
+Section 4. Preparation and independent evidence adjudication were AI-assisted
+and confirmed by the user, not completed human verification. All conditions
+used the model and decoding settings in Section 2.
+
+The experiment completed all 60 unique calls without inference or parsing
+errors, retries or missing predictions. An operational interruption after the
+first call was resumed without repeating it; both sessions used the same loaded
+server instance. All 15 A requests and predictions match the original recorded
+experiment. Every C/D pair has identical passage text and input-token counts.
+
+| Condition | Correct | Accuracy | Macro-F1 | Input tokens | Output tokens |
+|---|---:|---:|---:|---:|---:|
+| A · original SwissBERT top-five | 8/15 | 0.533 | 0.593 | 18,837 | 1,723 |
+| B · minimal sufficient evidence | 15/15 | 1.000 | 1.000 | 5,784 | 1,539 |
+| C · B followed by distractors | 14/15 | 0.933 | 0.933 | 9,570 | 1,534 |
+| D · distractors followed by B | 11/15 | 0.733 | 0.786 | 9,570 | 1,606 |
+
+Macro-F1 averages the two gold-supported classes; neutral predictions count as
+misclassifications. A→B corrected seven cases (119, 432, 1026, 1178, 189, 195 and
+1058), with eight unchanged predictions and no regressions. B→C changed only
+row 195, incorrectly from entailment to contradiction. C→D produced three
+further regressions: row 189 to contradiction, and rows 1026 and 1344 to neutral;
+12 predictions were unchanged. Row 195 remained incorrect under both orders.
+
+B used 69.3% fewer input tokens than A, but represents a case-informed evidence
+upper bound rather than an implemented retrieval method. C increased input
+length by 65.5% over B, so B/C does not isolate semantic interference. C/D had
+the same input length in every pair, not merely equal aggregate totals. Token
+counts come from raw completion usage and agree with the saved nested
+`token_latency` totals. The summary's flat token-total fields incorrectly contain
+zeros; those historical fields and the evaluation code were not rewritten.
+
+The [compact result and audit](docs/evidence/evidence_sensitivity_results_v2_20261012.json)
+contains all 60 predictions, response text, usage, paired changes and original
+file hashes. Exact evidence, page offsets and PDF provenance are in the
+[frozen plan](docs/evidence/evidence_sensitivity_plan_v2_20261012.json), with
+[review decisions](docs/evidence/evidence_sensitivity_annotations_v2_20261012.json).
+Original manifest, events, predictions and summaries remain under
+`data/experiments/evidence-sensitivity-v2/`.
+
+### 5.2 Critical cases and interpretation
+
+**Row 195: attributed sufficiency versus opposing arguments.** The claim reports
+the referendum committee's view that existing criminal law suffices. B includes
+that position on pages 7 and 22; C/D also contain Parliament's opposing assessment
+on page 24. B returns entailment, whereas C and D return contradiction. Both
+generated explanations distinguish the committee's position from the government
+and parliamentary argument. The labels are therefore consistent with treating
+disagreement between stakeholders as contradiction of an attributed claim,
+rather than with an observable failure to name the speakers correctly.
+
+**Row 189: government recommendation versus proponent recommendation.** The
+claim concerns the Federal Council's rejection of the limitation initiative.
+The Italian evidence attributes `No` to the Council and Parliament (page 5) and
+`Sì` to the initiative committee (page 21). C returns entailment; D returns
+contradiction while its explanation correctly states both recommendations.
+The output contrasts the stakeholders without preserving the claim's scope.
+This supports an attribution-sensitive label error, not a finding that the
+government recommendation itself became ambiguous.
+
+**Row 1026: decisive evidence retained but treated as insufficient.** The page-8
+summary explicitly extends assistance to recipients of insufficient or no prior
+support, contradicting the claim that aid was restricted to adequately supported
+recipients. B and C return contradiction. D returns neutral and discusses the
+advance-payment procedure and referendum requirements, although its quotation
+reproduces the decisive extension sentence. The changed prediction accompanies
+block placement; the evidence was neither omitted nor truncated. The generated
+explanation and quotation disagree about whether the claim is addressed.
+
+**Row 1344: numerical explanation–label inconsistency.** Article 24b (page 22)
+specifies a 4% requirement, rather than the claimed 10%, with the replacement-tax
+condition and four-year average retained. B/C return contradiction. D returns
+neutral while explaining that the evidence specifies 4%, not 10%. Its raw JSON
+already contains `neutral`, so this is an output inconsistency rather than a
+parser-induced label change.
+
+These observations are traceable to the supplied passages and saved responses.
+Stakeholder interference and reduced use of late decisive evidence are plausible
+interpretations, but generated explanations cannot be assumed to describe the
+model's internal decision process faithfully. Single observations cannot identify those
+mechanisms or establish deterministic causal effects of ordering.
+
 ## 6. Discussion
 
-The experiments support two conclusions. First, focused within-booklet evidence
+The retrieval experiments support two conclusions. First, focused within-booklet evidence
 is substantially more effective and cheaper than full-booklet prompting on the
 earlier development cohort. Second, optimisation of a lexical reference-recall
 proxy did not improve downstream NLI in the new cohort. The negative result is
@@ -232,6 +342,13 @@ checks, while judgement evaluation should control evidence order and isolate
 polarity, numeric and stakeholder reasoning. These are hypotheses for future
 tests, not causal findings from the present single runs.
 
+The evidence sensitivity diagnostic adds a narrower result: manually constructed
+sufficient inputs resolved the seven selected A errors, while competing passages
+and block order accompanied further label failures. This motivates evaluating
+speaker-specific sufficiency and explanation–label consistency alongside lexical
+recall. It does not justify promoting curated evidence or a new ranker into the
+production pipeline.
+
 ## 7. Limitations and reproducibility
 
 All model measurements are single runs on development data. The ablation has 81
@@ -242,6 +359,16 @@ support. Quantisation, prompt order, long-context behaviour and run-to-run
 variance are not isolated. Extraction may lose layout or image-only content.
 Managed Apertus 8B startup, a clean cold submission build, Linux/Windows
 execution and cross-platform determinism remain unverified.
+
+The evidence sensitivity sample is smaller still: 15 post-hoc selected cases,
+no neutral gold examples and one completion per case and condition. Minimal
+evidence was curated with knowledge of the claims, gold labels and previous results, rather
+than selected blindly or by a deployable retriever. B/C also changes input length.
+C/D preserves evidence and token counts, but fixed condition order, caching,
+session effects and unmeasured repeat variance prevent a deterministic causal
+interpretation. The perfect B score is a manually constructed upper bound for
+these cases, not a generalisation estimate; only 11/15 B citations passed the
+strict source-occurrence check.
 
 The local server log records two warnings. First,
 `mlx_lm.server is not recommended for production` describes the development
@@ -265,18 +392,25 @@ smoke are recorded; the latter is one functional check, not a benchmark.
 
 ## 8. Future research and conclusion
 
-The next experiment should freeze a small manually adjudicated proposition set
-that marks the decisive sentence, speaker, proposal, numerical relation and
-acceptable alternative evidence. Evaluate passage selection separately from a
-fixed judge, then run the judge on counterbalanced evidence orders. This would
-distinguish selection failure from interpretation failure with greater
-information gain than another end-to-end recall optimisation.
+The next experiment should repeat the C/D comparison in counterbalanced order,
+including repeated unchanged-prompt controls. Retain the decisive sentence,
+speaker, proposal, numerical relation and acceptable alternative evidence in
+the adjudication. This would help separate ordering sensitivity from repeat
+variance and test whether the observed explanation–label inconsistencies recur.
+Evaluate passage selection separately from this fixed-evidence judge diagnostic;
+manually curated evidence must not be scored as a deployable retrieval method.
 
 For final generalisation evidence, collect a new vote- or topic-disjoint test
-set rather than reuse the exposed corpus. Until then, dense SwissBERT retrieval
-is the defensible production default. The present 243-call ablation supplies no
+set with separately adjudicated neutral cases rather than reuse the exposed
+corpus. Until then, dense SwissBERT retrieval is the defensible production
+default. The present 243-call ablation supplies no
 evidence that hybrid RRF or proposition-aware reranking improves NLI accuracy,
 and its negative result should be retained.
+
+The subsequent 60-call diagnostic shows that these selected cases can be resolved
+under sufficient evidence, but some outputs remain sensitive to competing
+arguments and their order. It supplies a controlled basis for further diagnosis,
+not evidence of a generalisable production accuracy improvement.
 
 ## License
 

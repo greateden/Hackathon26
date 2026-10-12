@@ -3,6 +3,18 @@
 Raw inference records remain in ignored experiment directories; compact tracked
 summaries link to them without duplicating the data.
 
+- [Evidence sensitivity v2 results](evidence_sensitivity_results_v2_20261012.json):
+  60 completed calls on 15 post-hoc selected cases; all predictions, response
+  text, token usage, independently recomputed metrics and raw-file hashes.
+  The [frozen plan](evidence_sensitivity_plan_v2_20261012.json) contains exact
+  passages, offsets and PDF provenance;
+  [annotations](evidence_sensitivity_annotations_v2_20261012.json) record the
+  independent AI-assisted approval and two exclusions. Original records remain
+  under `data/experiments/evidence-sensitivity-v2/` (ignored). The summary's flat
+  token-total fields are incorrectly zero; nested totals agree with raw usage.
+  Preparation-era validation records describe their original review state.
+  The final analysis does not alter production retrieval or historical records.
+
 - [Prompt-only pilot results](prompt_pilot27_results_v1.json): completed paired
   CSCS Apertus v1.5 70B comparison, 27 rows and 54 calls. Accuracy was tied;
   `current_v1` remains the production default. The frozen selection is in the
