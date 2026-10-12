@@ -3,6 +3,23 @@
 Run commands from `track_2a/`. Use the preserved repository environment;
 no packages or weights are installed by this runner.
 
+## Completed prompt-only pilot
+
+`data/experiments/prompt-pilot27-v1/` contains the ignored raw records for the
+completed 27-row, 54-call CSCS Apertus v1.5 70B comparison. The frozen plan and
+compact result are tracked as
+[`prompt_pilot27_plan_v1.json`](evidence/prompt_pilot27_plan_v1.json) and
+[`prompt_pilot27_results_v1.json`](evidence/prompt_pilot27_results_v1.json).
+Both prompts used identical retrieved evidence. Accuracy was 23/27 for each;
+the refined prompt used 18.8% more input tokens, so `current_v1` remains the
+production default. This exposed development sample is not a held-out test.
+
+To regenerate only the derived summaries, without inference:
+
+```bash
+../.venv/bin/python src/prompt_ab_experiment.py summarise --out data/experiments/prompt-pilot27-v1
+```
+
 ## Preflight
 
 ```bash

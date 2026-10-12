@@ -1,14 +1,14 @@
-# Project status — 11 October 2026
+# Project status — 12 October 2026
 
 The specified-booklet application has one genuine local Apertus v1.5 8B MLX
 result with a verified citation and token counts. Repository packaging now
 follows `track_2a/`. **Submission readiness is still incomplete:** Compose now manages the official model
 server, but clean-checkout Docker inference and cross-platform validation remain
 pending. The deployment repair is PARTIAL. Managed mode needs compatible NVIDIA hardware;
-external mode now runs the application without a local GPU service. A cached-only
-paired runner and loader/tokenisation wrapper are implemented and tested offline.
-Their real native and Docker runs remain pending. No model experiments were run
-during this repair. See [runner handoff](RUNNER_REPAIR_20261011.md).
+external mode runs the application without a local GPU service. The prompt-only
+CSCS Apertus v1.5 70B pilot is complete; it did not improve accuracy, so
+`current_v1` remains the production prompt. Official managed Docker inference
+is still pending. See [runner handoff](RUNNER_REPAIR_20261011.md).
 
 The CSCS API has separately passed a direct transport smoke with
 `swiss-ai/Apertus-v1.5-70B`: model listing, one chat completion, parsed NLI
@@ -18,9 +18,9 @@ the booklet/retrieval Docker path has run successfully against CSCS.
 
 ## Requirements and evidence
 
-The structural authority is the [Track 2A README](https://github.com/HackApertus/project-template/blob/09f8e9e2b588db3325869b23c6d5132f5c3756f7/track_2a/README.md)
-and [repository README](https://github.com/HackApertus/project-template/blob/09f8e9e2b588db3325869b23c6d5132f5c3756f7/README.md),
-checked on 11 October 2026. They require keeping `track_2a/`, Docker through
+The structural authority is the [Track 2A README](https://github.com/HackApertus/project-template/blob/main/track_2a/README.md)
+and [repository README](https://github.com/HackApertus/project-template/blob/main/README.md),
+rechecked on 12 October 2026. They require keeping `track_2a/`, Docker through
 `make run`, standard LLM environment variables and at most 100 MB of submitted
 data. They mandate the Apertus family; the stricter v1.5 8B acceptance target,
 six-page report limit and 16 October 12:00 CEST deadline are from the project
@@ -32,18 +32,20 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 |---|---|---|
 | `track_2a/` with Makefile, src, data, docs, README and technical report | Passed | Required layout present; repository-root Makefile forwards into it |
 | Apertus family used | Passed for local development | Real loader records v1.5 8B text branch, 6-bit MLX; no inference fallback |
-| Exact submission v1.5 8B serving configuration | Unverified | Native third-party MLX conversion is evidenced; official vLLM build not validated |
+| Exact submission v1.5 8B model identity | Passed statically; runtime unverified | Compose and the application require `swiss-ai/Apertus-v1.5-8B`; official weights were not loaded here |
+| Official model availability | Blocked locally | Colima is Linux arm64 with no NVIDIA runtime; access and weights were not tested or downloaded |
 | Specified booklet + claim, label and citations | Passed for one local example | Entailment (0), physical page 15, verified snippet; not a quality benchmark |
-| All nine DE/FR/IT combinations | Passed for interface/retrieval only | n=9 extraction/retrieval smoke; multilingual NLI quality unverified |
-| `make run` launches Docker from project root | Passed statically; runtime unverified | Make dry-run and Compose configuration pass; no new container run |
-| Clean checkout without preinstalled application dependencies | Unverified | Dockerfile installs application dependencies; fresh image not built in cleanup |
+| All nine DE/FR/IT combinations | Development evidence only | Prompt pilot has one row per language-pair/label cell; exposed n=27, not independent quality evidence |
+| `make run` launches Docker from project root | Partly verified | Root forwarding and Compose configuration pass; application image builds and fails hard against an unavailable endpoint; managed inference blocked |
+| Clean checkout without preinstalled application dependencies | Partly verified | Docker build context is self-contained; fresh managed inference still needs an NVIDIA host and authorised model access |
 | Self-contained model startup | Implemented; runtime unverified | Optional managed vLLM overlay, GPU reservation, readiness dependency and stop-on-exit lifecycle |
 | `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed statically / offline | Compose forwarding and endpoint contract checks; no real submission endpoint run |
+| Input/output and failure contract | Passed offline / container failure path | Request validation and JSON contract tests pass; unreachable endpoint exits 1 before retrieval, with no lexical fallback |
 | CSCS v1.5 70B external backend | API smoke passed; pipeline pending | `/v1/models` and one `/v1/chat/completions` succeeded; no `/tokenize` dependency in optional mode |
 | Windows, macOS and Linux submission execution | Unverified | Submission recipe avoids POSIX assignments; Windows needs GNU Make; no OS runtime matrix |
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
-| Technical report template | Passed for draft structure | Sections 1–8, licence and references; evaluation results remain pending |
+| Technical report template | Passed for draft structure | Sections 1–8, licence, references and current development results are present |
 | Final report, team metadata, demo and licence review | Failed / incomplete | No final PDF produced; code licence and challenge-specific deliverables need review |
 
 ## Submission configuration
@@ -70,6 +72,12 @@ reason and never silently falls back. See [RUNNING.md](RUNNING.md).
 | Historical `oracle` | Gold reference supplied to the judge | Diagnostic only; not Baseline A |
 | Historical `lexical` | Heuristic judge or BM25, depending on script | Never Apertus model quality |
 | Historical `baseline`, `t0`, `strict`, `select`, factorial arms | Prompt/evidence ablations | Not current application settings; strict was unsuccessful |
+
+The completed prompt-only comparison used identical retrieved evidence for both
+arms and CSCS `swiss-ai/Apertus-v1.5-70B`. Both scored 23/27. The refined arm
+used 40,795 input tokens against 34,342 for `current_v1` (18.8% more), with one
+improved flip, one worsened flip and one both-wrong flip. Keep `current_v1` as
+production default. See the [tracked result](evidence/prompt_pilot27_results_v1.json).
 
 ## Verified results and preserved provenance
 
@@ -107,9 +115,8 @@ Confirm judge hardware/access; see [RUNNING.md](RUNNING.md) for dependencies.
 
 **P1 — submission evidence and deliverables:** validate Windows and Linux;
 review code/data licensing, supply team and demo metadata, then complete the
-report and requested PDF within the confirmed limit. Run the saved paired development experiment (18 planned calls) manually using
-[EXPERIMENTS.md](EXPERIMENTS.md) on one frozen serving configuration. Design a content-grouped independent final split.
-No paired experiment or PDF was produced in this task.
+report and requested PDF within the confirmed limit. A genuinely independent
+held-out prompt evaluation remains future work; do not promote the exposed pilot.
 
 **P2 — reproducibility and research limitations:** the new native runner pins encoder/model revisions; production image and encoder
 pinning remain open. Resolve the recorded MLX tokenizer warning and fresh-native
@@ -148,6 +155,30 @@ files retain original paths and dates; the migration does not rewrite measuremen
 on an existing compatible NVIDIA Docker host, with approved Hugging Face access
 and the official weights available or an authorised initial download. Verify
 the label, citation, token counts and service shutdown before declaring PASS.
+
+## Submission P0 recheck — 12 October 2026
+
+- The live official template still requires the unchanged `track_2a/` layout,
+  repository-root `make run`, Docker, the three standard `LLM_*` variables and
+  no more than 100 MB under `data/`.
+- A temporary tree containing only Git-eligible candidate files resolved root
+  `make run`, passed both Compose configurations and built the application image.
+  The build reused cached base/dependency layers; it did not test a cold network install.
+- Dummy sentinel checks confirmed model name, base URL, API key, context and
+  token-preflight forwarding. The managed model and application both resolve to
+  `swiss-ai/Apertus-v1.5-8B` by default.
+- The clean-built application exited 1 against an unreachable endpoint before
+  PDF download or embedding work. No lexical fallback or inference occurred.
+- No repository configuration or packaging defect was confirmed. The local
+  `docker compose build` frontend is broken because its buildx plugin path is
+  missing; the legacy builder succeeded. This host has no NVIDIA runtime, so
+  managed service startup, official weight availability and real output remain blocked.
+
+The exact next verification is `make run` from the repository root on a clean
+amd64 checkout with NVIDIA Container Toolkit, authorised `HF_TOKEN` in
+`track_2a/.env`, and permission for the official initial download. Record the
+result JSON and non-zero/zero exit status; do not declare submission runtime
+ready until that command returns a verified citation and the configured model.
 
 ## Runner repair verification — 11 October 2026
 

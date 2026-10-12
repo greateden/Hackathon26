@@ -1,0 +1,60 @@
+{
+  "schema": "hackapertus-prompt-pilot-results-v1",
+  "status": "complete",
+  "model": "swiss-ai/Apertus-v1.5-70B",
+  "endpoint": "CSCS OpenAI-compatible inference API",
+  "sample": {
+    "rows": 27,
+    "calls": 54,
+    "selection": "one row per claim-language, booklet-language and gold-label cell",
+    "plan": "prompt_pilot27_plan_v1.json",
+    "plan_sha256": "044a88e9568c99b08aa91fa075055b6885129ea8fa39c48d20a69e16ed9f43ae"
+  },
+  "setup": {
+    "evidence": "the same frozen top-five retrieved passages for both prompt arms",
+    "temperature": 0,
+    "max_tokens": 512,
+    "parser_version": "label-parse-v3-strict",
+    "call_order": "alternated within each pair"
+  },
+  "results": {
+    "current_v1": {
+      "correct": 23,
+      "accuracy": 0.852,
+      "macro_f1": 0.850,
+      "verified_citations": 17,
+      "input_tokens": 34342,
+      "mean_latency_s": 1.78,
+      "failed_calls": 0
+    },
+    "teammate_rules_v1": {
+      "correct": 23,
+      "accuracy": 0.852,
+      "macro_f1": 0.853,
+      "verified_citations": 18,
+      "input_tokens": 40795,
+      "mean_latency_s": 1.92,
+      "failed_calls": 0
+    },
+    "input_token_increase_percent": 18.8,
+    "prediction_flips": [
+      {"row_index": 661, "change": "improved"},
+      {"row_index": 169, "change": "worsened"},
+      {"row_index": 1060, "change": "both_wrong"}
+    ]
+  },
+  "decision": "The refined prompt did not improve accuracy and used about 19% more input tokens. Keep current_v1 as the production default.",
+  "limitations": [
+    "This is a small development sample whose underlying data had already been exposed to earlier work.",
+    "It is not an independent held-out evaluation.",
+    "The single-run Macro-F1 and citation differences do not establish a general improvement."
+  ],
+  "raw_evidence": {
+    "path": "data/experiments/prompt-pilot27-v1/",
+    "note": "Ignored local artefacts; raw inference records are not duplicated here.",
+    "manifest_sha256": "3d2408621f9237ca632193c3d4b6e58dfa051b62826b197ffb91720bb5830637",
+    "prepared_sha256": "55ef62ec84b4ab4a9cd686c55dff6c9b7d89f63d93f0d0743a0e8b0015affd20",
+    "events_sha256": "d0b55e29d7f93cc2892f6b7c7686ed8632767149642ffe493a96bf3715b9a59c",
+    "predictions_sha256": "16c1ef921d624bedd38905d8d4644cac935f3117cef3a2998f8945395c40a673"
+  }
+}

@@ -1,6 +1,12 @@
 # Evidence index
 
-No model experiment was run during submission cleanup.
+Raw inference records remain in ignored experiment directories; compact tracked
+summaries link to them without duplicating the data.
+
+- [Prompt-only pilot results](prompt_pilot27_results_v1.json): completed paired
+  CSCS Apertus v1.5 70B comparison, 27 rows and 54 calls. Accuracy was tied;
+  `current_v1` remains the production default. The frozen selection is in the
+  [pilot plan](prompt_pilot27_plan_v1.json).
 
 - [Local v1.5 smoke](v15_local_smoke/verification.json): saved successful
   development run, n=1, 11 October 2026. See [result](v15_local_smoke/result.json)

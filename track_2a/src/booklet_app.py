@@ -127,8 +127,8 @@ def evidence_payload(booklet, evidence):
     return "\n\n".join(f"[page {p['page']}]\n{p['text']}" for p in evidence)
 
 
-def build_messages(claim, evidence):
-    return [{"role": "system", "content": SYSTEM_PROMPT},
+def build_messages(claim, evidence, system_prompt=SYSTEM_PROMPT):
+    return [{"role": "system", "content": system_prompt},
             {"role": "user", "content": USER_TEMPLATE.format(claim=claim, evidence=evidence)}]
 
 
@@ -183,7 +183,9 @@ class SubmissionJudge:
             raise RuntimeError("Apertus v1.5 endpoint preflight failed; check LLM_BASE_URL and credentials") from exc
 
     def judge(self, claim, evidence, seed=20261011):
-        messages = build_messages(claim, evidence)
+        # Experimental runners may set a versioned system prompt. The default
+        # remains the original production prompt byte-for-byte.
+        messages = build_messages(claim, evidence, getattr(self, "system_prompt", SYSTEM_PROMPT))
         preflight = token_preflight_mode()
         out = {"label": None, "label_code": None, "model": self.model,
                "parser_version": LABEL_PARSE_VERSION, "temperature": 0, "seed": seed,

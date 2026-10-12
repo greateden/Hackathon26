@@ -1,6 +1,6 @@
 # Technical report — Swiss voting-booklet NLI
 
-**Track:** 2A, OST. **Event:** Online. **Status:** submission draft, 11 October
+**Track:** 2A, OST. **Event:** Online. **Status:** submission draft, 12 October
 2026. Team names and demo link remain to be supplied. This Markdown is not yet
 the final, at-most-six-page PDF.
 
@@ -14,7 +14,7 @@ retrieval. In an 81-example, nine-language-pair development comparison using
 local v1.5 6-bit MLX at 81,920 tokens, retrieval achieved accuracy 0.802 and
 macro-F1 0.807, versus 0.519 and 0.479 for full-document inference. Retrieval
 used 96.3% fewer input tokens. Of 162 planned calls, 161 completed; one
-retrieval reply hit the output limit and counts as an error. These arve
+retrieval reply hit the output limit and counts as an error. These are
 exploratory, historically exposed data, not an independent holdout. The earlier
 nine-example comparison and v1.1 experiments are retained as historical evidence.
 
@@ -124,10 +124,22 @@ The old non-resumable paired CLI was removed; its plan and coverage helpers rema
 | Approach B, 32K | Same model and rows; top-five within-PDF | Accuracy 0.889, macro-F1 0.886; 9 completed | same directory |
 | Baseline A, 80K | v1.5 MLX 6-bit; complete PDF; same dev n=9 | Accuracy 0.333, macro-F1 0.167; 9 completed, all neutral | `data/experiments/v15-paired-80k/` |
 | Approach B, 80K | Same model and rows; top-five within-PDF | Accuracy 0.889, macro-F1 0.886; 9 completed | same directory |
+| Prompt `current_v1` | CSCS Apertus v1.5 70B; frozen retrieved evidence; exposed dev n=27 | 23/27 correct, macro-F1 0.850; 17/27 verified citations; 34,342 input tokens | `docs/evidence/prompt_pilot27_results_v1.json` |
+| Prompt `teammate_rules_v1` | Same model, rows and evidence | 23/27 correct, macro-F1 0.853; 18/27 verified citations; 40,795 input tokens | same file |
 | Local v1.5 smoke | MLX 6-bit; retrieved; DE→DE; n=1 | Entailment (0); verified page 15; 1,007 input / 71 output tokens; inference 1.384 s, retrieval 2.374 s | `docs/evidence/v15_local_smoke/` |
 | Extraction/retrieval smoke | SentenceSwissBERT; full vs top-five within-PDF; paired dev n=9; no NLI model | Mean reference shingle coverage 0.921 full, 0.204 retrieved | `docs/evidence/booklet_retrieval_smoke_20261011.json` |
 | Historical NLI | Apertus v1.1 4B MLX INT4; global `retrieve-v2`; dev n=60 | Accuracy 0.483, macro-F1 0.466 | `data/eval_results_20261010_082336_dev_openai_retrieve-v2.json` |
 | Historical diagnostic | Same v1.1 model; oracle reference; dev n=60 | Accuracy 0.433, macro-F1 0.393 | `data/eval_results_20261010_082936_dev_openai_oracle.json` |
+
+**Prompt-only pilot.** The two prompts used byte-identical top-five evidence,
+temperature zero, the same strict parser and alternating call order. All 54
+calls completed. Three predictions changed: row 661 improved, row 169 worsened,
+and row 1060 remained wrong under both prompts. The refined prompt did not
+improve accuracy and used 18.8% more input tokens; the small Macro-F1 and
+citation differences do not establish an improvement. `current_v1` therefore
+remains the production default. This was a small, already exposed development
+sample, not independent held-out evaluation. The compact evidence summary links
+to the ignored raw directory and records hashes without copying its records.
 
 **Grouped 81-row result.** The frozen plan has nine claims for every claim/booklet
 language pair and 27 examples per NLI label. Preflight passed; the run ended
@@ -243,9 +255,8 @@ Genuine local v1.5 MLX inference is recorded, but clean-checkout submission
 Docker execution and Windows/Linux validation remain pending. Managed NVIDIA server startup is configured but untested. External-endpoint
 mode has no NVIDIA dependency. Neither mode has new real Docker evidence. The MLX tokenizer emitted a regex
 warning in the original logs; its impact is unresolved and no tokenizer change
-was made during cleanup. The 81-row grouped comparison is more informative
-than nine rows, but is still a development comparison, not an independent
-benchmark. Quantisation,
+was made during cleanup. The 81-row grouped comparison and 27-row prompt pilot
+are development comparisons, not independent benchmarks. Quantisation,
 long-input attention, prompt placement and the tokenizer warning have not been
 isolated experimentally. A verified quotation establishes textual provenance,
 not entailment or correct attribution; short neutral citations may be only headings.
