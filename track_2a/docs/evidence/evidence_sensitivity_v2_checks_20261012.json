@@ -1,0 +1,59 @@
+{
+  "status": "PASS",
+  "compilation": {
+    "command": "../.venv/bin/python -m py_compile src/evidence_sensitivity_v2.py",
+    "exit_code": 0
+  },
+  "focused_tests": {
+    "command": "HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=src ../.venv/bin/python -m unittest discover -s tests -p test_evidence_sensitivity_v2.py -v",
+    "tests": 4,
+    "seconds": 10.355,
+    "exit_code": 0
+  },
+  "offline_validation": {
+    "command": "HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 ../.venv/bin/python src/evidence_sensitivity_v2.py validate --report docs/evidence/evidence_sensitivity_offline_validation_v2_20261012.json",
+    "exit_code": 0
+  },
+  "dry_run": {
+    "command": "HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 ../.venv/bin/python src/evidence_sensitivity_v2.py dry-run --out data/experiments/evidence-sensitivity-v2-dry-run",
+    "exit_code": 0,
+    "planned_calls": 60,
+    "inference_calls": 0,
+    "predictions_bytes": 0,
+    "network_guard_test_passed": true
+  },
+  "regression": {
+    "command": "make test",
+    "invocations": 1,
+    "unittest_tests": 136,
+    "unittest_seconds": 14.178,
+    "exit_code": 0,
+    "judge_label_checks": "all passed",
+    "compilation": "passed",
+    "fixture_output_is_not_real_inference_or_docker_evidence": true
+  },
+  "preserved_source_sha256": {
+    "data/eval/mnli_swiss_v1.1.jsonl": "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd",
+    "data/experiments/retrieval-ablation-v1/manifest.json": "2b68272a5d82d314b6c604001f7f1606855ac30342aefc31665816dd0db6b580",
+    "data/experiments/retrieval-ablation-v1/predictions.jsonl": "37a744a5a1464ea11f0e68bb8358553991928a1dbd3924aac39fe48789bcb3c2",
+    "data/experiments/retrieval-ablation-v1/summary.json": "9f4c08406f017c0aba2c51800ff02152426d7eeb4149f0e747838a87cd24cc33",
+    "src/evidence_sensitivity.py": "7e0e963c38999da23474a1166a8d9768c73d814c9173f01d5aa696c4e1da40ea",
+    "docs/evidence/evidence_sensitivity_plan_20261012.json": "0a2743ce125515bf2445093a5f55cf9c2f12b0359c361c71d0dca8013a7ae13c",
+    "docs/evidence/evidence_sensitivity_annotations_20261012.json": "c1fbe180c9e9de2bd3ed48b99e62c32663c36066dadeef443d51fe3a35e46d25",
+    "docs/evidence/evidence_sensitivity_offline_validation_20261012.json": "068c448a64ea8482f44c1c9897c7e8263ac23a9a3a51068b34874edfc6dcb5ae"
+  },
+  "tracked_diff": "none",
+  "git_diff_check": "passed",
+  "committed": false,
+  "pushed": false,
+  "existing_port_8080_listener": {
+    "command": "Python",
+    "pid": 75262,
+    "address": "127.0.0.1:8080",
+    "identity_verified_this_session": false,
+    "started_by_this_task": false,
+    "stopped_by_this_task": false
+  },
+  "execution_status": "pending_independent_chatgpt_review",
+  "inference_calls_this_preparation": 0
+}
