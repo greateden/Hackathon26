@@ -15,6 +15,7 @@ services:
       LLM_TOKEN_PREFLIGHT: ${LLM_TOKEN_PREFLIGHT:-optional}
       SUBMISSION_MODEL_REQUIRED: "1"
       RESULT_FILE: ${RESULT_FILE:-}
+      DIAGNOSTICS_FILE: ${DIAGNOSTICS_FILE:-}
       REQUEST_FILE: ${REQUEST_FILE:-/app/data/request.json}
     volumes:
       - ./data:/app/data

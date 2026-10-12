@@ -68,13 +68,9 @@ def load_booklet(spec, language=None):
     source = str(spec)
     if source.startswith("https://"):
         import requests
-        from fetch_booklets import pdf_path
-        # Reuse historical downloads only after validating the actual PDF bytes.
-        candidate = pdf_path(source)
+        # A historical basename cache does not establish URL identity.
         pdf = DATA_DIR / "booklets" / "submission" / (digest(source.encode()) + ".pdf")
-        if candidate.is_file():
-            pdf = candidate
-        elif not pdf.exists():
+        if not pdf.exists():
             response = requests.get(source, timeout=90)
             response.raise_for_status()
             if not response.content.startswith(b"%PDF"):
@@ -425,13 +421,20 @@ def main():
         request = json.loads(Path(args.input).read_text(encoding="utf-8"))
         request = validate_request(request, Path(args.input).parent)
         args.out = args.out or os.environ.get("RESULT_FILE")
-        if args.out and Path(args.out).exists():
-            raise ValueError("Output exists; choose a new path")
-        if args.out and not Path(args.out).parent.is_dir():
-            raise ValueError("Output directory does not exist")
+        diagnostics = os.environ.get("DIAGNOSTICS_FILE")
+        if args.out and diagnostics and Path(args.out).resolve() == Path(diagnostics).resolve():
+            raise ValueError("Result and diagnostics paths must differ")
+        for target in (args.out, diagnostics):
+            if target and Path(target).exists():
+                raise ValueError("Output exists; choose a new path")
+            if target and not Path(target).parent.is_dir():
+                raise ValueError("Output directory does not exist")
         judge = SubmissionJudge()  # fail before PDF/embedding downloads
         with redirect_stdout(sys.stderr):
             result = classify(request, judge)
+        if diagnostics:
+            with open(diagnostics, "x", encoding="utf-8") as stream:
+                json.dump(result, stream, ensure_ascii=False, indent=2)
         rendered = json.dumps(submission_output(result), ensure_ascii=False, indent=2)
         if args.out:
             with open(args.out, "x", encoding="utf-8") as stream:

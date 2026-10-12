@@ -243,7 +243,10 @@ def summarise_run(directory, prepared, status=None):
     latest = {r["key"]: r for r in records}
     arms = {arm: [r for r in latest.values() if r["arm"] == arm] for arm in ARMS}
     planned = prepared["planned_calls"]
-    result = {"schema": SCHEMA, "status": status or ("COMPLETE" if len(latest) == planned else "INCOMPLETE"),
+    inferred_status = ("INCOMPLETE" if len(latest) != planned else
+                       "COMPLETE" if all(r["status"] == "completed" for r in latest.values())
+                       else "COMPLETE_WITH_ERRORS")
+    result = {"schema": SCHEMA, "status": status or inferred_status,
               "updated_utc": now(), "planned": planned, "attempts": len(records),
               "recorded": len(latest), "missing": planned - len(latest),
               "arms": {arm: arm_metrics(rows) for arm, rows in arms.items()},
@@ -268,7 +271,7 @@ def summarise_run(directory, prepared, status=None):
         lines.append(f"| {arm} | {m['n']} | {m['accuracy']} | {m['macro_f1']} | {m['citation_validity_rate']} | {m['failed_requests']} |")
     lines += ["", f"Paired prediction flips: {len(result['paired_prediction_flips'])}."]
     if result["status"] == "COMPLETE":
-        lines.append("Decision: keep current_v1 as the production default; the refined prompt did not improve accuracy.")
+        lines.append("Production remains current_v1. Assess the measured comparison above before changing the prompt.")
     else:
         lines.append("No prompt decision is made until every planned call has a recorded outcome.")
     (directory / "summary.md").write_text("\n".join(lines) + "\n")

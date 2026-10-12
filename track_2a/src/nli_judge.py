@@ -178,8 +178,8 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 # fabricated prediction. Group 1 = exact quoted string value, group 2 = bare
 # numeric/bool literal; both go through strict normalise_label.
 _LABEL_KEY_RE = re.compile(
-    r'"label"\s*:\s*"([^"]*)"'
-    r'|"label"\s*:\s*(true|false|null|[0-9]+(?:\.[0-9]+)?)(?![0-9.\w])',
+    r'"label"\s*:\s*(?:"([^"]*)"'
+    r'|(true|false|null|[0-9]+(?:\.[0-9]+)?))(?=\s*(?:[,}]|$))',
     re.IGNORECASE)
 # Leading-label rule, tightened 2026-10-11. `\b` matched at a hyphen or a
 # slash too, so a reply that REFUSED TO CHOOSE decoded as its leading word:
@@ -236,6 +236,10 @@ def parse_nli_response(raw: str) -> Dict:
             if label:
                 obj["label"] = label
                 return obj
+            # Valid JSON is authoritative: do not recover a nested or earlier
+            # label when its top-level label is missing or invalid.
+            return {"label": None, "reasoning": f"Unparseable response: {text[:120]}",
+                    "evidence_snippet": "", "error": "unparseable_response"}
         except json.JSONDecodeError:
             pass
 

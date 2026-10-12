@@ -136,6 +136,9 @@ file through `make run`, set `RESULT_FILE=/app/data/result.json` in `.env`.
 Existing files are refused. `REQUEST_FILE` and `RESULT_FILE` are container
 paths; the output directory must already exist and be writable by Docker's
 non-root `app` user. Endpoint, token, parsing and input errors return non-zero.
+The smoke runner additionally sets `DIAGNOSTICS_FILE` to a separate new file
+for model, usage and citation checks; stdout and `RESULT_FILE` retain the exact
+official JSON contract. Diagnostics include the supplied text and model reply.
 
 ## Native development and experiments
 

@@ -191,6 +191,14 @@ class VerdictShapeTests(unittest.TestCase):
 class JsonDecodingTests(unittest.TestCase):
     """A JSON reply is parsed as data, not scanned for label-shaped words."""
 
+    def test_invalid_structured_labels_cannot_be_rescued(self):
+        for raw in ('{"label":null,"nested":{"label":"neutral"}}',
+                    '{"nested":{"label":"neutral"}}',
+                    '{"label":"neutral","label":null}',
+                    '{"label":1/2,', '{"label":"neutral"ish,'):
+            with self.subTest(raw=raw):
+                self.assertIsNone(label_of(raw))
+
     def test_label_taken_from_the_json_field(self):
         cases = {
             '{"label": "neutral"}': "neutral",

@@ -38,7 +38,10 @@ CODE_TO_LABEL = {code: name for name, code in LABEL_TO_CODE.items()}
 # now counts only when its token ends there. Dev runs recorded before this
 # bump (report §4.2/§4.3, under v2.1) contain those refusals-as-predictions,
 # so they are not comparable item-for-item with v3 runs.
-LABEL_PARSE_VERSION = "label-parse-v3-strict"
+# v3.1 (2026-10-12): valid JSON with no valid top-level label cannot enter
+# recovery; recovered values must end at a JSON delimiter (not e.g. 1/2).
+# Historical v3 artefacts are preserved; no model evaluation was rerun.
+LABEL_PARSE_VERSION = "label-parse-v3.1-strict"
 
 _VALID_CODE_STRS = frozenset("012")
 

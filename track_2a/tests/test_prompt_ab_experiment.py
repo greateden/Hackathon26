@@ -120,9 +120,20 @@ class PromptPilotContracts(unittest.TestCase):
             self.assertEqual(summary["arms"]["current_v1"]["completion_tokens_total"], 54)
             prompt_ab.summarise_run(directory, prepared, "COMPLETE")
             rendered = (directory / "summary.md").read_text()
-            self.assertIn("keep current_v1", rendered)
+            self.assertIn("Production remains current_v1", rendered)
             self.assertNotIn("until all real calls are recorded", rendered)
             self.assertEqual(len(summary["paired_prediction_flips"]), 1)
+
+            refreshed = prompt_ab.summarise_run(directory, prepared)
+            self.assertEqual(refreshed["status"], "COMPLETE_WITH_ERRORS")
+            for record in records:
+                wrong = "neutral" if record["gold"] != "neutral" else "entailment"
+                record.update(status="completed", pred=record["gold"] if record["arm"] == "teammate_rules_v1" else wrong,
+                              correct=record["arm"] == "teammate_rules_v1")
+                record["result"]["error"] = None
+            (directory / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
+            prompt_ab.summarise_run(directory, prepared)
+            self.assertNotIn("refined prompt did not improve accuracy", (directory / "summary.md").read_text())
 
 
 if __name__ == "__main__":

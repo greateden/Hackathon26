@@ -331,7 +331,7 @@ class RunnerContracts(unittest.TestCase):
             runner.endpoint("https://user:password@example.com")
 
     def smoke(self, configuration=None, outcome=None, docker=True, deployment="external", gpu=True,
-              dry_run=False):
+              dry_run=False, use_app=False):
         for name in ("Dockerfile", "Makefile", "compose.submission.yaml", "compose.managed.yaml"):
             (self.root / name).write_text("fixture")
         self.args.deployment = deployment
@@ -352,10 +352,38 @@ class RunnerContracts(unittest.TestCase):
             if "config" in argv:
                 return SimpleNamespace(returncode=0, stdout=json.dumps(config))
             if argv[:2] in (["make", "run"], ["make", "run-cscs"]):
+                if use_app:
+                    env = {key: str(self.root / value.removeprefix("/app/"))
+                           for key, value in kwargs["env"].items()
+                           if key in ("REQUEST_FILE", "RESULT_FILE", "DIAGNOSTICS_FILE")}
+                    request = json.loads(Path(env["REQUEST_FILE"]).read_text())
+                    judge = Mock()
+                    judge.judge.return_value = dict(self.reply, input_tokens=10, evidence_snippet="Evidence",
+                                                   model=app.MODEL, response_model=app.MODEL)
+                    document = dict(self.booklet, source=request.get("booklet"))
+                    retriever = Mock()
+                    retriever.retrieve.return_value = [dict(p, source=document["source"], pdf_sha256="test")
+                                                       for p in document["pages"]]
+                    with patch.dict(os.environ, env), patch.object(sys, "argv", ["booklet_app.py"]), \
+                            patch.object(app, "SubmissionJudge", return_value=judge), \
+                            patch.object(app, "load_booklet", return_value=document), \
+                            patch.object(app, "BookletRetriever", return_value=retriever), \
+                            patch("sys.stdout", new=io.StringIO()):
+                        code = app.main()
+                    return SimpleNamespace(returncode=code, stdout="")
                 if isinstance(outcome, Exception):
                     raise outcome
                 if outcome:
-                    runner.write_json(self.directory / "result.json", outcome)
+                    normalised = app.validate_request(self.request)
+                    result = dict(outcome, case_id=normalised.get("id", "submission-smoke"),
+                                  task=normalised["task"], input_tokens=10,
+                                  evidence_snippet="Evidence")
+                    runner.write_json(self.directory / "diagnostics.json", result)
+                    try:
+                        official = app.submission_output(result)
+                    except ValueError:
+                        official = {}
+                    runner.write_json(self.directory / "result.json", official)
                 return SimpleNamespace(returncode=0, stdout="secret-value")
             return SimpleNamespace(returncode=0, stdout="git-fixture")
         env = {"CSCS_INFERENCE_API_KEY": "secret-value"} if deployment == "cscs" else {}
@@ -398,9 +426,26 @@ class RunnerContracts(unittest.TestCase):
         self.assertFalse(any(command[:2] in (["make", "run"], ["make", "run-cscs"])
                              for command in self.smoke_commands))
 
+    def test_smoke_accepts_official_beginner_request(self):
+        self.request = {"id": "beginner", "reference": {"text": "Evidence"},
+                        "claim": {"text": "Claim"}}
+        self.assertEqual(self.smoke(use_app=True), 0)
+        self.assertTrue(json.loads((self.directory / "verification.json").read_text())[
+            "acceptance_criteria"]["official_output_contract"])
+
+    def test_smoke_advanced_relative_path_survives_request_copy(self):
+        pdf = self.root / "data/booklet.pdf"
+        pdf.parent.mkdir(parents=True)
+        pdf.write_bytes(b"%PDF-fixture")
+        self.request = {"id": "advanced", "vote": "Test vote",
+                        "booklet": {"path": "data/booklet.pdf"}, "claim": {"text": "Claim"}}
+        self.assertEqual(self.smoke(use_app=True), 0)
+        request = json.loads((self.directory / "request.json").read_text())
+        self.assertEqual(request["booklet"], "/app/data/booklet.pdf")
+
     def test_smoke_rejects_incomplete_or_invalid_usage(self):
         result = dict(self.reply, **self.request, model=app.MODEL, response_model=app.MODEL,
-                      finish_reason="length", usage={"prompt_tokens": 10, "completion_tokens": 8})
+                      finish_reason="length", usage={"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 99})
         self.assertEqual(self.smoke(outcome=result), 1)
         failed = json.loads((self.directory / "verification.json").read_text())["failed_acceptance_criteria"]
         self.assertIn("finish_reason_stop", failed)

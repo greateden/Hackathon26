@@ -98,10 +98,13 @@ class ApplicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             request_path = Path(d) / "request.json"
             request_path.write_text(json.dumps(request), encoding="utf-8")
+            diagnostics = Path(d) / "diagnostics.json"
             stdout = io.StringIO()
             with patch.object(sys, "argv", ["booklet_app.py", "--input", str(request_path)]), \
-                    patch.object(app, "SubmissionJudge", return_value=judge), redirect_stdout(stdout):
+                    patch.object(app, "SubmissionJudge", return_value=judge), redirect_stdout(stdout), \
+                    patch.dict(app.os.environ, {"DIAGNOSTICS_FILE": str(diagnostics)}):
                 self.assertEqual(app.main(), 0)
+            self.assertEqual(app.submission_output(json.loads(diagnostics.read_text())), json.loads(stdout.getvalue()))
         output = json.loads(stdout.getvalue())
         self.assertEqual(set(output), {"id", "label", "label_name", "evidence", "metrics"})
         self.assertIs(type(output["label"]), int)
@@ -151,6 +154,20 @@ class ApplicationTests(unittest.TestCase):
             with patch.object(app.subprocess, "run", return_value=proc):
                 result = app.load_booklet(str(pdf), "de")
             self.assertEqual([p["page"] for p in result["pages"]], [1, 3])
+
+    def test_url_cannot_reuse_unrelated_same_name_pdf(self):
+        with tempfile.TemporaryDirectory() as d:
+            cached = Path(d) / "vote_de.pdf"
+            cached.write_bytes(b"%PDF-wrong booklet")
+            response = Mock(content=b"%PDF-requested booklet")
+            proc = Mock(returncode=0, stdout=b"requested text\f")
+            with patch.object(app, "DATA_DIR", Path(d)), \
+                    patch("fetch_booklets.pdf_path", return_value=cached), \
+                    patch("requests.get", return_value=response) as get, \
+                    patch.object(app.subprocess, "run", return_value=proc):
+                result = app.load_booklet("https://other.test/de/vote.pdf", "de")
+            self.assertEqual(result["sha256"], app.digest(response.content))
+            get.assert_called_once()
 
     def make_judge(self, count=100, completion=None):
         judge = object.__new__(app.SubmissionJudge)

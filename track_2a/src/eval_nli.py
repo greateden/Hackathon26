@@ -219,7 +219,7 @@ def evaluate(items, judge, evidence_for=None, retrieve_for=None):
             except Exception as e:
                 verdict, error = {}, f"judge raised: {e!r}"
         elapsed = time.perf_counter() - t0
-        pred = None if (retrieval_error or no_evidence) \
+        pred = None if (error or retrieval_error or no_evidence) \
             else verdict.get("label")
         rec = {
             "index": n,
@@ -449,7 +449,7 @@ def main():
             "evidence_style": pconf["evidence"],
             "evidence_window": pconf["window"],
             "label_parse_version": LABEL_PARSE_VERSION,
-            "metrics_version": "m2-full-precision-macro",
+            "metrics_version": "m3-error-verdicts-unscored",
             "dataset_sha256": hashlib.sha256(
                 data_path.read_bytes()).hexdigest(),
             "class_mix": dict(mix),

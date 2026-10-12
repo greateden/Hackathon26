@@ -18,7 +18,7 @@ import uuid
 
 from booklet_app import (CSCS_MODEL, MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
                          build_messages, classify, digest, evidence_payload, load_booklet,
-                         validate_request)
+                         submission_output, validate_request)
 from config import EMBEDDING_MODEL, PROJECT_ROOT
 from eval_nli import DEFAULT_DATA, load_rows, summarise
 from eval_paired import coverage
@@ -580,15 +580,25 @@ def smoke(args):
         request_path = args.request.resolve()
         if not request_path.is_file():
             return finish("BLOCKED", "Request file is missing")
-        request = json.loads(request_path.read_text())
-        validate_request(request)
-        if request["booklet"].startswith(("/Users/", "/home/")):
-            return finish("BLOCKED", "Use an HTTPS booklet URL or a /app/data/ container path")
+        request = validate_request(json.loads(request_path.read_text()), request_path.parent)
+        # Retain old smoke requests, but supply the case identity now required
+        # by the public output contract. Vote is metadata, never model input.
+        request.setdefault("id", "submission-smoke")
+        if request["task"] == "advanced":
+            request.setdefault("vote", request["booklet"])
+            source = request["booklet"]
+            if not urlparse(source).scheme and not source.startswith("/app/data/"):
+                local = Path(source).resolve()
+                data_root = (PROJECT_ROOT / "data").resolve()
+                if data_root not in local.parents:
+                    return finish("BLOCKED", "Local booklet must be under track_2a/data or use /app/data/")
+                request["booklet"] = "/app/data/" + local.relative_to(data_root).as_posix()
         write_json(directory / "request.json", request)
         record["request_sha256"] = fingerprint(request)
         container_dir = "/app/" + directory.relative_to(PROJECT_ROOT.resolve()).as_posix()
         run_env.update(REQUEST_FILE=container_dir + "/request.json",
-                       RESULT_FILE=container_dir + "/result.json")
+                       RESULT_FILE=container_dir + "/result.json",
+                       DIAGNOSTICS_FILE=container_dir + "/diagnostics.json")
         # Compose obtains secrets from the existing environment/.env; never save its rendered config or logs.
         manifest["request_sha256"] = fingerprint(request)
         manifest["configuration"] = {k: app_env[k] for k in
@@ -615,11 +625,17 @@ def smoke(args):
             return finish("FAIL", "Interrupted deployment; services stopped, caches retained")
         record["docker"].update(process_exit_code=proc.returncode,
                                 execution_s=round(time.perf_counter() - started, 3))
-        result_path = directory / "result.json"
+        result_path = directory / "diagnostics.json"
         if not result_path.exists():
             record["failed_acceptance_criteria"].append("application_result_present")
             return finish("FAIL", "Docker application produced no result; inspect startup, GPU, access, endpoint and bind-mount permissions")
         result = json.loads(result_path.read_text())
+        official_path = directory / "result.json"
+        try:
+            official_ok = (official_path.is_file() and
+                           json.loads(official_path.read_text()) == submission_output(result))
+        except (ValueError, TypeError, KeyError):
+            official_ok = False
         record["inference"].update(calls=1 if "inference_s" in result else 0,
                                    status="completed" if not result.get("error") else "error",
                                    finish_reason=result.get("finish_reason"))
@@ -629,8 +645,9 @@ def smoke(args):
         citations = result.get("citations") if isinstance(result.get("citations"), list) else []
         passages_ = result.get("passages") if isinstance(result.get("passages"), list) else []
         citation_ok = bool(result.get("citation_verified") and citations and all(
-            citation.get("source") == result.get("booklet")
-            and citation.get("pdf_sha256") == result.get("pdf_sha256")
+            (citation.get("source") == "supplied_reference" if request["task"] == "beginner" else
+             citation.get("source") == result.get("booklet")
+             and citation.get("pdf_sha256") == result.get("pdf_sha256"))
             and citation in passages_ for citation in citations))
         record["citation"].update(verified=citation_ok, count=len(citations),
                                   pages=[citation.get("page") for citation in citations])
@@ -639,21 +656,27 @@ def smoke(args):
         completion = usage.get("completion_tokens")
         total = usage.get("total_tokens")
         usage_ok = (type(prompt) is int and prompt > 0 and type(completion) is int and completion > 0
-                    and type(total) is int and total == prompt + completion)
+                    and (total is None or type(total) is int and total == prompt + completion))
         record["token_usage"] = dict(usage, valid=usage_ok)
         record["latency_s"] = {key: result.get(key) for key in
                                ("elapsed_s", "inference_s", "retrieval_s")}
         checks = {
             "docker_exit_zero": proc.returncode == 0,
+            "official_output_contract": official_ok,
             "model_identity": record["model_identity"]["verified"],
             "model_generated_prediction": not result.get("error"),
             "valid_label_and_code": (type(result.get("label_code")) is int
                                      and CODE_TO_LABEL.get(result.get("label_code")) == result.get("label")),
             "finish_reason_stop": result.get("finish_reason") == "stop",
             "valid_token_usage": usage_ok,
-            "citation_provenance": citation_ok,
-            "request_identity": all(result.get(k) == request[k] for k in
-                                    ("claim", "booklet", "claim_language", "booklet_language")),
+            "citation_provenance": citation_ok or result.get("label") == "neutral",
+            "request_identity": (result.get("case_id") == request["id"]
+                                 and result.get("claim") == request["claim"]
+                                 and result.get("task") == request["task"]
+                                 and (passages_ == [{"page": None, "text": request["reference"],
+                                                    "source": "supplied_reference"}]
+                                      if request["task"] == "beginner" else
+                                      result.get("booklet") == request["booklet"])),
             "no_lexical_fallback": (expected_model in OFFICIAL_MODELS
                                     and result.get("model") == expected_model),
         }

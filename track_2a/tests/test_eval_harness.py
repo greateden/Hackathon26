@@ -74,6 +74,12 @@ EVIDENCE = [{"id": "gold", "lang": "de", "year": "?",
 class EvaluateAccountingTests(unittest.TestCase):
     """evaluate(): what a row looks like when the chain broke."""
 
+    def test_error_with_valid_label_is_not_scored(self):
+        results, _ = self.run_case([item(1)], [{"label": "neutral", "error": "failed"}])
+        self.assertIsNone(results[0]["pred"])
+        self.assertFalse(results[0]["correct"])
+        self.assertEqual(eval_nli.summarise(results)["accuracy"], 0)
+
     def run_case(self, items, replies):
         judge = ScriptedJudge(replies)
         with contextlib.redirect_stdout(io.StringIO()):
