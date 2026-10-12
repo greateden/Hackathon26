@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="430" viewBox="0 0 820 430" role="img" aria-labelledby="title desc">
+  <title id="title">Reference Recall at 5 and NLI accuracy across three retrieval methods</title>
+  <desc id="desc">Grouped bars compare Recall at 5 and NLI accuracy for methods A, B and C on 81 paired examples.</desc>
+  <rect width="820" height="430" fill="#ffffff"/>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17212b; }
+    .grid { stroke: #d9e0e6; stroke-width: 1; }
+    .axis { stroke: #34495e; stroke-width: 1.5; }
+    .recall { fill: #3b82a0; }
+    .accuracy { fill: #d98128; }
+    .small { font-size: 12px; }
+    .label { font-size: 14px; }
+    .value { font-size: 13px; font-weight: 600; }
+  </style>
+  <text x="410" y="27" text-anchor="middle" font-size="18" font-weight="600">Retrieval recall does not predict downstream accuracy</text>
+  <text x="410" y="47" text-anchor="middle" class="small">Paired evaluation, n = 81 per method</text>
+  <line x1="80" y1="330" x2="760" y2="330" class="axis"/>
+  <line x1="80" y1="80" x2="80" y2="330" class="axis"/>
+  <g class="grid">
+    <line x1="80" y1="280" x2="760" y2="280"/>
+    <line x1="80" y1="230" x2="760" y2="230"/>
+    <line x1="80" y1="180" x2="760" y2="180"/>
+    <line x1="80" y1="130" x2="760" y2="130"/>
+    <line x1="80" y1="80" x2="760" y2="80"/>
+  </g>
+  <g class="small" text-anchor="end">
+    <text x="70" y="334">0</text><text x="70" y="284">20</text><text x="70" y="234">40</text>
+    <text x="70" y="184">60</text><text x="70" y="134">80</text><text x="70" y="84">100</text>
+  </g>
+  <text x="22" y="205" text-anchor="middle" transform="rotate(-90 22 205)" class="label">Percentage (%)</text>
+  <rect x="160" y="184.9" width="58" height="145.1" class="recall"/>
+  <rect x="224" y="123.2" width="58" height="206.8" class="accuracy"/>
+  <rect x="365" y="175.7" width="58" height="154.3" class="recall"/>
+  <rect x="429" y="129.5" width="58" height="200.5" class="accuracy"/>
+  <rect x="570" y="151.0" width="58" height="179.0" class="recall"/>
+  <rect x="634" y="132.5" width="58" height="197.5" class="accuracy"/>
+  <g class="value" text-anchor="middle">
+    <text x="189" y="177">58.0</text><text x="253" y="115">82.7</text>
+    <text x="394" y="168">61.7</text><text x="458" y="121">80.2</text>
+    <text x="599" y="143">71.6</text><text x="663" y="124">79.0</text>
+  </g>
+  <g class="label" text-anchor="middle">
+    <text x="221" y="354">A · SwissBERT</text><text x="426" y="354">B · Hybrid RRF</text><text x="631" y="354">C · Proposition rerank</text>
+  </g>
+  <rect x="250" y="384" width="16" height="16" class="recall"/><text x="274" y="397" class="small">Reference Recall@5</text>
+  <rect x="444" y="384" width="16" height="16" class="accuracy"/><text x="468" y="397" class="small">NLI accuracy</text>
+</svg>

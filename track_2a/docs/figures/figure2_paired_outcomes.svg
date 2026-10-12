@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360" role="img" aria-labelledby="title desc">
+  <title id="title">Paired changes in correctness between retrieval methods</title>
+  <desc id="desc">Stacked horizontal bars show wins, losses and ties across 81 paired examples.</desc>
+  <rect width="820" height="360" fill="#ffffff"/>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17212b; }
+    .win { fill: #3c8d5a; } .loss { fill: #c9534f; } .tie { fill: #c8d0d8; }
+    .axis { stroke: #34495e; stroke-width: 1.5; } .tick { stroke: #8c99a5; stroke-width: 1; }
+    .small { font-size: 12px; } .label { font-size: 14px; } .value { font-size: 12px; font-weight: 600; }
+  </style>
+  <text x="410" y="27" text-anchor="middle" font-size="18" font-weight="600">Most predictions are unchanged; losses exceed wins for A→B and A→C</text>
+  <text x="410" y="47" text-anchor="middle" class="small">A change is a gain or loss in label correctness; n = 81 paired cases</text>
+  <g class="label" text-anchor="end">
+    <text x="150" y="112">A → B</text><text x="150" y="182">A → C</text><text x="150" y="252">B → C</text>
+  </g>
+  <rect x="170" y="88" width="22.2" height="34" class="win"/><rect x="192.2" y="88" width="37.0" height="34" class="loss"/><rect x="229.2" y="88" width="540.8" height="34" class="tie"/>
+  <rect x="170" y="158" width="29.6" height="34" class="win"/><rect x="199.6" y="158" width="51.9" height="34" class="loss"/><rect x="251.5" y="158" width="518.5" height="34" class="tie"/>
+  <rect x="170" y="228" width="37.0" height="34" class="win"/><rect x="207.0" y="228" width="44.4" height="34" class="loss"/><rect x="251.4" y="228" width="518.6" height="34" class="tie"/>
+  <g class="value" text-anchor="middle">
+    <text x="181.1" y="82">3</text><text x="210.7" y="82">5</text><text x="499.6" y="110">73 ties</text>
+    <text x="184.8" y="152">4</text><text x="225.6" y="152">7</text><text x="510.8" y="180">70 ties</text>
+    <text x="188.5" y="222">5</text><text x="229.2" y="222">6</text><text x="510.7" y="250">70 ties</text>
+  </g>
+  <line x1="170" y1="282" x2="770" y2="282" class="axis"/>
+  <g class="tick">
+    <line x1="170" y1="282" x2="170" y2="288"/><line x1="318.1" y1="282" x2="318.1" y2="288"/>
+    <line x1="466.3" y1="282" x2="466.3" y2="288"/><line x1="614.4" y1="282" x2="614.4" y2="288"/><line x1="770" y1="282" x2="770" y2="288"/>
+  </g>
+  <g class="small" text-anchor="middle">
+    <text x="170" y="304">0</text><text x="318.1" y="304">20</text><text x="466.3" y="304">40</text><text x="614.4" y="304">60</text><text x="770" y="304">81</text>
+  </g>
+  <rect x="267" y="329" width="14" height="14" class="win"/><text x="287" y="341" class="small">later method wins</text>
+  <rect x="415" y="329" width="14" height="14" class="loss"/><text x="435" y="341" class="small">later method loses</text>
+  <rect x="571" y="329" width="14" height="14" class="tie"/><text x="591" y="341" class="small">tie</text>
+</svg>

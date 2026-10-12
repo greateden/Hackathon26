@@ -1,0 +1,56 @@
+{
+  "schema": "hackapertus-retrieval-ablation-v1",
+  "status": "frozen-before-inference",
+  "dataset": "data/eval/mnli_swiss_v1.1.jsonl",
+  "dataset_sha256": "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd",
+  "plan": {
+    "row_indices": [1161, 1178, 1378, 92, 626, 910, 29, 300, 847, 247, 1124, 679, 1121, 442, 1254, 448, 825, 1344, 646, 1401, 1058, 116, 806, 195, 379, 639, 877, 1165, 1302, 1434, 40, 550, 901, 119, 175, 942, 179, 1081, 821, 1092, 428, 1279, 427, 769, 1475, 656, 1470, 1035, 26, 667, 214, 484, 587, 938, 1267, 1187, 1322, 81, 634, 988, 1, 299, 975, 189, 1147, 812, 1026, 366, 1222, 455, 749, 1336, 642, 1380, 1073, 133, 822, 297, 432, 619, 930],
+    "n": 81,
+    "sample_seed": 20261012,
+    "label_counts": {"0": 27, "1": 27, "2": 27},
+    "language_pairs": {
+      "de->de": 9, "de->fr": 9, "de->it": 9,
+      "fr->de": 9, "fr->fr": 9, "fr->it": 9,
+      "it->de": 9, "it->fr": 9, "it->it": 9
+    },
+    "booklets": 60,
+    "maximum_rows_per_booklet": 2,
+    "distinct_exact_booklet_vote_groups": 81
+  },
+  "exclusions": {
+    "row_indices": [5, 7, 21, 31, 41, 68, 96, 106, 109, 137, 169, 171, 172, 187, 192, 194, 199, 200, 201, 223, 242, 249, 284, 289, 292, 313, 338, 363, 387, 390, 394, 405, 409, 412, 425, 435, 437, 443, 444, 458, 461, 473, 495, 507, 514, 528, 533, 534, 555, 558, 562, 584, 585, 614, 616, 661, 682, 684, 694, 699, 701, 716, 726, 728, 740, 773, 785, 789, 793, 797, 799, 807, 809, 827, 838, 841, 843, 851, 881, 882, 884, 904, 912, 922, 936, 940, 944, 945, 947, 955, 958, 964, 967, 977, 979, 999, 1006, 1027, 1034, 1060, 1075, 1076, 1082, 1095, 1097, 1100, 1114, 1115, 1135, 1136, 1139, 1148, 1175, 1195, 1198, 1212, 1224, 1227, 1247, 1248, 1273, 1284, 1285, 1298, 1314, 1328, 1341, 1343, 1354, 1361, 1365, 1366, 1373, 1383, 1389, 1407, 1416, 1444, 1450, 1465, 1480],
+    "criteria": [
+      "all 81 rows in paired_grouped81_plan_20261011.json",
+      "all 19 rows in the Oracle diagnostic plan (already a subset of the 81)",
+      "all 60 historical development rows",
+      "paired_dev_plan and prompt_pilot27 rows where identifiable",
+      "every connected content component sharing a normalised claim or reference with an excluded row"
+    ],
+    "source_sha256": {
+      "docs/evidence/paired_grouped81_plan_20261011.json": "84dc9c7117c2aab4a1b85d9c91f5ab9296165720fc71153236980395915d07c1",
+      "docs/evidence/paired_dev_plan_20261011.json": "54b737fe383b99759d8a291a0c278dffdb5be4d8374aacff0c05f0d1af742ef5",
+      "docs/evidence/prompt_pilot27_plan_v1.json": "044a88e9568c99b08aa91fa075055b6885129ea8fa39c48d20a69e16ed9f43ae",
+      "data/experiments/v15-grouped81-evidence-diagnosis-20261012/oracle_plan.json": "c9e7e284ed2d22dc50c0648bae822d22981f8552f4bc26cc4f7a386eb14408c3"
+    }
+  },
+  "selection": {
+    "content_grouping": "Connected components share an NFKC-casefold-whitespace-normalised claim or reference. Components touching any exclusion are ineligible.",
+    "stratification": "Three rows per claim-language x booklet-language x label cell.",
+    "grouping": "At most two rows per booklet and one row per exact booklet_url plus normalised vote-title group. Among eligible rows, prefer the least represented publication date and booklet before seeded tie-breaking.",
+    "inference_blinding": "reference_string and label are evaluation-only and must not enter retrieval queries, reranking features or model prompts. The supplied vote title is valid application input, not an inferred gold vote ID."
+  },
+  "checks": {
+    "unique_rows": 81,
+    "unique_content_components": 81,
+    "overlap_with_excluded_content_components": 0,
+    "all_27_language_pair_label_cells_have_3_rows": true,
+    "all_60_booklets_represented": true,
+    "distinct_exact_booklet_vote_groups": 81
+  },
+  "limitations": [
+    "This is a genuinely new paired case matrix, but not an independent dataset: earlier full-corpus retrieval work exposed the source dataset.",
+    "Exact multilingual vote identity is not available as a reliable source field. Translated titles may describe the same proposal, so booklet/vote grouping reduces but cannot eliminate topic leakage.",
+    "Normalised content grouping does not detect every semantic or translated near-duplicate.",
+    "Freeze all retrieval weights and model settings before inference; do not tune on these 81 cases."
+  ]
+}
