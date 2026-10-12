@@ -11,7 +11,10 @@ SentenceSwissBERT selects evidence within the supplied booklet.
 A genuine local Apertus v1.5 8B MLX smoke run is recorded: label `0`
 (entailment), a verified page-15 snippet, 1,007 input tokens and 71 output
 tokens. This single development example is not an accuracy benchmark.
-The submission Docker path and self-contained model startup remain unverified.
+A separate Docker application smoke against CSCS Apertus v1.5 70B exited 0
+with entailment, a verified page-19 citation and no lexical fallback. This
+single example is also not an accuracy benchmark. Default managed 8B startup
+and cross-platform execution remain unverified.
 
 ## Run
 
@@ -86,8 +89,8 @@ For example, this subset comes from the saved local development smoke:
 
 | Path | Model and configuration | Verification |
 |---|---|---|
-| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; Managed official vLLM server or explicit external endpoint; required token preflight | Application contract tested offline; real Docker inference pending |
-| CSCS external (opt-in) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | Direct API smoke passed; booklet/retrieval Docker run pending |
+| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; managed official vLLM server or explicit external endpoint; required token preflight | Application contract tested; default managed inference pending |
+| CSCS external (opt-in) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | One booklet/retrieval Docker smoke passed on Apple Silicon; n=1 |
 | Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; new paired runner requires exact token preflight | Historical n=1 smoke used optional preflight; new wrapper runtime pending |
 | Historical research | Apertus v1.1 4B MLX INT4, global retrieval, oracle diagnostics and lexical controls | Archived measurements; not current submission results |
 
@@ -110,12 +113,13 @@ experiment in another. [EXPERIMENTS.md](docs/EXPERIMENTS.md) gives the exact
 commands, resumption rules and optional Docker smoke. The frozen nine-example
 matrix compares full-booklet and retrieved evidence with 18 planned model
 calls. Results are saved immediately under `data/experiments/v15-paired/`.
-Preflight and offline tests do not establish real model or Docker success.
+The later 81-example local run and 27-example CSCS prompt comparison are
+documented in the technical report; both use exposed development data.
 
 ## Evaluation and repository map
 
 - [Project status](docs/PROJECT_STATUS.md): requirements, verified work and remaining gaps.
-- [Technical report](technical_report.md): template-aligned draft; paired NLI results pending.
+- [Technical report](technical_report.md): template-aligned draft with paired development results and deployment evidence.
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
 - [Historical archive](docs/archive/README.md): original research measurements and integrity caveats.
 - `src/`: application, paired evaluation and preserved research scripts.

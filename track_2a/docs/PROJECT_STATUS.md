@@ -1,20 +1,17 @@
 # Project status — 12 October 2026
 
-The specified-booklet application has one genuine local Apertus v1.5 8B MLX
-result with a verified citation and token counts. Repository packaging now
-follows `track_2a/`. **Submission readiness is still incomplete:** Compose now manages the official model
-server, but clean-checkout Docker inference and cross-platform validation remain
-pending. The deployment repair is PARTIAL. Managed mode needs compatible NVIDIA hardware;
-external mode runs the application without a local GPU service. The prompt-only
-CSCS Apertus v1.5 70B pilot is complete; it did not improve accuracy, so
-`current_v1` remains the production prompt. Official managed Docker inference
-is still pending. See [runner handoff](RUNNER_REPAIR_20261011.md).
+The specified-booklet application has genuine local Apertus v1.5 8B MLX
+evidence and one successful Docker run against CSCS Apertus v1.5 70B. The Docker
+application exited 0, returned entailment with a verified page-19 citation and
+passed all eight application acceptance criteria plus the no-fallback check.
+This is a one-example deployment smoke, not an accuracy result. Repository
+packaging follows `track_2a/`.
 
-The CSCS API has separately passed a direct transport smoke with
-`swiss-ai/Apertus-v1.5-70B`: model listing, one chat completion, parsed NLI
-output, usage and finish reason. The application now exposes this as an opt-in
-external backend through `make run-cscs`. That direct smoke is not evidence that
-the booklet/retrieval Docker path has run successfully against CSCS.
+**Submission readiness is still incomplete.** The default managed 8B service
+has not run: it needs compatible NVIDIA hardware and authorised model access.
+Windows/Linux execution and a clean cold build also remain unverified. The
+27-example CSCS prompt comparison did not improve accuracy, so `current_v1`
+remains the production prompt.
 
 ## Requirements and evidence
 
@@ -34,14 +31,14 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 | Apertus family used | Passed for local development | Real loader records v1.5 8B text branch, 6-bit MLX; no inference fallback |
 | Exact submission v1.5 8B model identity | Passed statically; runtime unverified | Compose and the application require `swiss-ai/Apertus-v1.5-8B`; official weights were not loaded here |
 | Official model availability | Blocked locally | Colima is Linux arm64 with no NVIDIA runtime; access and weights were not tested or downloaded |
-| Specified booklet + claim, label and citations | Passed for one local example | Entailment (0), physical page 15, verified snippet; not a quality benchmark |
+| Specified booklet + claim, label and citations | Passed in local MLX and external Docker smokes | Both returned entailment with verified physical-page citations; n=1 each, not quality benchmarks |
 | All nine DE/FR/IT combinations | Development evidence only | Prompt pilot has one row per language-pair/label cell; exposed n=27, not independent quality evidence |
-| `make run` launches Docker from project root | Partly verified | Root forwarding and Compose configuration pass; application image builds and fails hard against an unavailable endpoint; managed inference blocked |
+| `make run` launches Docker from project root | Passed for external CSCS mode | Root forwarding, build and one real application inference passed on Apple Silicon; managed 8B inference remains blocked locally |
 | Clean checkout without preinstalled application dependencies | Partly verified | Docker build context is self-contained; fresh managed inference still needs an NVIDIA host and authorised model access |
 | Self-contained model startup | Implemented; runtime unverified | Optional managed vLLM overlay, GPU reservation, readiness dependency and stop-on-exit lifecycle |
-| `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed statically / offline | Compose forwarding and endpoint contract checks; no real submission endpoint run |
-| Input/output and failure contract | Passed offline / container failure path | Request validation and JSON contract tests pass; unreachable endpoint exits 1 before retrieval, with no lexical fallback |
-| CSCS v1.5 70B external backend | API smoke passed; pipeline pending | `/v1/models` and one `/v1/chat/completions` succeeded; no `/tokenize` dependency in optional mode |
+| `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed for CSCS external mode | Compose forwarded the configured 70B model, endpoint and external credential; the credential was not recorded |
+| Input/output and failure contract | Passed offline and in one external Docker run | Request identity, strict label parsing, usage, finish reason and citation provenance passed; unreachable endpoints still fail without fallback |
+| CSCS v1.5 70B external backend | Docker smoke passed | Specified booklet, within-PDF retrieval, model inference, strict parsing and page citation completed in Docker; n=1, not accuracy evidence |
 | Windows, macOS and Linux submission execution | Unverified | Submission recipe avoids POSIX assignments; Windows needs GNU Make; no OS runtime matrix |
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
@@ -66,8 +63,8 @@ reason and never silently falls back. See [RUNNING.md](RUNNING.md).
 
 | Configuration | Meaning | Evaluation state |
 |---|---|---|
-| Baseline A: `full` | All extracted pages from the supplied PDF, no silent truncation | Paired NLI accuracy/F1, tokens and latency pending |
-| Approach B: `retrieved` | Top-five SwissBERT passages within the same PDF; known booklet-language adapter | One local smoke; paired NLI results pending |
+| Baseline A: `full` | All extracted pages from the supplied PDF, no silent truncation | Grouped development n=81 complete; accuracy 0.519, macro-F1 0.479 |
+| Approach B: `retrieved` | Top-five SwissBERT passages within the same PDF; known booklet-language adapter | Grouped development n=81; accuracy 0.802, macro-F1 0.807; 80/81 completed |
 | Historical `legacy` / `retrieve-v2` | Global OCR / booklet-corpus retrieval in `main.py` | Different task; preserved research measurements |
 | Historical `oracle` | Gold reference supplied to the judge | Diagnostic only; not Baseline A |
 | Historical `lexical` | Heuristic judge or BM25, depending on script | Never Apertus model quality |
@@ -81,6 +78,23 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
 
 ## Verified results and preserved provenance
 
+- **CSCS Docker smoke, n=1, FR→FR:** `swiss-ai/Apertus-v1.5-70B` through
+  `make run-cscs`. Docker exit 0; entailment (0); verified page-19 citation;
+  785 input / 80 output tokens; inference 1.23 s and total execution 24.06 s.
+  All eight application criteria and the separate no-lexical-fallback check
+  passed. This verifies one external-endpoint application path, not accuracy,
+  portability or the default managed 8B deployment. Original record:
+  `data/experiments/docker-verification-cscs-20261012T093746Z-49ed3309/`.
+- **Grouped v1.5 experiment, n=81:** local 6-bit MLX at 81,920 tokens. Full
+  accuracy/macro-F1 was 0.519/0.479; retrieved was 0.802/0.807, with one
+  retrieved output-limit error. These historically exposed development data
+  are not an independent holdout.
+- **CSCS prompt comparison, n=27:** both prompts scored 23/27 on identical
+  retrieved evidence. `current_v1` used fewer input tokens and remains the
+  default. The sample is exposed development data, not a generalisation result.
+- **Final offline verification:** the image built successfully on Apple Silicon.
+  Host and Docker runs each passed 104 unit tests with zero failures, errors or
+  skips. Judge/label checks and Python compilation also passed.
 - **Local v1.5 smoke, n=1, DE→DE:**
   `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`, revision
   `9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e`, mlx-lm 0.32.0.
@@ -107,11 +121,11 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
 
 ## Remaining work
 
-**P0 — execution (PARTIAL):** managed model startup is implemented. Verify one
-clean-checkout `make run` on a compatible NVIDIA Docker host with authorised
-model access; record the v1.5 label, citation, token counts and service shutdown.
-No real Docker inference or portability claim follows from static validation.
-Confirm judge hardware/access; see [RUNNING.md](RUNNING.md) for dependencies.
+**P0 — managed execution (PARTIAL):** managed model startup is implemented but
+unverified. Run default `make run` on a compatible NVIDIA Docker host with
+authorised 8B model access; record model identity, label, citation, token counts
+and service shutdown. The successful external CSCS smoke does not verify this
+self-contained path or cross-platform portability.
 
 **P1 — submission evidence and deliverables:** validate Windows and Linux;
 review code/data licensing, supply team and demo metadata, then complete the

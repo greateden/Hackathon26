@@ -17,12 +17,16 @@ used 96.3% fewer input tokens. Of 162 planned calls, 161 completed; one
 retrieval reply hit the output limit and counts as an error. These are
 exploratory, historically exposed data, not an independent holdout. The earlier
 nine-example comparison and v1.1 experiments are retained as historical evidence.
+A separate one-example Docker smoke used CSCS Apertus v1.5 70B and passed the
+application acceptance checks; it is deployment evidence, not an accuracy result.
 
 ## 2. Architecture
 
 `make run` builds the CPU application and starts the official model service in
 Docker. `SUBMISSION_MODE=external` instead uses a provisioned official endpoint
-without starting a local GPU service. Both deployments remain runtime-unverified.
+without starting a local GPU service. The external application path has completed
+one CSCS-backed Docker smoke on Apple Silicon. The default managed 8B service,
+self-contained model startup and cross-platform execution remain unverified.
 The JSON request
 identifies a PDF and declares booklet and claim languages independently.
 Poppler extracts text with physical page boundaries. Baseline A sends all
@@ -126,6 +130,7 @@ The old non-resumable paired CLI was removed; its plan and coverage helpers rema
 | Approach B, 80K | Same model and rows; top-five within-PDF | Accuracy 0.889, macro-F1 0.886; 9 completed | same directory |
 | Prompt `current_v1` | CSCS Apertus v1.5 70B; frozen retrieved evidence; exposed dev n=27 | 23/27 correct, macro-F1 0.850; 17/27 verified citations; 34,342 input tokens | `docs/evidence/prompt_pilot27_results_v1.json` |
 | Prompt `teammate_rules_v1` | Same model, rows and evidence | 23/27 correct, macro-F1 0.853; 18/27 verified citations; 40,795 input tokens | same file |
+| Docker submission smoke | CSCS Apertus v1.5 70B; retrieved; FR→FR; n=1 | Exit 0; entailment (0); verified page 19; 785 input / 80 output tokens; inference 1.23 s, total execution 24.06 s; no lexical fallback | `data/experiments/docker-verification-cscs-20261012T093746Z-49ed3309/` |
 | Local v1.5 smoke | MLX 6-bit; retrieved; DE→DE; n=1 | Entailment (0); verified page 15; 1,007 input / 71 output tokens; inference 1.384 s, retrieval 2.374 s | `docs/evidence/v15_local_smoke/` |
 | Extraction/retrieval smoke | SentenceSwissBERT; full vs top-five within-PDF; paired dev n=9; no NLI model | Mean reference shingle coverage 0.921 full, 0.204 retrieved | `docs/evidence/booklet_retrieval_smoke_20261011.json` |
 | Historical NLI | Apertus v1.1 4B MLX INT4; global `retrieve-v2`; dev n=60 | Accuracy 0.483, macro-F1 0.466 | `data/eval_results_20261010_082336_dev_openai_retrieve-v2.json` |
@@ -251,9 +256,11 @@ is available in the selected page-144 passage.
 
 ## 6. Limitations
 
-Genuine local v1.5 MLX inference is recorded, but clean-checkout submission
-Docker execution and Windows/Linux validation remain pending. Managed NVIDIA server startup is configured but untested. External-endpoint
-mode has no NVIDIA dependency. Neither mode has new real Docker evidence. The MLX tokenizer emitted a regex
+Genuine local v1.5 MLX inference and one CSCS-backed Docker application smoke
+are recorded. The latter passed all eight application acceptance criteria plus
+the separate no-lexical-fallback check, but its single prediction is not an
+accuracy measurement. Default managed 8B startup, a clean cold build, and
+Windows/Linux execution remain unverified. The MLX tokenizer emitted a regex
 warning in the original logs; its impact is unresolved and no tokenizer change
 was made during cleanup. The 81-row grouped comparison and 27-row prompt pilot
 are development comparisons, not independent benchmarks. Quantisation,
@@ -280,15 +287,17 @@ Start with [docs/RUNNING.md](docs/RUNNING.md), configure `.env`, edit
 legacy corpus. Docker supplies Python, Poppler and encoder dependencies. API
 availability and initial image/encoder/PDF network access are prerequisites.
 The current host is Apple Silicon with 128 GiB RAM; it is not a validated CUDA
-v1.5 server. Code baseline before this iteration:
-`616f2ad` plus pre-existing uncommitted MLX endpoint support; cleanup changes
-remain uncommitted. Run all commands from `track_2a/`; the repository-root
-Makefile forwards there. Final submission commit must be recorded after review.
+v1.5 server. The successful CSCS smoke used Docker for the application and the
+remote 70B endpoint, not the managed local model service. Run all commands from
+`track_2a/`; the repository-root Makefile forwards there.
 
 `make test` is the offline regression entry point. The submission contract
 checks use model doubles, explicitly separate from real encoder/PDF smoke
-results. The template's `track_2a/` layout is now implemented. Final report PDF, team
-metadata, demo and deployment validation remain outstanding. The
+results. On 12 October, both host and Docker runs passed 104 unit tests with no
+failures, errors or skips; judge/label checks and source compilation also
+passed, and the Docker image built successfully on Apple Silicon. The template's
+`track_2a/` layout is now implemented. Final report PDF, team metadata, demo,
+managed 8B execution and cross-platform validation remain outstanding. The
 tracked data inventory is below the template's 100 MB ceiling; ignored local
 corpora and model caches must remain outside the submission bundle.
 
@@ -327,11 +336,10 @@ Then run the frozen plan into a fresh directory:
 
 This was the 162-call experiment recorded in §5; it ran with no retries.
 Stop the manually started server afterwards. Do not overwrite these recorded
-results when changing prompts or token limits. Before submission, validate a
-clean-checkout `make run` in the intended Docker environment, review citation
-failures and the one output-limit error, add team/demo metadata, verify licenses
-and produce the final at-most-six-page PDF. Official Docker deployment remains
-a separate unverified task.
+results when changing prompts or token limits. Before submission, validate the
+default managed `make run` on an NVIDIA host, review citation failures and the
+one output-limit error, add team/demo metadata, verify licences and produce the
+final at-most-six-page PDF. The managed Apertus 8B deployment remains unverified.
 
 ## License
 

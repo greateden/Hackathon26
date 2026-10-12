@@ -68,7 +68,7 @@ smoke:
 	docker compose run --rm app python3 main.py
 
 test-docker:
-	docker compose run --rm app bash -c "cd /app && python3 src/test_judge.py && PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' && python3 -m py_compile src/*.py"
+	docker compose run --build --rm app bash -c "cd /app && python3 src/test_judge.py && PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' && python3 -m py_compile src/*.py"
 
 test-docker-pipeline:
 	docker compose run --rm app python3 test_pipeline.py

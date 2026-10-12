@@ -40,11 +40,23 @@ def prepared_fixture():
 
 
 class PromptPilotContracts(unittest.TestCase):
-    def test_frozen_plan_is_first_grouped81_row_per_cell(self):
+    def test_frozen_plan_has_portable_provenance(self):
         pilot = json.loads((ROOT / "docs/evidence/prompt_pilot27_plan_v1.json").read_text())
         grouped_path = ROOT / pilot["source_plan"]
         grouped = json.loads(grouped_path.read_text())
-        rows = [json.loads(line) for line in (ROOT / "data/eval/mnli_swiss_v1.1.jsonl").read_text().splitlines()]
+        indices = pilot["row_indices"]
+        self.assertEqual(len(indices), 27)
+        self.assertEqual(len(set(indices)), 27)
+        self.assertTrue(set(indices).issubset(grouped["plan"]["row_indices"]))
+        self.assertEqual(prompt_ab.digest(grouped_path.read_bytes()), pilot["source_plan_sha256"])
+
+    def test_frozen_plan_is_first_grouped81_row_per_cell(self):
+        dataset_path = ROOT / "data/eval/mnli_swiss_v1.1.jsonl"
+        if not dataset_path.is_file():
+            self.skipTest("optional evaluation dataset is unavailable; portable plan provenance was checked separately")
+        pilot = json.loads((ROOT / "docs/evidence/prompt_pilot27_plan_v1.json").read_text())
+        grouped = json.loads((ROOT / pilot["source_plan"]).read_text())
+        rows = [json.loads(line) for line in dataset_path.read_text().splitlines()]
         first = {}
         for index in grouped["plan"]["row_indices"]:
             row = rows[index]
@@ -53,7 +65,6 @@ class PromptPilotContracts(unittest.TestCase):
         expected = [first[cell] for cell in sorted(first)]
         self.assertEqual(pilot["row_indices"], expected)
         self.assertEqual(len(expected), 27)
-        self.assertEqual(prompt_ab.digest(grouped_path.read_bytes()), pilot["source_plan_sha256"])
 
     def test_prompt_contract_and_production_default_are_unchanged(self):
         default = booklet_app.build_messages("claim", "evidence")

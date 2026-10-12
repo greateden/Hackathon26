@@ -16,7 +16,7 @@ import time
 from urllib.parse import urlparse
 import uuid
 
-from booklet_app import (MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
+from booklet_app import (CSCS_MODEL, MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
                          build_messages, classify, digest, evidence_payload, load_booklet,
                          validate_request)
 from config import EMBEDDING_MODEL, PROJECT_ROOT
@@ -30,6 +30,7 @@ SCHEMA = "hackapertus-experiments-v1"
 PLAN = PROJECT_ROOT / "docs/evidence/paired_dev_plan_20261011.json"
 OUTPUT = PROJECT_ROOT / "data/experiments/v15-paired"
 ENCODER_REVISION = "7a91fa8a01af56c1f06060f7af3698ef5619e41c"
+CSCS_BASE_URL = "https://api.inference.cscs.ch/v1"
 
 
 def now():
@@ -483,67 +484,99 @@ def execute(args, prepared):
 
 
 def smoke(args):
-    """An explicit real make run, with prerequisite failures reported as BLOCKED."""
+    """Validate or execute exactly one real submission-path Docker inference."""
     directory = output_path(args.out)
     with locked(directory):
         if (directory / "manifest.json").exists():
             raise ValueError("Choose a new smoke output directory")
+        action = "live" if args.live else "dry-run"
+        deployment = "external" if args.deployment in ("external", "cscs") else "managed"
+        run_env = dict(os.environ)
+        if args.deployment == "cscs":
+            run_env.update(LLM_NAME=CSCS_MODEL, LLM_BASE_URL=CSCS_BASE_URL,
+                           LLM_API_KEY=os.environ.get("CSCS_INFERENCE_API_KEY", ""),
+                           LLM_TOKEN_PREFLIGHT="optional")
         manifest = {"schema": SCHEMA, "mode": "submission-smoke", "created_utc": now(),
-                    "deployment": args.deployment, "model": None,
+                    "action": action, "deployment": args.deployment, "model": None,
                     "git_revision": command(["git", "rev-parse", "HEAD"]).stdout.strip()}
         write_json(directory / "manifest.json", manifest)
         (directory / "predictions.jsonl").touch()
+
+        record = {
+            "schema": "hackapertus-docker-verification-v1",
+            "action": action,
+            "execution_mode": args.deployment,
+            "status": None,
+            "model_identity": {"expected": None, "configured": None, "response": None,
+                               "verified": False},
+            "docker": {"cli_present": bool(shutil.which("docker")),
+                       "compose_config_valid": False, "daemon_available": False,
+                       "process_exit_code": None, "execution_s": None},
+            "docker_inference": False,
+            "inference": {"calls": 0, "status": "not_run", "finish_reason": None,
+                          "lexical_fallback": False},
+            "prediction": {"label": None, "label_code": None,
+                           "correctness": "not_assessed"},
+            "citation": {"verified": False, "count": 0, "pages": []},
+            "token_usage": {},
+            "latency_s": {},
+            "request_sha256": None,
+            "errors": [],
+            "failed_acceptance_criteria": [],
+            "host": {"system": platform.system(), "machine": platform.machine()},
+            "created_utc": now(),
+        }
+
         def finish(status, reason, result=None):
-            summary = {"schema": SCHEMA, "status": status, "reason": reason,
-                       "docker_inference": status == "PASS", "cross_platform": "unverified",
-                       "host": {"system": platform.system(), "machine": platform.machine()}}
+            record.update(status=status, reason=reason, finished_utc=now())
+            record["docker_inference"] = status == "PASS" and action == "live"
+            if status in ("BLOCKED", "FAIL") and reason not in record["errors"]:
+                record["errors"].append(reason)
             if result is not None:
                 append(directory / "predictions.jsonl", {"schema": SCHEMA, "result": result})
-            write_json(directory / "summary.json", summary)
+            write_json(directory / "verification.json", record)
+            write_json(directory / "summary.json", record)
             (directory / "summary.md").write_text(f"# Submission smoke\n\n{status}: {reason}\n")
             print(status + ": " + reason)
-            return 0 if status == "PASS" else 2 if status == "BLOCKED" else 1
+            print("record=" + str(directory / "verification.json"))
+            return 0 if status in ("PASS", "READY") else 2 if status == "BLOCKED" else 1
+
         if not shutil.which("docker") or not shutil.which("make"):
             return finish("BLOCKED", "Docker Compose and GNU Make are required")
-        if command(["docker", "info"], timeout=15).returncode:
-            return finish("BLOCKED", "Docker daemon is unavailable")
         files = ["-f", "compose.submission.yaml"]
-        if args.deployment == "managed":
+        if deployment == "managed":
             files += ["-f", "compose.managed.yaml"]
         compose = ["docker", "compose"] + files
-        configured = command(compose + ["config", "--format", "json"])
+        configured = command(compose + ["config", "--format", "json"], env=run_env)
         if configured.returncode:
             return finish("BLOCKED", "Compose configuration failed")
+        record["docker"]["compose_config_valid"] = True
         configuration = json.loads(configured.stdout)
         app_env = configuration["services"]["app"]["environment"]
         expected_model = app_env["LLM_NAME"]
+        record["model_identity"].update(expected=MODEL if deployment == "managed" else expected_model,
+                                        configured=expected_model)
         manifest["model"] = expected_model
         write_json(directory / "manifest.json", manifest)
         if expected_model not in OFFICIAL_MODELS:
             return finish("BLOCKED", "Submission smoke requires an allowlisted official v1.5 model")
-        if args.deployment == "managed" and expected_model != MODEL:
+        if deployment == "managed" and expected_model != MODEL:
             return finish("BLOCKED", "Managed submission smoke requires the official v1.5 8B model")
-        if args.deployment == "managed":
+        if args.deployment == "cscs" and expected_model != CSCS_MODEL:
+            return finish("BLOCKED", "CSCS verification requires the official v1.5 70B model")
+        if command(["docker", "info"], timeout=15).returncode:
+            return finish("BLOCKED", "Docker daemon is unavailable")
+        record["docker"]["daemon_available"] = True
+        if deployment == "managed":
             info = command(["docker", "info", "--format", "{{json .Runtimes}}"])
             if "nvidia" not in info.stdout:
-                return finish("BLOCKED", "Docker has no NVIDIA runtime")
+                return finish("BLOCKED", "Docker does not advertise the NVIDIA runtime; managed 8B needs a Linux NVIDIA GPU and NVIDIA Container Toolkit")
             if not configuration["services"]["apertus"]["environment"].get("HF_TOKEN"):
                 return finish("BLOCKED", "Set HF_TOKEN for gated official model access")
         elif not app_env.get("LLM_BASE_URL") or "apertus:8000" in app_env["LLM_BASE_URL"]:
             return finish("BLOCKED", "Set LLM_BASE_URL to a provisioned official v1.5 endpoint")
-        else:
-            import requests
-            base = endpoint(app_env["LLM_BASE_URL"])
-            # This host probe is a prerequisite check, never Docker networking evidence.
-            probe_base = base.replace("host.docker.internal", "127.0.0.1")
-            try:
-                headers = {"Authorization": "Bearer " + app_env["LLM_API_KEY"]} if app_env.get("LLM_API_KEY") else {}
-                response = requests.get(probe_base + "/v1/models", headers=headers, timeout=10)
-                response.raise_for_status()
-                if expected_model not in [r["id"] for r in response.json()["data"]]:
-                    return finish("BLOCKED", "External endpoint does not list the configured official v1.5 model")
-            except Exception:
-                return finish("BLOCKED", "External endpoint unavailable or credentials rejected")
+        elif args.deployment == "cscs" and not run_env.get("LLM_API_KEY"):
+            return finish("BLOCKED", "Set CSCS_INFERENCE_API_KEY outside the repository")
         request_path = args.request.resolve()
         if not request_path.is_file():
             return finish("BLOCKED", "Request file is missing")
@@ -552,8 +585,10 @@ def smoke(args):
         if request["booklet"].startswith(("/Users/", "/home/")):
             return finish("BLOCKED", "Use an HTTPS booklet URL or a /app/data/ container path")
         write_json(directory / "request.json", request)
+        record["request_sha256"] = fingerprint(request)
         container_dir = "/app/" + directory.relative_to(PROJECT_ROOT.resolve()).as_posix()
-        env = dict(os.environ, REQUEST_FILE=container_dir + "/request.json", RESULT_FILE=container_dir + "/result.json")
+        run_env.update(REQUEST_FILE=container_dir + "/request.json",
+                       RESULT_FILE=container_dir + "/result.json")
         # Compose obtains secrets from the existing environment/.env; never save its rendered config or logs.
         manifest["request_sha256"] = fingerprint(request)
         manifest["configuration"] = {k: app_env[k] for k in
@@ -562,25 +597,72 @@ def smoke(args):
         manifest["submission_files"] = {p: digest((PROJECT_ROOT / p).read_bytes()) for p in
                                          ("Dockerfile", "Makefile", "compose.submission.yaml", "compose.managed.yaml")}
         write_json(directory / "manifest.json", manifest)
+        if not args.live:
+            record["inference"]["status"] = "not_run_dry_run"
+            return finish("READY", "Dry-run prerequisites passed; zero endpoint or inference calls were made")
+        started = time.perf_counter()
         try:
-            proc = command(["make", "run", "SUBMISSION_MODE=" + args.deployment], timeout=args.smoke_timeout, env=env)
+            make_command = ["make", "run-cscs"] if args.deployment == "cscs" else [
+                "make", "run", "SUBMISSION_MODE=" + deployment]
+            proc = command(make_command, timeout=args.smoke_timeout, env=run_env)
         except subprocess.TimeoutExpired:
-            command(compose + ["stop"], timeout=30, env=env)
+            record["docker"]["execution_s"] = round(time.perf_counter() - started, 3)
+            command(compose + ["stop"], timeout=30, env=run_env)
             return finish("FAIL", "Deployment timeout; services stopped, caches retained")
         except KeyboardInterrupt:
-            command(compose + ["stop"], timeout=30, env=env)
+            record["docker"]["execution_s"] = round(time.perf_counter() - started, 3)
+            command(compose + ["stop"], timeout=30, env=run_env)
             return finish("FAIL", "Interrupted deployment; services stopped, caches retained")
+        record["docker"].update(process_exit_code=proc.returncode,
+                                execution_s=round(time.perf_counter() - started, 3))
         result_path = directory / "result.json"
         if not result_path.exists():
-            return finish("BLOCKED", "make run produced no result; inspect Docker startup, GPU, access and bind-mount permissions")
+            record["failed_acceptance_criteria"].append("application_result_present")
+            return finish("FAIL", "Docker application produced no result; inspect startup, GPU, access, endpoint and bind-mount permissions")
         result = json.loads(result_path.read_text())
-        if (proc.returncode or result.get("error") or result.get("model") != expected_model
-                or result.get("response_model") != expected_model):
-            return finish("FAIL", "Application or model verification failed", result)
-        if not result.get("citation_verified") or result.get("label_code") not in (0, 1, 2):
-            return finish("FAIL", "No valid label with a verified citation", result)
-        if any(result.get(k) != request[k] for k in ("claim", "booklet", "claim_language", "booklet_language")):
-            return finish("FAIL", "Result does not match the requested booklet and claim", result)
+        record["inference"].update(calls=1 if "inference_s" in result else 0,
+                                   status="completed" if not result.get("error") else "error",
+                                   finish_reason=result.get("finish_reason"))
+        record["model_identity"].update(response=result.get("response_model"), verified=(
+            result.get("model") == expected_model and result.get("response_model") == expected_model))
+        record["prediction"].update(label=result.get("label"), label_code=result.get("label_code"))
+        citations = result.get("citations") if isinstance(result.get("citations"), list) else []
+        passages_ = result.get("passages") if isinstance(result.get("passages"), list) else []
+        citation_ok = bool(result.get("citation_verified") and citations and all(
+            citation.get("source") == result.get("booklet")
+            and citation.get("pdf_sha256") == result.get("pdf_sha256")
+            and citation in passages_ for citation in citations))
+        record["citation"].update(verified=citation_ok, count=len(citations),
+                                  pages=[citation.get("page") for citation in citations])
+        usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
+        prompt = usage.get("prompt_tokens")
+        completion = usage.get("completion_tokens")
+        total = usage.get("total_tokens")
+        usage_ok = (type(prompt) is int and prompt > 0 and type(completion) is int and completion > 0
+                    and type(total) is int and total == prompt + completion)
+        record["token_usage"] = dict(usage, valid=usage_ok)
+        record["latency_s"] = {key: result.get(key) for key in
+                               ("elapsed_s", "inference_s", "retrieval_s")}
+        checks = {
+            "docker_exit_zero": proc.returncode == 0,
+            "model_identity": record["model_identity"]["verified"],
+            "model_generated_prediction": not result.get("error"),
+            "valid_label_and_code": (type(result.get("label_code")) is int
+                                     and CODE_TO_LABEL.get(result.get("label_code")) == result.get("label")),
+            "finish_reason_stop": result.get("finish_reason") == "stop",
+            "valid_token_usage": usage_ok,
+            "citation_provenance": citation_ok,
+            "request_identity": all(result.get(k) == request[k] for k in
+                                    ("claim", "booklet", "claim_language", "booklet_language")),
+            "no_lexical_fallback": (expected_model in OFFICIAL_MODELS
+                                    and result.get("model") == expected_model),
+        }
+        record["acceptance_criteria"] = checks
+        record["failed_acceptance_criteria"] = [name for name, passed in checks.items() if not passed]
+        if result.get("error"):
+            record["errors"].append(result["error"])
+        if record["failed_acceptance_criteria"]:
+            return finish("FAIL", "Docker inference completed but acceptance criteria failed", result)
         return finish("PASS", "One real Docker make run completed; no cross-platform or accuracy claim", result)
 
 
@@ -589,16 +671,21 @@ def parser():
     ap.add_argument("mode", choices=("preflight", "run", "submission-smoke"))
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--plan", type=Path, default=PLAN)
-    ap.add_argument("--out", type=Path, default=OUTPUT)
+    ap.add_argument("--out", type=Path)
     ap.add_argument("--endpoint", default="http://127.0.0.1:8080")
     ap.add_argument("--context", type=int, default=32768)
     ap.add_argument("--timeout", type=float, default=180)
     ap.add_argument("--retries", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--retry-failed", action="store_true")
-    ap.add_argument("--deployment", choices=("managed", "external"), default="managed")
+    ap.add_argument("--deployment", choices=("managed", "cscs", "external"), default="managed")
     ap.add_argument("--request", type=Path, default=PROJECT_ROOT / "data/request.json")
     ap.add_argument("--smoke-timeout", type=int, default=2400)
+    action = ap.add_mutually_exclusive_group()
+    action.add_argument("--dry-run", action="store_true",
+                        help="submission-smoke only: validate prerequisites without endpoint calls")
+    action.add_argument("--live", action="store_true",
+                        help="submission-smoke only: run exactly one Docker application inference")
     return ap
 
 
@@ -611,7 +698,18 @@ def main(argv=None):
         ap.error("--retry-failed requires --resume")
     if args.mode != "run" and (args.resume or args.retry_failed):
         ap.error("Resume options apply only to run")
+    if args.mode == "submission-smoke" and not (args.dry_run or args.live):
+        ap.error("submission-smoke requires exactly one of --dry-run or --live")
+    if args.mode != "submission-smoke" and (args.dry_run or args.live):
+        ap.error("--dry-run/--live apply only to submission-smoke")
     try:
+        if args.out is None:
+            if args.mode == "submission-smoke":
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                args.out = PROJECT_ROOT / "data/experiments" / (
+                    f"docker-verification-{args.deployment}-{stamp}-{uuid.uuid4().hex[:8]}")
+            else:
+                args.out = OUTPUT
         args.out = output_path(args.out)
         if args.mode == "submission-smoke":
             return smoke(args)

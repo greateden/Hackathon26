@@ -176,9 +176,12 @@ class RunnerContracts(unittest.TestCase):
         self.prepared = {"contract": {"items": [item], "model_cache": info}, "git_dirty": True,
                          "encoder_path": Path("cache"), "booklets": {(row["booklet_url"], row["reference_language"]): self.booklet}}
         self.metadata = dict(info, instance_id="server-test")
+        passage = dict(self.booklet["pages"][0], source=row["booklet_url"], pdf_sha256="test")
         self.reply = {"label": item["gold"], "label_code": row["entailment_label"], "elapsed_s": 0.1,
-                      "passages": [dict(self.booklet["pages"][0], source=row["booklet_url"], pdf_sha256="test")],
-                      "citation_verified": True, "usage": {"prompt_tokens": 10, "completion_tokens": 8},
+                      "inference_s": 0.05, "retrieval_s": 0.02, "passages": [passage],
+                      "citations": [passage], "citation_verified": True, "pdf_sha256": "test",
+                      "finish_reason": "stop",
+                      "usage": {"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18},
                       "prompt_sha256": "hash"}
 
     def execute(self, side_effect=None):
@@ -318,15 +321,22 @@ class RunnerContracts(unittest.TestCase):
             runner.main(["run", "--retries", "-1"])
         with self.assertRaises(SystemExit):
             runner.main(["run", "--retry-failed"])
+        with self.assertRaises(SystemExit):
+            runner.main(["submission-smoke"])
+        with self.assertRaises(SystemExit):
+            runner.main(["run", "--dry-run"])
         with self.assertRaises(ValueError):
             runner.output_path(self.root / "outside")
         with self.assertRaises(ValueError):
             runner.endpoint("https://user:password@example.com")
 
-    def smoke(self, configuration=None, outcome=None, docker=True, deployment="external", gpu=True):
+    def smoke(self, configuration=None, outcome=None, docker=True, deployment="external", gpu=True,
+              dry_run=False):
         for name in ("Dockerfile", "Makefile", "compose.submission.yaml", "compose.managed.yaml"):
             (self.root / name).write_text("fixture")
         self.args.deployment = deployment
+        self.args.live = not dry_run
+        self.args.dry_run = dry_run
         self.args.request = self.root / "request.json"
         self.args.request.write_text(json.dumps(self.request))
         config = configuration or {"services": {"app": {"environment": {
@@ -334,22 +344,23 @@ class RunnerContracts(unittest.TestCase):
             "LLM_CONTEXT_TOKENS": "32768", "LLM_TOKEN_PREFLIGHT": "required"}}}}
         if deployment == "managed":
             config["services"]["apertus"] = {"environment": {"HF_TOKEN": ""}}
+        self.smoke_commands = []
         def run(argv, **kwargs):
+            self.smoke_commands.append(argv)
             if argv[:2] == ["docker", "info"]:
                 return SimpleNamespace(returncode=0 if docker else 1, stdout='{"nvidia":{}}' if gpu else "{}")
             if "config" in argv:
                 return SimpleNamespace(returncode=0, stdout=json.dumps(config))
-            if argv[:2] == ["make", "run"]:
+            if argv[:2] in (["make", "run"], ["make", "run-cscs"]):
                 if isinstance(outcome, Exception):
                     raise outcome
                 if outcome:
                     runner.write_json(self.directory / "result.json", outcome)
                 return SimpleNamespace(returncode=0, stdout="secret-value")
             return SimpleNamespace(returncode=0, stdout="git-fixture")
-        response = Mock()
-        response.json.return_value = {"data": [{"id": config["services"]["app"]["environment"]["LLM_NAME"]}]}
-        with patch.object(runner.shutil, "which", return_value="available"), patch.object(runner, "command", side_effect=run), \
-             patch("requests.get", return_value=response):
+        env = {"CSCS_INFERENCE_API_KEY": "secret-value"} if deployment == "cscs" else {}
+        with patch.object(runner.shutil, "which", return_value="available"), \
+             patch.object(runner, "command", side_effect=run), patch.dict(os.environ, env):
             return runner.smoke(self.args)
 
     def test_smoke_missing_daemon_is_blocked(self):
@@ -365,12 +376,35 @@ class RunnerContracts(unittest.TestCase):
         self.assertIn("HF_TOKEN", json.loads((self.directory / "summary.json").read_text())["reason"])
 
     def test_smoke_real_result_required_and_secrets_omitted(self):
-        self.assertEqual(self.smoke(), 2)
+        self.assertEqual(self.smoke(), 1)
         self.assertNotIn("secret-value", "".join(p.read_text() for p in self.directory.glob("*.json*")))
 
     def test_smoke_success_double_is_not_static_success(self):
         result = dict(self.reply, **self.request, model=app.MODEL, response_model=app.MODEL)
         self.assertEqual(self.smoke(outcome=result), 0)
+        record = json.loads((self.directory / "verification.json").read_text())
+        self.assertEqual(record["status"], "PASS")
+        self.assertEqual(record["docker"]["process_exit_code"], 0)
+        self.assertEqual(record["inference"]["calls"], 1)
+        self.assertTrue(all(record["acceptance_criteria"].values()))
+        self.assertEqual(record["prediction"]["correctness"], "not_assessed")
+
+    def test_smoke_dry_run_makes_no_endpoint_or_inference_call(self):
+        self.assertEqual(self.smoke(dry_run=True), 0)
+        record = json.loads((self.directory / "verification.json").read_text())
+        self.assertEqual(record["status"], "READY")
+        self.assertEqual(record["inference"]["calls"], 0)
+        self.assertFalse(record["docker_inference"])
+        self.assertFalse(any(command[:2] in (["make", "run"], ["make", "run-cscs"])
+                             for command in self.smoke_commands))
+
+    def test_smoke_rejects_incomplete_or_invalid_usage(self):
+        result = dict(self.reply, **self.request, model=app.MODEL, response_model=app.MODEL,
+                      finish_reason="length", usage={"prompt_tokens": 10, "completion_tokens": 8})
+        self.assertEqual(self.smoke(outcome=result), 1)
+        failed = json.loads((self.directory / "verification.json").read_text())["failed_acceptance_criteria"]
+        self.assertIn("finish_reason_stop", failed)
+        self.assertIn("valid_token_usage", failed)
 
     def test_cscs_external_smoke_accepts_70b_and_optional_preflight(self):
         config = {"services": {"app": {"environment": {
@@ -379,7 +413,7 @@ class RunnerContracts(unittest.TestCase):
             "LLM_TOKEN_PREFLIGHT": "optional"}}}}
         result = dict(self.reply, **self.request, model=app.CSCS_MODEL,
                       response_model=app.CSCS_MODEL)
-        self.assertEqual(self.smoke(configuration=config, outcome=result), 0)
+        self.assertEqual(self.smoke(configuration=config, outcome=result, deployment="cscs"), 0)
         manifest = json.loads((self.directory / "manifest.json").read_text())
         self.assertEqual(manifest["model"], app.CSCS_MODEL)
         self.assertEqual(manifest["configuration"]["LLM_TOKEN_PREFLIGHT"], "optional")

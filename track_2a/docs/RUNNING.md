@@ -86,8 +86,10 @@ make run-cscs
 Both a base URL ending in `/v1` and one without it resolve to exactly
 `/v1/models` and `/v1/chat/completions`; `/v1/v1/...` is not produced.
 Edit `data/request.json` before running. This can send a paid remote inference
-request. The verified one-call API smoke establishes transport and parsing only;
-the full booklet/retrieval application path has not yet been run against CSCS.
+request. One full booklet/retrieval Docker smoke passed on Apple Silicon with
+exit code 0, a verified page citation and no lexical fallback. It used one
+example and therefore establishes application-path execution, not accuracy or
+cross-platform portability. The default managed 8B service remains unverified.
 
 ## Input and output
 

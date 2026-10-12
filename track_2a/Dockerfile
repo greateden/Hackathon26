@@ -35,6 +35,9 @@ RUN pip install --no-cache-dir \
 
 COPY src ./src
 COPY tests ./tests
+COPY docs/evidence/paired_grouped81_plan_20261011.json \
+     docs/evidence/prompt_pilot27_plan_v1.json \
+     ./docs/evidence/
 
 RUN useradd -m -d /home/app app && \
     mkdir -p /home/app/.cache/huggingface && \
