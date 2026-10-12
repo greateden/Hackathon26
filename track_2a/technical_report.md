@@ -22,11 +22,12 @@ application acceptance checks; it is deployment evidence, not an accuracy result
 
 ## 2. Architecture
 
-`make run` builds the CPU application and starts the official model service in
-Docker. `SUBMISSION_MODE=external` instead uses a provisioned official endpoint
-without starting a local GPU service. The external application path has completed
-one CSCS-backed Docker smoke on Apple Silicon. The default managed 8B service,
-self-contained model startup and cross-platform execution remain unverified.
+`make run` builds the CPU application and uses the official endpoint supplied
+through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`, without starting a local
+GPU service. `SUBMISSION_MODE=managed` additionally starts the optional official
+vLLM service. The external application path has completed one CSCS-backed Docker
+smoke on Apple Silicon. The managed 8B service, self-contained model startup and
+cross-platform execution remain unverified.
 The JSON request
 identifies a PDF and declares booklet and claim languages independently.
 Poppler extracts text with physical page boundaries. Baseline A sends all
@@ -293,9 +294,11 @@ remote 70B endpoint, not the managed local model service. Run all commands from
 
 `make test` is the offline regression entry point. The submission contract
 checks use model doubles, explicitly separate from real encoder/PDF smoke
-results. On 12 October, both host and Docker runs passed 104 unit tests with no
+results. On 12 October, both host and Docker runs passed 110 unit tests with no
 failures, errors or skips; judge/label checks and source compilation also
-passed, and the Docker image built successfully on Apple Silicon. The template's
+passed, and the Docker image built successfully on Apple Silicon. Root
+`make run` also emitted the official Beginner response against a deterministic
+mock endpoint; this was not model inference. The template's
 `track_2a/` layout is now implemented. Final report PDF, team metadata, demo,
 managed 8B execution and cross-platform validation remain outstanding. The
 tracked data inventory is below the template's 100 MB ceiling; ignored local
@@ -337,7 +340,7 @@ Then run the frozen plan into a fresh directory:
 This was the 162-call experiment recorded in §5; it ran with no retries.
 Stop the manually started server afterwards. Do not overwrite these recorded
 results when changing prompts or token limits. Before submission, validate the
-default managed `make run` on an NVIDIA host, review citation failures and the
+optional managed mode on an NVIDIA host, review citation failures and the
 one output-limit error, add team/demo metadata, verify licences and produce the
 final at-most-six-page PDF. The managed Apertus 8B deployment remains unverified.
 
@@ -355,7 +358,9 @@ The template and [Devpost rules](https://hackapertus.devpost.com/rules) were
 accessible on 11 October. Devpost confirms the 16 October, 12:00 CEST deadline;
 the template directs submissions to the event website, not Devpost. The
 online-hack page yielded no readable text, and the challenge/portal pages
-remained inaccessible through the verification tool. The v1.5 requirement and six-page limit are retained from the task
-brief, not claimed independently reverified. The layout was checked against
+remained inaccessible through the verification tool. The public Track 2A page
+requires the Apertus family but names no version; v1.5 is our conservative
+target. The six-page limit is retained from the task brief, while the public
+template names no required PDF filename or location. The layout was checked against
 template revision `09f8e9e2b588db3325869b23c6d5132f5c3756f7`. Historical
 measurements and caveats are retained in [the archive](docs/archive/README.md).

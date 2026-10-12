@@ -1,5 +1,7 @@
 """Submission contracts; HTTP and encoder doubles are not model measurements."""
 import json
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 import sys
 import tempfile
@@ -16,6 +18,97 @@ def booklet(lang="de", tail="LAST PAGE SENTINEL"):
 
 
 class ApplicationTests(unittest.TestCase):
+    @staticmethod
+    def measured(label="entailment", snippet="Verbatim support"):
+        return {"label": label, "label_code": app.label_to_code(label),
+                "evidence_snippet": snippet, "input_tokens": 41,
+                "usage": {"prompt_tokens": 41, "completion_tokens": 7},
+                "inference_s": 0.125}
+
+    def test_official_beginner_input_and_exact_output(self):
+        judge = Mock()
+        judge.judge.return_value = self.measured()
+        request = {"id": "case-0043",
+                   "reference": {"text": "Verbatim support from the supplied reference."},
+                   "claim": {"text": "Example claim"}}
+        result = app.classify(request, judge)
+        output = app.submission_output(result)
+        self.assertEqual(output, {
+            "id": "case-0043", "label": 0, "label_name": "entailment",
+            "evidence": [{"page": None, "text": "Verbatim support"}],
+            "metrics": {"input_tokens": 41, "output_tokens": 7,
+                        "inference_time_ms": 125}})
+        judge.judge.assert_called_once_with(
+            "Example claim", "Verbatim support from the supplied reference.", seed=20261011)
+
+    def test_official_advanced_input_page_provenance_and_nine_language_pairs(self):
+        claims = {"de": "Beispielbehauptung", "fr": "Exemple d'affirmation",
+                  "it": "Esempio di affermazione"}
+        for document_language in app.LANGUAGES:
+            for claim_language in app.LANGUAGES:
+                judge = Mock()
+                judge.judge.return_value = self.measured(snippet="Verbatim support")
+                document = {"source": "only-this.pdf", "sha256": "test-pdf",
+                            "language": document_language,
+                            "pages": [{"page": 7, "text": "Verbatim support on page seven."}]}
+                retriever = Mock()
+                retriever.retrieve.return_value = [
+                    {"page": 7, "text": "Verbatim support on page seven.",
+                     "source": "only-this.pdf", "pdf_sha256": "test-pdf"}]
+                request = {"id": "case-0042", "vote": "Example vote",
+                           "booklet": {"path": "only-this.pdf"},
+                           "claim": {"text": claims[claim_language]}}
+                output = app.submission_output(
+                    app.classify(request, judge, retriever=retriever, booklet=document))
+                self.assertEqual(output["id"], "case-0042")
+                self.assertEqual(output["evidence"],
+                                 [{"page": 7, "text": "Verbatim support"}])
+                self.assertEqual(retriever.retrieve.call_args.args[0], document)
+
+    def test_booklet_language_detection(self):
+        self.assertEqual(app.detect_language("Der Bundesrat und die Vorlage sind nicht gleich."), "de")
+        self.assertEqual(app.detect_language("Les autorités ne sont pas pour une autre loi."), "fr")
+        self.assertEqual(app.detect_language("Gli argomenti sono per una legge che non cambia."), "it")
+
+    def test_official_neutral_has_empty_evidence(self):
+        judge = Mock()
+        judge.judge.return_value = self.measured("neutral", "")
+        result = app.classify({"id": "neutral-case",
+                               "reference": {"text": "Unrelated reference."},
+                               "claim": {"text": "Example claim"}}, judge)
+        self.assertEqual(app.submission_output(result)["evidence"], [])
+
+    def test_official_contract_rejects_ambiguous_input_and_ungrounded_verdict(self):
+        with self.assertRaisesRegex(ValueError, "booklet or reference, not both"):
+            app.validate_request({"id": "bad", "booklet": {"path": "a.pdf"},
+                                  "reference": {"text": "reference"},
+                                  "claim": {"text": "claim"}})
+        result = dict(self.measured(), case_id="case", citation_verified=False, citations=[])
+        with self.assertRaisesRegex(ValueError, "require grounded evidence"):
+            app.submission_output(result)
+        with self.assertRaisesRegex(ValueError, "vote must be"):
+            app.validate_request({"id": "bad", "booklet": {"path": "a.pdf"},
+                                  "claim": {"text": "claim"}})
+
+    def test_main_prints_only_official_json(self):
+        request = {"id": "case-main", "reference": {"text": "Verbatim support."},
+                   "claim": {"text": "Example claim"}}
+        judge = Mock()
+        judge.judge.return_value = self.measured()
+        with tempfile.TemporaryDirectory() as d:
+            request_path = Path(d) / "request.json"
+            request_path.write_text(json.dumps(request), encoding="utf-8")
+            stdout = io.StringIO()
+            with patch.object(sys, "argv", ["booklet_app.py", "--input", str(request_path)]), \
+                    patch.object(app, "SubmissionJudge", return_value=judge), redirect_stdout(stdout):
+                self.assertEqual(app.main(), 0)
+        output = json.loads(stdout.getvalue())
+        self.assertEqual(set(output), {"id", "label", "label_name", "evidence", "metrics"})
+        self.assertIs(type(output["label"]), int)
+        self.assertIs(type(output["metrics"]["input_tokens"]), int)
+        self.assertIs(type(output["metrics"]["output_tokens"]), int)
+        self.assertIs(type(output["metrics"]["inference_time_ms"]), int)
+
     def test_full_preserves_end_and_all_nine_language_pairs(self):
         for source in app.LANGUAGES:
             for claim in app.LANGUAGES:

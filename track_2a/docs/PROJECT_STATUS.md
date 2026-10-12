@@ -7,7 +7,7 @@ passed all eight application acceptance criteria plus the no-fallback check.
 This is a one-example deployment smoke, not an accuracy result. Repository
 packaging follows `track_2a/`.
 
-**Submission readiness is still incomplete.** The default managed 8B service
+**Submission readiness is still incomplete.** The optional managed 8B service
 has not run: it needs compatible NVIDIA hardware and authorised model access.
 Windows/Linux execution and a clean cold build also remain unverified. The
 27-example CSCS prompt comparison did not improve accuracy, so `current_v1`
@@ -19,9 +19,10 @@ The structural authority is the [Track 2A README](https://github.com/HackApertus
 and [repository README](https://github.com/HackApertus/project-template/blob/main/README.md),
 rechecked on 12 October 2026. They require keeping `track_2a/`, Docker through
 `make run`, standard LLM environment variables and at most 100 MB of submitted
-data. They mandate the Apertus family; the stricter v1.5 8B acceptance target,
-six-page report limit and 16 October 12:00 CEST deadline are from the project
-brief. The current template and Devpost rules were rechecked: submission goes through
+data. They mandate the Apertus family but do not state a Track 2A model version;
+v1.5 8B remains this project's conservative target. The six-page report limit
+and 16 October 12:00 CEST deadline are retained from the project brief. The
+current template and Devpost rules were rechecked: submission goes through
 the event website, and Devpost confirms the deadline. The online-hack page had
 no readable text; challenge-specific rules and portal details remain unconfirmed.
 
@@ -43,18 +44,19 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
 | Technical report template | Passed for draft structure | Sections 1–8, licence, references and current development results are present |
-| Final report, team metadata, demo and licence review | Failed / incomplete | No final PDF produced; code licence and challenge-specific deliverables need review |
+| Final report, team metadata, demo and licence review | Failed / incomplete | No final PDF produced; the public template does not name or locate one, and challenge-specific details need confirmation |
 
 ## Submission configuration
 
-`make run` → base `compose.submission.yaml` + `compose.managed.yaml` →
-`src/booklet_app.py`. `make run SUBMISSION_MODE=external` uses only the base file
-and requires a provisioned official endpoint, with no local GPU dependency.
+`make run` → base `compose.submission.yaml` → `src/booklet_app.py`, using the
+externally provisioned endpoint from the standard `LLM_*` variables with no
+local GPU dependency. `make run SUBMISSION_MODE=managed` adds
+`compose.managed.yaml` and its NVIDIA vLLM service.
 Target model: `swiss-ai/Apertus-v1.5-8B`; temperature 0; seed 20261011;
 512 output tokens; context default 32,768, which must match the server.
-Set gated-model `HF_TOKEN` in `track_2a/.env`; edit `data/request.json`.
-The default endpoint is the managed Compose service `http://apertus:8000`.
-Requires a compatible NVIDIA GPU/runtime, sufficient VRAM and large initial
+Edit `data/request.json`; configure `LLM_NAME`, `LLM_BASE_URL` and
+`LLM_API_KEY` outside Git. Managed mode uses `http://apertus:8000` and requires
+a compatible NVIDIA GPU/runtime, `HF_TOKEN`, sufficient VRAM and large initial
 image/weight downloads; no quantised substitution is configured.
 The managed Docker path retains required `/tokenize` preflight. The new native
 MLX experiment wrapper also supplies exact token preflight. Optional preflight is
@@ -93,8 +95,9 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
   retrieved evidence. `current_v1` used fewer input tokens and remains the
   default. The sample is exposed development data, not a generalisation result.
 - **Final offline verification:** the image built successfully on Apple Silicon.
-  Host and Docker runs each passed 104 unit tests with zero failures, errors or
-  skips. Judge/label checks and Python compilation also passed.
+  Host and Docker runs each passed 110 unit tests with zero failures, errors or
+  skips. Judge/label checks and Python compilation also passed. Root `make run`
+  emitted the official Beginner JSON contract against a deterministic mock.
 - **Local v1.5 smoke, n=1, DE→DE:**
   `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`, revision
   `9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e`, mlx-lm 0.32.0.
@@ -121,11 +124,13 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
 
 ## Remaining work
 
-**P0 — managed execution (PARTIAL):** managed model startup is implemented but
-unverified. Run default `make run` on a compatible NVIDIA Docker host with
-authorised 8B model access; record model identity, label, citation, token counts
-and service shutdown. The successful external CSCS smoke does not verify this
-self-contained path or cross-platform portability.
+**P0 — judge entry point:** default `make run` now uses an externally
+provisioned v1.5 endpoint and does not require a container GPU. The managed
+server remains an explicit option and is unverified. A tracked-files-only copy
+built successfully, and the repository-root command passed against a
+deterministic endpoint without `/tokenize`; the earlier CSCS smoke is the only
+real external inference. These checks do not establish cold-build or
+cross-platform portability.
 
 **P1 — submission evidence and deliverables:** validate Windows and Linux;
 review code/data licensing, supply team and demo metadata, then complete the

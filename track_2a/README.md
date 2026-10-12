@@ -3,29 +3,32 @@
 **HackApertus Track 2A — OST: Multilingual Natural Language Inference over
 Swiss Official Voting Booklets.**
 
-Give the application a voting booklet PDF, a claim and their languages
-(German, French or Italian). It returns entailment, neutral or contradiction,
-with passages and physical PDF page citations. Apertus judges the claim;
-SentenceSwissBERT selects evidence within the supplied booklet.
+Give the application either a reference passage and claim (Beginner), or a
+voting booklet PDF, vote and claim (Advanced). It returns entailment, neutral
+or contradiction with grounded evidence; Advanced evidence includes physical
+PDF pages. Apertus judges the claim, while SentenceSwissBERT selects evidence
+within the supplied booklet.
 
 A genuine local Apertus v1.5 8B MLX smoke run is recorded: label `0`
 (entailment), a verified page-15 snippet, 1,007 input tokens and 71 output
 tokens. This single development example is not an accuracy benchmark.
 A separate Docker application smoke against CSCS Apertus v1.5 70B exited 0
 with entailment, a verified page-19 citation and no lexical fallback. This
-single example is also not an accuracy benchmark. Default managed 8B startup
+single example is also not an accuracy benchmark. Optional managed 8B startup
 and cross-platform execution remain unverified.
 
 ## Run
 
 This directory is the project root required by the
 [official template](https://github.com/HackApertus/project-template/tree/main/track_2a).
-You need GNU Make, Docker with Compose, NVIDIA Container Toolkit, a compatible
-NVIDIA GPU with enough VRAM, network/disk capacity for initial downloads, and
-Hugging Face access to the gated official v1.5 checkpoint. Alternatively, use a
-provisioned official endpoint with `make run SUBMISSION_MODE=external`; that mode
-starts only the CPU application and requires no local NVIDIA GPU. GPU memory
-needs and runtime portability remain unverified.
+You need GNU Make, Docker with Compose and a provisioned official Apertus v1.5
+endpoint. Set `LLM_NAME`, `LLM_BASE_URL` and, when required, `LLM_API_KEY`;
+default `make run` starts only the CPU application and requires no local NVIDIA
+GPU. Endpoints without `/tokenize` are supported while response identity, token
+usage and completion checks remain strict. Runtime portability remains
+unverified. The committed Beginner request needs neither a PDF nor an encoder
+download. Advanced requests need the specified local PDF and a cached or
+downloadable SentenceSwissBERT model.
 
 For the opt-in CSCS Apertus v1.5 70B backend, set
 `CSCS_INFERENCE_API_KEY` outside the repository, edit `data/request.json`, and
@@ -33,13 +36,13 @@ run `make run-cscs`. This uses the external Docker application and the existing
 optional token-preflight contract because CSCS does not document `/tokenize`.
 See [RUNNING.md](docs/RUNNING.md) for the exact checks and limitations.
 
-1. Copy `.env.example` to `.env` and set `HF_TOKEN` after accepting the model's
-   access conditions. Keep credentials out of Git; the internal endpoint is preconfigured.
+1. Export the three `LLM_*` variables above or copy `.env.example` to `.env` and
+   configure them. Keep credentials out of Git.
 2. Edit `data/request.json` to identify the booklet and claim.
 3. Run `make run` from this directory. The repository-root Makefile also forwards here.
 
-In default managed mode, Docker builds the CPU application, starts the official
-v1.5 vLLM GPU service,
+For an optional self-managed server, `make run SUBMISSION_MODE=managed` builds
+the CPU application and starts the official v1.5 vLLM GPU service,
 waits for readiness, then runs `src/booklet_app.py`. The model service downloads
 uncached weights into a persistent Docker volume. Both services stop when the
 application exits, and its exit status is propagated. No separately started
@@ -52,36 +55,47 @@ PDFs, result files, Windows limitations and the separate native Mac path.
 
 ## Input and output
 
-Example request (place `my-booklet.pdf` in this directory's `data/`):
+The CLI accepts the two official request shapes. Beginner input classifies the
+supplied reference directly:
 
 ```json
 {
-  "booklet": "/app/data/my-booklet.pdf",
-  "booklet_language": "de",
-  "claim": "Der Bundesrat empfiehlt die Annahme der Vorlage.",
-  "claim_language": "de",
-  "evidence": "retrieved",
-  "top_k": 5
+  "id": "case-0043",
+  "reference": {"text": "Example reference passage"},
+  "claim": {"text": "Example claim"}
 }
 ```
 
-A public HTTPS PDF URL also works. The committed request uses one, so it needs
-no private corpus. `full` selects Baseline A (all extracted pages); `retrieved`
-selects Approach B (top-five passages from that booklet). No evaluation gold
-reference is used to select evidence.
-
-The output JSON includes `label_code` (`0` entailment, `1` neutral,
-`2` contradiction), reasoning, passages, PDF hash, token usage and timings.
-`citation_verified` means the generated snippet matches a supplied passage;
-it does not prove the judgement is correct. Errors have a null label.
-For example, this subset comes from the saved local development smoke:
+Advanced input searches only the named booklet (paths are relative to
+`data/request.json`):
 
 ```json
 {
-  "label": "entailment",
-  "label_code": 0,
-  "citation_verified": true,
-  "usage": {"prompt_tokens": 1007, "completion_tokens": 71, "total_tokens": 1078}
+  "id": "case-0042",
+  "booklet": {"path": "booklets/example_de.pdf"},
+  "vote": "Example vote",
+  "claim": {"text": "Example claim"}
+}
+```
+
+Booklet language is detected as German, French or Italian; the claim may be in
+any of those languages. No evaluation file or gold reference is read.
+
+The CLI prints only the official response. Labels are `0` entailment, `1`
+neutral and `2` contradiction. Non-neutral evidence must match the supplied
+source; advanced evidence carries the physical PDF page. Beginner evidence has
+`page: null` because the supplied reference has no PDF page. Metrics come from
+endpoint usage and the measured completion latency. Invalid, ungrounded or
+incomplete results exit non-zero instead of inventing fields.
+
+```json
+{
+  "id": "case-0042",
+  "label": 0,
+  "label_name": "entailment",
+  "evidence": [{"page": 7, "text": "Verbatim supporting passage"}],
+  "metrics": {"input_tokens": 8431, "output_tokens": 112,
+              "inference_time_ms": 1820}
 }
 ```
 
@@ -89,7 +103,7 @@ For example, this subset comes from the saved local development smoke:
 
 | Path | Model and configuration | Verification |
 |---|---|---|
-| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; managed official vLLM server or explicit external endpoint; required token preflight | Application contract tested; default managed inference pending |
+| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; external endpoint by default; optional managed official vLLM server | External endpoints use strict response checks without requiring `/tokenize`; managed inference pending |
 | CSCS external (opt-in) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | One booklet/retrieval Docker smoke passed on Apple Silicon; n=1 |
 | Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; new paired runner requires exact token preflight | Historical n=1 smoke used optional preflight; new wrapper runtime pending |
 | Historical research | Apertus v1.1 4B MLX INT4, global retrieval, oracle diagnostics and lexical controls | Archived measurements; not current submission results |

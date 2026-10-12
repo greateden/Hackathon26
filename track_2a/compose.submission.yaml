@@ -7,10 +7,12 @@ services:
     command: ["python3", "booklet_app.py"]
     environment:
       LLM_NAME: ${LLM_NAME:-swiss-ai/Apertus-v1.5-8B}
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://apertus:8000}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_CONTEXT_TOKENS: ${LLM_CONTEXT_TOKENS:-32768}
-      LLM_TOKEN_PREFLIGHT: ${LLM_TOKEN_PREFLIGHT:-required}
+      # Hosted OpenAI-compatible endpoints need not expose vLLM's /tokenize.
+      # The optional path still requires exact reported usage and finish_reason=stop.
+      LLM_TOKEN_PREFLIGHT: ${LLM_TOKEN_PREFLIGHT:-optional}
       SUBMISSION_MODEL_REQUIRED: "1"
       RESULT_FILE: ${RESULT_FILE:-}
       REQUEST_FILE: ${REQUEST_FILE:-/app/data/request.json}

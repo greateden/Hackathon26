@@ -45,9 +45,25 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def load_booklet(spec, language):
+def detect_language(text):
+    """Identify the booklet language from common function words."""
+    words = re.findall(r"[a-zà-ÿ]+", text.lower())
+    markers = {
+        "de": {"aber", "auch", "das", "der", "die", "eine", "für", "mit", "nicht", "und"},
+        "fr": {"avec", "dans", "des", "est", "les", "mais", "pas", "pour", "une", "que"},
+        "it": {"che", "con", "del", "della", "gli", "non", "per", "sono", "una", "nel"},
+    }
+    counts = {lang: sum(word in vocabulary for word in words)
+              for lang, vocabulary in markers.items()}
+    language, score = max(counts.items(), key=lambda item: item[1])
+    if score < 2 or list(counts.values()).count(score) > 1:
+        raise ValueError("Could not identify booklet language as de, fr or it")
+    return language
+
+
+def load_booklet(spec, language=None):
     """Resolve a PDF path, cached PDF stem, or HTTPS URL; never read gold data."""
-    if language not in LANGUAGES:
+    if language is not None and language not in LANGUAGES:
         raise ValueError("booklet_language must be de, fr or it")
     source = str(spec)
     if source.startswith("https://"):
@@ -89,6 +105,7 @@ def load_booklet(spec, language):
              if page.strip()]
     if not pages:
         raise ValueError("PDF has no extractable text; scanned PDFs need OCR (not implemented)")
+    language = language or detect_language("\n".join(page["text"] for page in pages))
     return {"source": source, "sha256": digest(body), "language": language, "pages": pages}
 
 
@@ -132,21 +149,71 @@ def build_messages(claim, evidence, system_prompt=SYSTEM_PROMPT):
             {"role": "user", "content": USER_TEMPLATE.format(claim=claim, evidence=evidence)}]
 
 
-def validate_request(request):
+def normalise_request(request, base_dir=None):
+    """Map the official Beginner/Advanced shapes to the internal request."""
     if not isinstance(request, dict):
         raise ValueError("request must be a JSON object")
+    # Retain compatibility for the recorded experiment runners. The public CLI
+    # uses the nested official shapes below.
+    if isinstance(request.get("claim"), str):
+        return dict(request, task=request.get("task", "advanced"))
+    case_id = request.get("id")
+    claim = request.get("claim")
+    if not isinstance(case_id, str) or not case_id.strip():
+        raise ValueError("id must be a non-empty string")
+    if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
+        raise ValueError("claim.text must be a non-empty string")
+    normalised = {"id": case_id, "claim": claim["text"], "task": None}
+    if "language" in claim:
+        normalised["claim_language"] = claim["language"]
+    if "booklet" in request and "reference" in request:
+        raise ValueError("request must contain booklet or reference, not both")
+    if "booklet" in request:
+        booklet = request["booklet"]
+        if not isinstance(booklet, dict) or not isinstance(booklet.get("path"), str):
+            raise ValueError("booklet.path must identify one PDF")
+        source = booklet["path"]
+        if not urlparse(source).scheme:
+            path = Path(source)
+            if base_dir is not None and not path.is_absolute():
+                path = Path(base_dir) / path
+            source = str(path)
+        normalised.update(task="advanced", booklet=source, vote=request.get("vote"))
+        if "language" in booklet:
+            normalised["booklet_language"] = booklet["language"]
+    elif "reference" in request:
+        reference = request["reference"]
+        if not isinstance(reference, dict) or not isinstance(reference.get("text"), str):
+            raise ValueError("reference.text must be a non-empty string")
+        normalised.update(task="beginner", reference=reference["text"])
+        if "language" in reference:
+            normalised["reference_language"] = reference["language"]
+    else:
+        raise ValueError("request must contain booklet or reference")
+    return normalised
+
+
+def validate_request(request, base_dir=None):
+    request = normalise_request(request, base_dir)
     if not isinstance(request.get("claim"), str) or not request["claim"].strip():
         raise ValueError("claim must be a non-empty string")
-    if not isinstance(request.get("booklet"), str) or not request["booklet"].strip():
-        raise ValueError("booklet must identify one PDF")
-    for field in ("claim_language", "booklet_language"):
-        if request.get(field) not in LANGUAGES:
+    for field in ("claim_language", "booklet_language", "reference_language"):
+        if field in request and request[field] not in LANGUAGES:
             raise ValueError(field + " must be de, fr or it")
-    if request.get("evidence", "retrieved") not in ("full", "retrieved"):
-        raise ValueError("evidence must be full or retrieved")
-    top_k = request.get("top_k", 5)
-    if type(top_k) is not int or not 1 <= top_k <= 20:
-        raise ValueError("top_k must be an integer from 1 to 20")
+    if request["task"] == "advanced":
+        if not isinstance(request.get("booklet"), str) or not request["booklet"].strip():
+            raise ValueError("booklet must identify one PDF")
+        if request.get("id") is not None and (
+                not isinstance(request.get("vote"), str) or not request["vote"].strip()):
+            raise ValueError("vote must be a non-empty string")
+        if request.get("evidence", "retrieved") not in ("full", "retrieved"):
+            raise ValueError("evidence must be full or retrieved")
+        top_k = request.get("top_k", 5)
+        if type(top_k) is not int or not 1 <= top_k <= 20:
+            raise ValueError("top_k must be an integer from 1 to 20")
+    elif not isinstance(request.get("reference"), str) or not request["reference"].strip():
+        raise ValueError("reference.text must be a non-empty string")
+    return request
 
 
 class SubmissionJudge:
@@ -265,11 +332,25 @@ def normalise_citation(text):
 
 
 def classify(request, judge, retriever=None, booklet=None, seed=20261011):
-    validate_request(request)
+    request = validate_request(request)
     claim = request["claim"]
+    if request["task"] == "beginner":
+        reference = request["reference"]
+        result = judge.judge(claim, reference, seed=seed)
+        snippet = result.get("evidence_snippet", "")
+        if not isinstance(snippet, str):
+            result.update(label=None, label_code=None, error="invalid_evidence_snippet")
+            snippet = ""
+        passage = {"page": None, "text": reference, "source": "supplied_reference"}
+        citations = [passage] if snippet.strip() and normalise_citation(snippet) in normalise_citation(reference) else []
+        result.update(case_id=request.get("id"), claim=claim, task="beginner",
+                      passages=[passage], citations=citations,
+                      citation_verified=bool(citations), retrieval_s=0.0)
+        return result
     mode = request.get("evidence", "retrieved")
-    booklet = booklet or load_booklet(request["booklet"], request["booklet_language"])
-    if booklet["source"] != request["booklet"] or booklet["language"] != request["booklet_language"]:
+    booklet = booklet or load_booklet(request["booklet"], request.get("booklet_language"))
+    if booklet["source"] != request["booklet"] or (
+            request.get("booklet_language") and booklet["language"] != request["booklet_language"]):
         raise ValueError("Loaded booklet does not match the request")
     started = time.perf_counter()
     if mode == "full":
@@ -293,10 +374,46 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     citations = [p for p in selected if snippet.strip()
                  and normalise_citation(snippet) in normalise_citation(p["text"])]
     result.update(claim=claim, evidence_mode=mode, booklet=booklet["source"], pdf_sha256=booklet["sha256"],
-                  claim_language=request["claim_language"], booklet_language=booklet["language"],
+                  case_id=request.get("id"), task="advanced",
+                  claim_language=request.get("claim_language"), booklet_language=booklet["language"],
                   passages=selected, citations=citations, citation_verified=bool(citations),
                   retrieval_s=retrieval_s)
     return result
+
+
+def submission_output(result):
+    """Render only the official output contract from recorded result fields."""
+    if result.get("error") or result.get("label") is None:
+        raise ValueError("classification did not produce a valid label")
+    label_name = result["label"]
+    label = label_to_code(label_name)
+    if label is None or result.get("label_code") != label:
+        raise ValueError("label name/code mismatch")
+    evidence = []
+    if label_name != "neutral":
+        if not result.get("citation_verified") or not result.get("citations"):
+            raise ValueError("entailment and contradiction require grounded evidence")
+        snippet = result.get("evidence_snippet", "")
+        for citation in result["citations"]:
+            text = snippet if snippet and snippet in citation["text"] else citation["text"]
+            evidence.append({"page": citation.get("page"), "text": text})
+    usage = result.get("usage") or {}
+    input_tokens = result.get("input_tokens")
+    output_tokens = usage.get("completion_tokens")
+    inference_s = result.get("inference_s")
+    if type(input_tokens) is not int or input_tokens < 1:
+        raise ValueError("missing actual input token usage")
+    if type(output_tokens) is not int or output_tokens < 1:
+        raise ValueError("missing actual output token usage")
+    if not isinstance(inference_s, (int, float)) or inference_s < 0:
+        raise ValueError("missing actual inference latency")
+    case_id = result.get("case_id")
+    if not isinstance(case_id, str) or not case_id:
+        raise ValueError("missing case id")
+    return {"id": case_id, "label": label, "label_name": label_name,
+            "evidence": evidence,
+            "metrics": {"input_tokens": input_tokens, "output_tokens": output_tokens,
+                        "inference_time_ms": round(inference_s * 1000)}}
 
 
 def main():
@@ -306,7 +423,7 @@ def main():
     args = ap.parse_args()
     try:
         request = json.loads(Path(args.input).read_text(encoding="utf-8"))
-        validate_request(request)
+        request = validate_request(request, Path(args.input).parent)
         args.out = args.out or os.environ.get("RESULT_FILE")
         if args.out and Path(args.out).exists():
             raise ValueError("Output exists; choose a new path")
@@ -315,12 +432,12 @@ def main():
         judge = SubmissionJudge()  # fail before PDF/embedding downloads
         with redirect_stdout(sys.stderr):
             result = classify(request, judge)
-        rendered = json.dumps(result, ensure_ascii=False, indent=2)
+        rendered = json.dumps(submission_output(result), ensure_ascii=False, indent=2)
         if args.out:
             with open(args.out, "x", encoding="utf-8") as stream:
                 stream.write(rendered + "\n")
         print(rendered)
-        return 1 if result.get("error") else 0
+        return 0
     except Exception as exc:
         print(f"ERROR: {type(exc).__name__}: check request, endpoint and output configuration", file=sys.stderr)
         return 1

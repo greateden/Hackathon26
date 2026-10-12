@@ -4,18 +4,46 @@ Run from `track_2a/`. The repository-root Makefile forwards here.
 The submission uses `src/booklet_app.py`; historical experiments use
 `main.py` and `compose.yaml`.
 
-## Managed server
+## Existing external endpoint (default)
+
+The judges can provision an Apertus v1.5 OpenAI-compatible endpoint; the
+application container does not need NVIDIA access. Export the standard variables
+or put them in `.env`:
+
+```text
+LLM_NAME=swiss-ai/Apertus-v1.5-8B
+LLM_BASE_URL=http://host.docker.internal:8000
+LLM_API_KEY=
+LLM_CONTEXT_TOKENS=32768
+```
+
+Then run `make run` from the repository root. Only
+`compose.submission.yaml` is used. The default
+`LLM_TOKEN_PREFLIGHT=optional` supports endpoints without `/tokenize`; a verdict
+is accepted only when `/v1/models` lists the exact configured model, the response
+model matches, token usage contains positive integer prompt and completion
+counts, and `finish_reason=stop`. Set `LLM_TOKEN_PREFLIGHT=required` for servers
+that expose `/tokenize` and require an exact prompt-token match. There is no
+lexical fallback. Both base URLs ending in `/v1` and those without it are
+normalised correctly.
+
+The committed request downloads a public voting booklet, and retrieved mode
+downloads SentenceSwissBERT on the first run into the `hf-cache` volume. For an
+offline judge environment, place a PDF under `data/` and pre-populate the named
+`hf-cache` volume; no historical corpus or embedding cache is required.
+
+## Managed server (optional)
 
 Install GNU Make, Docker Compose and NVIDIA Container Toolkit on a compatible
 NVIDIA host. The default official server image targets Linux amd64 and CUDA 13.
 Minimum VRAM has not been measured. Apple Silicon Docker cannot run this GPU
 service. Windows/WSL2, Linux and fresh-checkout inference remain unverified.
 
-Copy `.env.example` to `.env`, accept the official checkpoint's access
-conditions and set `HF_TOKEN`. Edit `data/request.json`, then run:
+Accept the official checkpoint's access conditions and set `HF_TOKEN`. Edit
+`data/request.json`, then run:
 
 ```text
-make run
+make run SUBMISSION_MODE=managed
 ```
 
 This merges `compose.submission.yaml` (CPU application) and
@@ -40,34 +68,10 @@ After interrupted startup, stop the managed services without deleting caches:
 docker compose -f compose.submission.yaml -f compose.managed.yaml down
 ```
 
-## Existing external endpoint
-
-A provisioned official v1.5 endpoint needs no local NVIDIA GPU. Set these in
-`.env`, replacing the endpoint with one accessible from Docker:
-
-```text
-LLM_NAME=swiss-ai/Apertus-v1.5-8B
-LLM_BASE_URL=http://host.docker.internal:8000
-LLM_API_KEY=
-LLM_CONTEXT_TOKENS=32768
-```
-
-Then:
-
-```text
-make run SUBMISSION_MODE=external
-```
-
-Only the base Compose file is used; it has no GPU reservation or model-service
-dependency. The default `LLM_TOKEN_PREFLIGHT=required` contract requires
-`/tokenize` and matching prompt usage. An endpoint without `/tokenize` may
-explicitly set `LLM_TOKEN_PREFLIGHT=optional`; the application then sends no
-tokenisation request and accepts a verdict only when the completion reports
-positive integer prompt and completion token usage with `finish_reason=stop`.
-Its configured context must match the application budget. A URL override alone
-does not select external mode: use `SUBMISSION_MODE=external` explicitly.
-Container-to-endpoint networking remains to be tested on the target host.
-The third-party MLX conversion is refused by this submission path.
+The managed overlay replaces the endpoint with its internal `apertus` service
+and enforces required `/tokenize` preflight. Container-to-endpoint networking
+outside the previously recorded CSCS smoke remains to be tested on the target
+host. The third-party MLX conversion is refused by the Docker submission path.
 
 ### CSCS Apertus v1.5 70B
 
@@ -93,31 +97,39 @@ cross-platform portability. The default managed 8B service remains unverified.
 
 ## Input and output
 
-`data/request.json` contains one object:
+`data/request.json` contains one official Beginner or Advanced object. Beginner:
 
 ```json
 {
-  "booklet": "/app/data/my-booklet.pdf",
-  "booklet_language": "de",
-  "claim": "Der Bundesrat empfiehlt die Annahme der Vorlage.",
-  "claim_language": "de",
-  "evidence": "retrieved",
-  "top_k": 5
+  "id": "case-0043",
+  "reference": {"text": "Example reference passage"},
+  "claim": {"text": "Example claim"}
 }
 ```
 
-Place local PDFs under `data/` and use their `/app/data/...` paths. An HTTPS
-PDF URL or cached PDF stem also works. The supplied sample uses a public URL,
-so a clean application checkout needs no historical corpus. Image-only PDFs
-require OCR, which is not implemented.
+Advanced:
 
-Languages are independently `de`, `fr` or `it`. `full` sends every extracted
-page; `retrieved` sends up to five SwissBERT passages from that PDF only.
-Labels are 0 entailment, 1 neutral and 2 contradiction. Output includes the
-claim, PDF hash, passages, physical pages and citation verification. A snippet
-must occur in the supplied evidence after whitespace normalisation. A missing
-citation is reported explicitly and fails the deployment smoke, although its
-label can still be scored separately in experiments.
+```json
+{
+  "id": "case-0042",
+  "booklet": {"path": "booklets/example_de.pdf"},
+  "vote": "Example vote",
+  "claim": {"text": "Example claim"}
+}
+```
+
+Relative booklet paths resolve from the request file's directory, so the
+example above names `data/booklets/example_de.pdf`. Image-only PDFs require
+OCR, which is not implemented.
+
+The booklet language is detected as `de`, `fr` or `it`; claims may independently
+use any of those languages. Advanced mode retrieves up to five passages from
+the specified PDF only. Beginner mode sends the supplied reference directly.
+The output contains exactly `id`, integer `label`, `label_name`, grounded
+`evidence`, and recorded token/latency `metrics`. Labels are 0 entailment, 1
+neutral and 2 contradiction. Non-neutral output without grounded evidence
+fails; neutral evidence is empty. Beginner evidence uses `page: null` because
+no PDF page was supplied.
 
 Result JSON goes to stdout; encoder progress goes to stderr. To save a JSON
 file through `make run`, set `RESULT_FILE=/app/data/result.json` in `.env`.

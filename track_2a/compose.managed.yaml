@@ -37,6 +37,9 @@ services:
       retries: 60
     # Internal Compose networking only: no host port or separate server needed.
   app:
+    environment:
+      LLM_BASE_URL: http://apertus:8000
+      LLM_TOKEN_PREFLIGHT: required
     depends_on:
       apertus:
         condition: service_healthy
