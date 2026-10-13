@@ -13,7 +13,7 @@ previous 81-case development comparison found that within-booklet retrieval
 outperformed full-booklet prompting (accuracy 0.802 versus 0.519) while using
 96.3% fewer input tokens. We therefore ask whether stronger retrieval further
 improves downstream NLI. On a separate frozen 81-case development sample, dense
-SwissBERT retrieval achieved accuracy 0.827 and macro-F1 0.824. Hybrid reciprocal
+SentenceSwissBERT retrieval achieved accuracy 0.827 and macro-F1 0.824. Hybrid reciprocal
 rank fusion achieved 0.802/0.797, while proposition-aware reranking achieved
 0.790/0.784 despite raising lexical reference Recall@5 from 0.580 to 0.716.
 Paired changes were small and non-significant: proposition reranking produced
@@ -22,7 +22,7 @@ attributes no single cause: decisive propositions were sometimes displaced,
 stakeholders or proposals were conflated, the judge sometimes misread adequate
 evidence, and the lexical reference proxy missed useful alternatives. The new
 experiment provides no evidence that either experimental retrieval method
-improves NLI accuracy. Dense within-booklet SwissBERT retrieval remains the
+improves NLI accuracy. Dense within-booklet SentenceSwissBERT retrieval remains the
 performance baseline.
 
 A subsequent 15-case post-hoc diagnostic obtained 15/15 correct labels with
@@ -34,20 +34,24 @@ generalisable accuracy improvement or a deployable retrieval method.
 
 The submission CLI was subsequently hardened as `vote-aware-v1`. In a paired
 54-case CSCS 70B development evaluation, its recoverable raw-label accuracy was
-41/54 (0.7593), compared with 40/54 (0.7407) for frozen `dense-v1`, but only
-23/54 candidate outputs satisfied the complete submission contract, compared
-with 32/54 for the baseline. The candidate rejected every gold-neutral case.
-This exploratory complete-system comparison does not demonstrate a raw NLI gain
-and does not support replacing `dense-v1` as the performance baseline.
+41/54 (0.7593), compared with 40/54 (0.7407) for frozen `dense-v1`. However,
+valid-output coverage was 25/54 (0.4630) versus 43/54 (0.7963), while strict
+accuracy (valid and gold-correct outputs) was 23/54 (0.4259) versus 32/54
+(0.5926). The candidate rejected every gold-neutral case. This exploratory
+complete-system comparison does not demonstrate an improvement in raw NLI
+accuracy and does not support replacing `dense-v1` as the performance baseline.
 
 ## 1. Research question and application
 
 Swiss voting booklets are multilingual, structurally repetitive and often place
 supporting and opposing arguments in the same document. Retrieval must therefore
 find not only the topic but the correct proposition, number, condition and
-speaker. Our research question is whether hybrid lexical–dense retrieval or
-proposition-aware reranking improves classification over the existing dense
-SwissBERT retriever.
+speaker. This combines natural-language inference (Williams et al., 2018),
+retrieval-augmented language modelling (Lewis et al., 2020) and the distinction
+between claim verification and supporting evidence made explicit in FEVER
+(Thorne et al., 2018). Our research question is whether hybrid lexical–dense
+retrieval or proposition-aware reranking improves classification over the
+existing dense SentenceSwissBERT retriever.
 The follow-up diagnostics ask whether observed errors persist under sufficient
 evidence, competing arguments and a controlled change in passage order, and
 whether vote-aware validation improves accepted end-to-end answers.
@@ -57,8 +61,14 @@ endpoint through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. The request names
 the official PDF and declares claim and booklet languages independently. Poppler
 extracts physical pages; the current production path chunks only the supplied
 booklet and retrieves five passages using SentenceSwissBERT mean-pooled cosine
-similarity. Both query and passage adapters use the known booklet language. Gold
-references and labels never enter extraction, ranking or judgement.
+similarity. SentenceSwissBERT is a sentence-embedding adaptation of SwissBERT
+(Vamvas et al., 2023), fine-tuned with a SimCSE-derived contrastive procedure
+(Gao et al., 2021; Grosjean, model card). Its use of pooled contextual
+embeddings is related to sentence-embedding methods such as Sentence-BERT
+(Reimers and Gurevych, 2019), but it must not be confused with either that
+model or the original SwissBERT checkpoint. Both query and passage adapters use the known
+booklet language. Gold references and labels never enter extraction, ranking
+or judgement.
 
 The current submission CLI is a separately versioned `vote-aware-v1` candidate.
 It retains the same SentenceSwissBERT encoder, booklet-language adapter,
@@ -83,8 +93,8 @@ support.
 
 ## 2. Model and experimental setting
 
-The submission target is `swiss-ai/Apertus-v1.5-8B`, inference only. The local
-experiments use the third-party conversion
+The submission target is `swiss-ai/Apertus-v1.5-8B`, inference only (Swiss AI
+Initiative, model card). The local experiments use the third-party conversion
 `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`, revision
 `9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e`, with 6-bit affine quantisation,
 group size 64 and an 81,920-token context. The manifest records
@@ -94,11 +104,14 @@ allowance and disabled thinking. The retrieval ablation uses parser
 recorded parser versions. An endpoint model-name check does not attest the
 server's underlying weights.
 
-The evaluation source is the official MNLI-over-Swiss-Voting-Booklets v1.1
-snapshot under `data/eval/`, with original Federal Chancellery PDFs. The current
-60-row historical development split overlaps heavily with its complement, and
-earlier work inspected the full corpus. All results are therefore exploratory
-development evidence, not independent held-out estimates.
+The evaluation source is the HackApertus-provided
+MNLI-over-Swiss-Voting-Booklets v1.1 snapshot under `data/eval/`, with original
+Federal Chancellery PDFs. This challenge-specific corpus should not be confused
+with the Multi-Genre Natural Language Inference (MultiNLI) benchmark of Williams
+et al. (2018). The historical 60-row development set and subsequent cohorts were repeatedly
+examined, and earlier work inspected the full corpus. The studies therefore
+cannot be treated as evaluations on independent held-out data. All results are
+exploratory development evidence, not unbiased generalisation estimates.
 
 ### 2.1 Cohorts and purposes
 
@@ -114,7 +127,7 @@ Five studies must not be conflated:
    unsuitable for estimating general accuracy or an oracle gain.
 3. **Three-arm retrieval ablation (n=81; 243 calls).** A separately frozen,
    class- and language-pair-balanced development sample compares A: dense
-   SwissBERT, B: dense plus BM25 reciprocal rank fusion, and C: B followed by
+   SentenceSwissBERT, B: dense plus BM25 reciprocal rank fusion, and C: B followed by
    proposition-aware reranking. It excludes components exposed by the earlier
    grouped study, but is still drawn from the historically inspected dataset.
 4. **Evidence sensitivity (n=15; 60 calls).** Ten discordant cases and five
@@ -189,14 +202,15 @@ unaltered, with the audit and hashes under `docs/evidence/`.
 The frozen runner completed all 243 planned calls: 81 cases per arm, no errors,
 failures, missing rows or retries. The sample contains 27 examples per NLI label
 and nine per claim/booklet language pair across DE, FR and IT. Method A retrieves
-dense SwissBERT candidates. B fuses dense and BM25 rankings with reciprocal rank
-fusion. C proposition-reranks B's candidate set. Classification is scored over
+dense SentenceSwissBERT candidates. B fuses dense and BM25 rankings (Robertson
+and Zaragoza, 2009) with reciprocal rank fusion (Cormack et al., 2009). C
+proposition-reranks B's candidate set. Classification is scored over
 all 81 rows per arm. Reference Recall@k uses annotated-string matching and must
 not be interpreted as evidence correctness.
 
 | Method | Correct | Accuracy | Macro-F1 | R@5 | R@10 | R@20 | Citation verified | Mean prompt tokens |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| A · dense SwissBERT | 67/81 | 0.827 | 0.824 | 47/81 (0.580) | 0.778 | 0.852 | 42/81 (51.9%) | 1,215 |
+| A · dense SentenceSwissBERT | 67/81 | 0.827 | 0.824 | 47/81 (0.580) | 0.778 | 0.852 | 42/81 (51.9%) | 1,215 |
 | B · hybrid RRF | 65/81 | 0.802 | 0.797 | 50/81 (0.617) | 0.741 | 0.877 | 40/81 (49.4%) | 1,326 |
 | C · proposition reranking | 64/81 | 0.790 | 0.784 | 58/81 (0.716) | 0.840 | 0.877 | 36/81 (44.4%) | 1,314 |
 
@@ -207,7 +221,9 @@ the same 81 paired cases per method. Source: recorded `summary.json` and
 `retrieval_audit.json` in `data/experiments/retrieval-ablation-v1/`.
 
 C increased R@5 by 11/81 cases relative to A, yet produced three fewer correct
-labels. B likewise produced two fewer correct labels. Thus neither experimental
+labels. The original RRF work evaluated retrieval ranking effectiveness
+(Cormack et al., 2009); its reported gains do not imply improvements in our
+separate downstream NLI objective. B likewise produced two fewer correct labels. Thus neither experimental
 method improved NLI accuracy, macro-F1 or citation verification. Both also used
 about 8–9% more prompt tokens per case than A.
 
@@ -275,7 +291,7 @@ claim conflates exercising due diligence with proving it as a liability defence;
 row 550 was excluded because a short excerpt cannot establish booklet-wide
 absence. Historical dataset labels and results were preserved.
 
-Condition A supplied the original recorded SwissBERT top-five passages. B used
+Condition A supplied the original recorded SentenceSwissBERT top-five passages. B used
 manually constructed exact PDF excerpts, retaining speaker, proposal, quantities
 and necessary conditions. C appended two reviewed non-decisive distractors to B.
 D moved the complete B block after those distractors, preserving both internal
@@ -292,7 +308,7 @@ experiment. Every C/D pair has identical passage text and input-token counts.
 
 | Condition | Correct | Accuracy | Macro-F1 | Input tokens | Output tokens |
 |---|---:|---:|---:|---:|---:|
-| A · original SwissBERT top-five | 8/15 | 0.533 | 0.593 | 18,837 | 1,723 |
+| A · original SentenceSwissBERT top-five | 8/15 | 0.533 | 0.593 | 18,837 | 1,723 |
 | B · minimal sufficient evidence | 15/15 | 1.000 | 1.000 | 5,784 | 1,539 |
 | C · B followed by distractors | 14/15 | 0.933 | 0.933 | 9,570 | 1,534 |
 | D · distractors followed by B | 11/15 | 0.733 | 0.786 | 9,570 | 1,606 |
@@ -307,7 +323,10 @@ further regressions: row 189 to contradiction, and rows 1026 and 1344 to neutral
 B used 69.3% fewer input tokens than A, but represents a case-informed evidence
 upper bound rather than an implemented retrieval method. C increased input
 length by 65.5% over B, so B/C does not isolate semantic interference. C/D had
-the same input length in every pair, not merely equal aggregate totals. Token
+the same input length in every pair, not merely equal aggregate totals.
+This position-controlled comparison is related to prior findings of positional
+sensitivity in long-context use (Liu et al., 2024), but our short, selected NLI
+examples cannot establish the same mechanism. Token
 counts come from raw completion usage and agree with the saved nested
 `token_latency` totals. The summary's flat token-total fields incorrectly contain
 zeros; those historical fields and the evaluation code were not rewritten.
@@ -359,7 +378,8 @@ parser-induced label change.
 These observations are traceable to the supplied passages and saved responses.
 Stakeholder interference and reduced use of late decisive evidence are plausible
 interpretations, but generated explanations cannot be assumed to describe the
-model's internal decision process faithfully. Single observations cannot identify those
+model's internal decision process faithfully (cf. Turpin et al., 2023).
+Single observations cannot identify those
 mechanisms or establish deterministic causal effects of ordering.
 
 ## 6. Vote-aware versus Dense: paired exploratory evaluation
@@ -375,16 +395,19 @@ accounted for, and failed submission outputs remain in denominators.
 Raw label accuracy counts a recognised NLI label recovered from the model's
 response, whether or not the complete submission contract subsequently passed.
 Strict accuracy counts a case only when official output rendering succeeded and
-that accepted label matched gold. Valid output rate is the fraction that could
-be rendered as official submission JSON after identity, evidence and citation
-checks. Native JSON rate means parseable JSON without the candidate's one-brace
-recovery; it is not the same as contract validity.
+that accepted label matched gold. Macro-F1 uses all three gold classes and the
+full 54-case denominator; invalid outputs are counted as errors (false negatives
+for their gold class), not discarded or converted to neutral. Valid output rate
+is the fraction that could be rendered as official submission JSON after
+identity, evidence and citation checks, regardless of label correctness. Native
+JSON rate means parseable JSON without the candidate's one-brace recovery; it is
+not the same as contract validity.
 
 | Metric | `dense-v1` | `vote-aware-v1` |
 |---|---:|---:|
 | Raw label accuracy | 0.7407 | 0.7593 |
 | Strict accuracy | 0.5926 | 0.4259 |
-| Macro-F1 on strict outputs | 0.652 | 0.491 |
+| Macro-F1 (invalid outputs scored as errors) | 0.652 | 0.491 |
 | Valid output rate | 0.7963 | 0.4630 |
 | Errors | 11/54 | 29/54 |
 | Input tokens | 69,023 | 89,243 |
@@ -396,7 +419,13 @@ The candidate used 29.3% more input tokens. Its slightly lower observed latency
 does not establish greater computational efficiency: calls were single-run
 remote requests, execution was interleaved, and caching and service load were
 not controlled. Five candidate replies required the permitted syntax recovery;
-all five then passed the full output contract.
+all five then passed the full output contract. Of the accepted outputs, 23/25
+candidate predictions (92.0%) and 32/43 baseline predictions (74.4%) were
+correct. This *conditional* accuracy is evaluated on different, selected subsets:
+it is not evidence that the candidate has superior general reliability, because
+its lower coverage excludes every gold-neutral case. This is an observed
+accuracy–coverage pattern, not a calibrated selective-classification guarantee
+(cf. Geifman and El-Yaniv, 2017).
 
 The central result is the gap between classification and accepted output. The
 candidate's 41/54 raw-correct labels do not demonstrate a meaningful improvement
@@ -404,8 +433,9 @@ over the baseline's 40/54. After validation, candidate strict accuracy and
 coverage were lower. Its 29 rejections comprise 14 `vote_unrecognised` and 15
 `invalid_vote_status` outcomes. All still contained a parseable raw NLI label;
 18 matched gold and 11 did not. For the 18 gold-neutral cases, 12 raw labels
-were neutral, but none became an accepted output: 12 omitted vote status and six
-declared the vote unrecognised while returning contradiction. Entailment strict
+were neutral, but none became an accepted output: 12 explicitly returned JSON
+`null` for `vote_status` (and `vote_reference`), rather than omitting those keys;
+the remaining six declared the vote unrecognised while returning contradiction. Entailment strict
 correctness was 15/18 versus 12/18 for dense; contradiction was 8/18 versus
 7/18. These class-specific gains therefore did not offset complete neutral
 rejection.
@@ -433,14 +463,22 @@ independently establishes semantic sufficiency.
 
 On strict correctness, dense-only correct cases numbered 18, vote-aware-only
 correct cases 9, both-correct cases 14 and both-incorrect cases 13. The exact
-two-sided McNemar p-value is 0.122078. At alpha 0.05 this does not establish a
-statistically significant strict-accuracy difference, so the experiment does
-not support a universal claim that vote-aware validation is worse. It does show
-a substantial output-coverage decrease on this sample.
+two-sided McNemar p-value is 0.122078 (see Dietterich, 1998, on paired
+classifier comparisons). This is not significant at the conventional 0.05
+threshold, but does not establish equivalence or absence of a difference.
+For output *validity* (a distinct endpoint), 26 cases were valid only under
+dense, eight only under vote-aware, 17 under both and three under neither;
+an exploratory two-sided exact McNemar test gives p=0.002935. The latter
+comparison suggests a marked coverage difference in these paired observations,
+not a population-level guarantee: rows share PDFs, and multiple endpoints were
+examined without pre-registered multiplicity control.
 
 This is a small exploratory development evaluation with correlated examples,
 shared PDFs, previously exposed data and multiple simultaneous pipeline changes.
-It has no independent citation-sufficiency annotations. The compact tracked
+The 54-case remote comparison uses Apertus v1.5 70B; neither its measured
+performance nor its particular vote-status response patterns should be assumed
+to transfer to the 8B submission target without testing. It has no independent
+citation-sufficiency annotations. The compact tracked
 [result audit](docs/evidence/vote_aware_paired_results_20261013.json) records
 definitions, counts, source hashes and representative cases; raw plans,
 manifests, predictions and summaries remain ignored under
@@ -462,7 +500,9 @@ retrieval, NLI classification and citation validation in one model response.
 Observed identity failures sometimes accompany wrong-scope retrieval and
 sometimes occur despite explicit proposal titles. This supports, but does not
 prove, the hypothesis that uncertainty about source identity is being conflated
-with uncertainty about the claim.
+with uncertainty about the claim. Critically, structural source verification
+is not equivalent to independently annotated semantic support, a distinction
+also central to evidence-based fact verification (Thorne et al., 2018).
 
 A future architecture could separate these decisions:
 
@@ -489,7 +529,7 @@ single sentence that resolves a number, negation or institutional position.
 Conversely, the judge can fail despite receiving that sentence. Retrieval
 evaluation should therefore add proposition-level sufficiency and attribution
 checks, while judgement evaluation should control evidence order and isolate
-polarity, numeric and stakeholder reasoning. These are hypotheses for future
+polarity, numeric and stakeholder reasoning (cf. Liu et al., 2024). These are hypotheses for future
 tests, not causal findings from the present single runs.
 
 The evidence sensitivity diagnostic adds a narrower result: manually constructed
@@ -508,9 +548,15 @@ are lexical proxies; a verified citation proves source occurrence but not
 support. Quantisation, prompt order, long-context behaviour and run-to-run
 variance are not isolated. Extraction may lose layout or image-only content.
 Managed Apertus 8B startup, a clean cold submission build, Linux/Windows
-execution and cross-platform determinism remain unverified.
+execution and cross-platform determinism remain unverified. The deployed 70B
+endpoint's returned model name does not cryptographically prove the served
+weights, and the 70B observations are not measurements of the submission 8B.
+The SentenceSwissBERT model card specifies a CC BY-NC 4.0 licence and documents
+news-domain training; licence compatibility with any intended redistribution
+and cross-domain generalisation to legal voting booklets require separate review.
 
-The vote-aware comparison has 54 pairs but only 27 strict discordances. Its
+The vote-aware comparison has 54 pairs but only 27 strict-correctness
+discordances. Its
 examples share 36 PDFs and were selected from a previously exposed development
 plan. Because retrieval query, prompt, response schema, identity gate and
 citation mechanism changed together, it cannot attribute differences to vote
@@ -586,9 +632,55 @@ Repository code and source-data licensing require final review.
 
 ## References
 
-1. [Apertus v1.5 8B model card](https://huggingface.co/swiss-ai/Apertus-v1.5-8B).
-2. [SentenceSwissBERT model card](https://huggingface.co/ZurichNLP/swissbert).
-3. [Official HackApertus project template](https://github.com/HackApertus/project-template).
-4. [OST Track 2A challenge page](https://hackapertus.notion.site/track-2a-ost).
-5. Internal experimental provenance is linked in the relevant sections and
-   indexed in [docs/evidence/README.md](docs/evidence/README.md).
+### Scholarly and technical sources
+
+1. Williams, A., Nangia, N., and Bowman, S. R. (2018). *A Broad-Coverage
+   Challenge Corpus for Sentence Understanding through Inference*. NAACL-HLT,
+   1112–1122. [ACL Anthology](https://aclanthology.org/N18-1101/).
+2. Thorne, J., Vlachos, A., Christodoulopoulos, C., and Mittal, A. (2018).
+   *FEVER: a Large-scale Dataset for Fact Extraction and VERification*.
+   NAACL-HLT, 809–819. [ACL Anthology](https://aclanthology.org/N18-1074/).
+3. Lewis, P., et al. (2020). *Retrieval-Augmented Generation for Knowledge-
+   Intensive NLP Tasks*. NeurIPS 33. [Proceedings](https://proceedings.neurips.cc/paper/2020/hash/6b493230205f780e1bc26945df7481e5-Abstract.html).
+4. Vamvas, J., Graën, J., and Sennrich, R. (2023). *SwissBERT: The Multilingual
+   Language Model for Switzerland*. SwissText, 54–69.
+   [ACL Anthology](https://aclanthology.org/2023.swisstext-1.6/).
+5. Gao, T., Yao, X., and Chen, D. (2021). *SimCSE: Simple Contrastive Learning
+   of Sentence Embeddings*. EMNLP, 6894–6910.
+   [ACL Anthology](https://aclanthology.org/2021.emnlp-main.552/).
+6. Reimers, N., and Gurevych, I. (2019). *Sentence-BERT: Sentence Embeddings
+   using Siamese BERT-Networks*. EMNLP-IJCNLP, 3982–3992.
+   [ACL Anthology](https://aclanthology.org/D19-1410/).
+7. Robertson, S., and Zaragoza, H. (2009). *The Probabilistic Relevance
+   Framework: BM25 and Beyond*. Foundations and Trends in Information
+   Retrieval, 4(1–2), 1–174. [DOI](https://doi.org/10.1561/1500000019).
+8. Cormack, G. V., Clarke, C. L. A., and Büttcher, S. (2009). *Reciprocal
+   Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods*.
+   SIGIR, 758–759. [DOI](https://doi.org/10.1145/1571941.1572114).
+9. Liu, N. F., et al. (2024). *Lost in the Middle: How Language Models Use
+   Long Contexts*. Transactions of the ACL, 12, 157–173.
+   [ACL Anthology](https://aclanthology.org/2024.tacl-1.9/).
+10. Turpin, M., Michael, J., Perez, E., and Bowman, S. R. (2023). *Language
+    Models Don't Always Say What They Think: Unfaithful Explanations in
+    Chain-of-Thought Prompting*. NeurIPS 36.
+    [Proceedings](https://papers.neurips.cc/paper_files/paper/2023/hash/ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html).
+11. Geifman, Y., and El-Yaniv, R. (2017). *Selective Classification for Deep
+    Neural Networks*. NeurIPS 30.
+    [Proceedings](https://papers.neurips.cc/paper_files/paper/2017/hash/4a8423d5e91fda00bb7e46540e2b0cf1-Abstract.html).
+12. Dietterich, T. G. (1998). *Approximate Statistical Tests for Comparing
+    Supervised Classification Learning Algorithms*. Neural Computation,
+    10(7), 1895–1923. [DOI](https://doi.org/10.1162/089976698300017197).
+
+### Model cards, task specification and experimental records
+
+13. Grosjean, J. *SentenceSwissBERT* (`jgrosjean-mathesis/sentence-swissbert`),
+    model card, revision pinned in the experimental manifest.
+    [Hugging Face](https://huggingface.co/jgrosjean-mathesis/sentence-swissbert).
+14. Swiss AI Initiative. *Apertus v1.5 8B*, model card.
+    [Hugging Face](https://huggingface.co/swiss-ai/Apertus-v1.5-8B).
+15. Swiss AI Initiative. *Apertus v1.5 70B*, model card.
+    [Hugging Face](https://huggingface.co/swiss-ai/Apertus-v1.5-70B).
+16. [Official HackApertus project template](https://github.com/HackApertus/project-template).
+17. [OST Track 2A challenge page](https://hackapertus.notion.site/track-2a-ost).
+18. Internal experimental provenance is linked in the relevant sections and
+    indexed in [docs/evidence/README.md](docs/evidence/README.md).
