@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Courage to Be Wrong — VoteLens / HackApertus Track 2A</title>
+<meta name="description" content="A verification-ledger-first, bilingual NLI research experience: multilingual voting-booklet claim verification and its failure anatomy.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="masthead" role="banner">
+  <div class="brand">
+    <span class="title" lang="de">Die Courage, falsch zu liegen</span>
+    <span class="title" lang="fr-CA">Le courage d'avoir tort</span>
+    <span class="title" lang="it">Il coraggio di sbagliare</span>
+    <span class="title" lang="en">The Courage to Be Wrong</span>
+  </div>
+  <p class="tagline">
+    VoteLens · multilingual Swiss voting-booklet claim verification ·
+    a failure anatomy, not a demo of success. Every figure is recomputed from
+    recorded runs; every hypothesis is labelled as a hypothesis.
+  </p>
+  <p class="banner-warn" role="note">
+    <strong>Read this first.</strong> This page documents an exploratory
+    <em>development</em> study on repeatedly-exposed data. No figure here is a
+    benchmark or a held-out result. Coverage and accuracy use
+    <em>different denominators per panel</em>. Nothing has been re-run to flatter
+    a claim.
+  </p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Experience layers" id="tabs"></nav>
+
+<p class="kbd-help">
+  <kbd>1</kbd>–<kbd>5</kbd> switch layer · <kbd>←</kbd>/<kbd>→</kbd> move
+  between cases/conditions · <kbd>Esc</kbd> collapse · keys work only when the
+  page is not focused in a text field.
+</p>
+
+<main id="stage" role="main" tabindex="-1"></main>
+
+<footer class="colophon" role="contentinfo">
+  <p>
+    Data was <strong>generated at build time</strong> from
+    <code>data/experiments/vote-aware-paired-v2/predictions.jsonl</code>
+    and <code>…/evidence-sensitivity-v2/predictions.jsonl</code> by
+    <code>courage_data.py</code>, which (when run against those files) fails if a
+    shown figure disagrees with the records. Those raw files are Git-ignored and are
+    <strong>not present, and not re-checked, when this page is simply opened</strong>
+    — treat the Verification Ledger as a historical build-time result, with its
+    source hashes and limitations. Report licence CC-BY-4.0; per-case
+    <code>reasoning</code> is short model-generated analysis (AI-annotated), not
+    redistributed booklet text. No model, network or inference is used by this page.
+  </p>
+</footer>
+
+<script src="facts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

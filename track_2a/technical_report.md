@@ -4,6 +4,96 @@
 October 2026. Team names and demo link remain to be supplied. This Markdown is
 not yet the final, at-most-six-page PDF.
 
+## TL;DR
+
+We study document-grounded NLI over official Swiss voting booklets: given a
+booklet and a claim, return entailment/neutral/contradiction with page-grounded
+evidence. Three findings drive this report; all are single-run observations on
+*exposed development data*, not benchmark or held-out results.
+
+**(1) Retrieval.** Focusing on five within-booklet passages beat full-booklet
+prompting (0.802 vs 0.519) at 96.3% fewer input tokens. But optimising a lexical
+reference-recall proxy did **not** help downstream NLI: proposition reranking
+raised Recall@5 (0.580→0.716) while accuracy fell (0.827→0.790). More text that
+overlaps an annotation is not automatically the evidence the judge needs.
+
+**(2) Validation ≠ correctness.** The strict `vote-aware-v1` candidate had
+slightly higher *raw-label* accuracy than the dense baseline (41/54 vs 40/54) yet
+far lower coverage (25/54 vs 43/54): it rejected every gold-neutral case, and
+18 of its 29 rejections were actually gold-correct. A high error rate is not
+proof of reliability; **rejection must be measured independently of correctness.**
+
+**(3) Placement.** In a 15-case diagnostic, keeping the decisive fact but moving
+it behind distractors flipped some correct labels to wrong, with token counts held
+fixed — a placement *observation* on single runs, not a proven positional cause.
+
+**Main interpretation (HYPOTHESIS, medium-low confidence):** failures are
+multi-stage — retrieval *scope*, evidence *sufficiency*, *attribution*, and
+*output-contract* compliance — not one lever. **What this does not prove:** no
+generalisable accuracy gain, no method ready for production, no causal attribution
+of any single error, and nothing about the 8B submission target (the 54-case run
+is 70B). Read the method section as *how we checked*, not as evidence that the
+system works.
+
+## Main evidence, read before the method
+
+### The coverage–accuracy picture (this is the evidence, not a method pitch)
+
+![Accuracy versus a coverage-style rate, five non-comparable points.](docs/figures/figure4_coverage_accuracy_frontier.svg)
+
+**Figure 4. Accuracy vs a coverage-style rate, five points on three different
+axes.** These are *not* one comparable frontier and are deliberately not joined:
+they use different models, cohorts and x-axis definitions — **completion coverage**
+(cases that produced a rendered answer) for the two grouped-8B points, a
+**citation-verification rate** for the ablation point (not a coverage rate at all),
+and **valid-output coverage** for the two paired-70B points. Only the paired pair
+shares a denominator (n = 54) and is genuinely comparable. Reading the axes across
+colours would be a category error. What the figure *does* show is that the naive
+"trade accuracy for coverage" story is not available either: in the grouped cohort
+the dense-within-booklet point has **higher accuracy but slightly *lower*
+completion coverage** than full-booklet (65/81 at 80/81 answered vs 42/81 at
+81/81), and in the paired cohort the strict candidate threw away 18 gold-correct
+answers. Higher conditional accuracy among accepted answers does not imply higher
+overall strict correctness. The interactive version, with per-point denominators,
+metric definitions and the recompute guard, is at
+[`docs/experience/courage-to-be-wrong/`](experience/courage-to-be-wrong/README.md).
+
+### Failure taxonomy (four layers; a case is assigned to the earliest measurable stage)
+
+- **L1 Retrieval scope** — evidence left the named vote/proposal, or the decisive
+  proposition was displaced by the ranker. Example: `official-row-728` retrieved
+  the Climate & Innovation Act for a COVID-19 Act claim.
+- **L2 Semantic sufficiency** — evidence is relevant but does not *establish* the
+  claim. **Not yet independently annotated**; "quoted material ≠ semantic support".
+- **L3 Speaker attribution** — the right proposition, credited to the wrong
+  stakeholder, so a disagreement is read as contradiction of an attributed claim
+  (rows 189, 195).
+- **L4 Output contract** — a correct raw label rejected by the identity/citation
+  gate. The 29 candidate rejections are all here *at the surface*; 18 were
+  gold-correct underneath, so L4 is *where they died*, not *why they were wrong*.
+
+Two distinctions the tools keep separate: **output-validation failure ≠ reasoning
+failure** (row 1115 had a correct label rejected for contract reasons; row 728
+had a genuinely wrong dense label accepted), and **evidence supported but
+over-abstracted** (row 1344 names "4%, not 10%" and still emits neutral).
+
+### Counterfactuals — tried vs designed
+
+Executed on recorded data: oracle/curated-sufficient evidence; proposition-aware
+reranking; distractor + re-order (C/D, token-count-matched). **Designed, not run:**
+a no-citation control that keeps retrieval and inputs fixed and disables citation
+verification, to ask whether validation *improves correctness* or merely *prevents
+answering*. Its generator exists
+([`counterfactual_experiment.py`](experience/courage-to-be-wrong/counterfactual_experiment.py)),
+it is gated and offline, and **no number is claimed from it.**
+
+### Limits on all of the above
+
+Different denominators per panel; single runs; exposed development data; the
+54-case comparison is **Apertus v1.5 70B, not the 8B target**; the evidence lab is
+a 15-case post-hoc sample with no independent adjudication; generated explanations
+are not assumed faithful to the decision process.
+
 ## Abstract
 
 We study document-grounded natural-language inference (NLI) over official Swiss
@@ -661,6 +751,37 @@ The subsequent 60-call diagnostic shows that these selected cases can be resolve
 under sufficient evidence, but some outputs remain sensitive to competing
 arguments and their order. It supplies a controlled basis for further diagnosis,
 not evidence of a generalisable production accuracy improvement.
+
+### 9.1 Controlled follow-up experiments (designed, NOT run)
+
+Each experiment holds everything but one factor fixed and states so explicitly;
+none has been executed, and no number here comes from them. A deterministic replay
+cannot establish how the model would answer a prompt it never received.
+
+1. **Oracle/complete vs focused retrieval (evidence-adequacy control).** Compare
+   full-booklet, dense Top-5, and citation-provenance oracle evidence — an oracle
+   only counts where its provenance verifies in the supplied passages, never from a
+   hard-coded flag. Decouples L1/L2 from the judge.
+2. **Evidence-order ablation with repeated controls.** Counterbalance the C/D
+   blocks, add unchanged-prompt repeats, and keep failures in the denominator, to
+   separate placement sensitivity from run-to-run variance. (C/D share evidence and
+   token counts; only position differs.)
+3. **StanceAttributionChallenge (L3).** Fix the proposition, vary which stakeholder
+   asserts it (Council / Parliament / committee / another proposal), to isolate
+   attribution from retrieval and from reasoning-over-content.
+4. **BlindAdjudicationProbe (independent annotation).** Blinded per-item judgements
+   of vote identity, claim-relevance, sufficiency, and semantic support, with
+   disagreement adjudication — *human* review; the existing `offline_attribution_v1`
+   is AI-generated and is not independent ground truth.
+
+The first three are **NOT TESTED**; the fourth has a protocol and a review-ready
+export but no completed annotation. These, the four-layer taxonomy, and the full
+Verification Ledger are built out in
+[`docs/experience/courage-to-be-wrong/`](experience/courage-to-be-wrong/README.md)
+(the interactive experience) and its
+[`attribution-verification.md`](experience/courage-to-be-wrong/attribution-verification.md).
+That layer is presentation and offline analysis only; it does not change the
+production prompt, retrieval, validation policy, or the submission response schema.
 
 ## License
 
