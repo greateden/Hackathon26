@@ -9,6 +9,16 @@ or contradiction with grounded evidence; Advanced evidence includes physical
 PDF pages. Apertus judges the claim, while SentenceSwissBERT selects evidence
 within the supplied booklet.
 
+The P0 submission candidate is now `vote-aware-v1`: dense Top-5 retrieval uses
+the specified vote and the unchanged claim. Apertus must identify the proposal
+in the selected evidence and choose source passage IDs for citations. Unknown
+or ambiguous votes fail explicitly. The original `dense-v1` experiment path
+remains available to historical Python runners. Existing accuracy figures and
+historical deployment smokes measure that original path. A later 54-case paired
+development evaluation and one Advanced CSCS Docker smoke exercise the complete
+candidate; neither is independent generalisation evidence. See the
+[P0 implementation record](docs/P0_CORRECTNESS.md) for verification and limits.
+
 A genuine local Apertus v1.5 8B MLX smoke run is recorded: label `0`
 (entailment), a verified page-15 snippet, 1,007 input tokens and 71 output
 tokens. This single development example is not an accuracy benchmark.

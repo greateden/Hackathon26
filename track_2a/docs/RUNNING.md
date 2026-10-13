@@ -6,8 +6,9 @@ The submission uses `src/booklet_app.py`; historical experiments use
 
 ## Existing external endpoint (default)
 
-The judges can provision an Apertus v1.5 OpenAI-compatible endpoint; the
-application container does not need NVIDIA access. Export the standard variables
+An operator must provision an Apertus v1.5 OpenAI-compatible endpoint; the
+official template does not promise an endpoint, API key or GPU from the judges.
+The application container does not need NVIDIA access. Export the standard variables
 or put them in `.env`:
 
 ```text
@@ -27,7 +28,12 @@ that expose `/tokenize` and require an exact prompt-token match. There is no
 lexical fallback. Both base URLs ending in `/v1` and those without it are
 normalised correctly.
 
-The committed request downloads a public voting booklet, and retrieved mode
+Optional preflight cannot independently detect a server silently dropping
+input. Its usage and completion checks are necessary but are not equivalent to
+an independently reconstructed prompt-token count. Configure the context limit
+to match the endpoint; use required preflight when available.
+
+The committed Beginner request needs no PDF or encoder. Advanced retrieved mode
 downloads SentenceSwissBERT on the first run into the `hf-cache` volume. For an
 offline judge environment, place a PDF under `data/` and pre-populate the named
 `hf-cache` volume; no historical corpus or embedding cache is required.
@@ -130,6 +136,25 @@ The output contains exactly `id`, integer `label`, `label_name`, grounded
 neutral and 2 contradiction. Non-neutral output without grounded evidence
 fails; neutral evidence is empty. Beginner evidence uses `page: null` because
 no PDF page was supplied.
+
+The CLI uses the P0 `vote-aware-v1` candidate. Advanced retrieval encodes
+`Vote: <vote>\nClaim: <original claim>` with the existing booklet-language
+SwissBERT adapter and keeps dense Top-5 ranking. No hybrid or proposition
+reranker is enabled. The judge receives the original claim separately and must
+recognise the vote in a selected source passage; ambiguous, unrecognised or
+unsupported identities fail. Recognition and stakeholder reasoning depend on
+Apertus. They have been measured only in the exposed 54-case paired development
+evaluation documented in `technical_report.md`, not on an independent test set.
+
+The model selects passage IDs instead of generating final quotations. The
+application copies the selected source text, optionally using valid character
+offsets, and records PDF hash, physical page and page-relative offsets in
+diagnostics. Whitespace, punctuation and extraction artefacts are preserved.
+Offsets refer to Poppler's stripped page text, not PDF byte positions. An
+unrecognised ID, ambiguous source occurrence, invalid range or insufficient
+non-neutral evidence fails without replacement. Source verification does not
+establish semantic support. See [P0_CORRECTNESS.md](P0_CORRECTNESS.md) for the
+frozen baseline and manual verification commands.
 
 Result JSON goes to stdout; encoder progress goes to stderr. To save a JSON
 file through `make run`, set `RESULT_FILE=/app/data/result.json` in `.env`.

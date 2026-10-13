@@ -1,6 +1,6 @@
 # Retrieval quality and multilingual NLI over Swiss voting booklets
 
-**Track:** 2A, OST · **Event:** Online · **Status:** submission draft, 12
+**Track:** 2A, OST · **Event:** Online · **Status:** submission draft, 13
 October 2026. Team names and demo link remain to be supplied. This Markdown is
 not yet the final, at-most-six-page PDF.
 
@@ -23,7 +23,7 @@ stakeholders or proposals were conflated, the judge sometimes misread adequate
 evidence, and the lexical reference proxy missed useful alternatives. The new
 experiment provides no evidence that either experimental retrieval method
 improves NLI accuracy. Dense within-booklet SwissBERT retrieval remains the
-production default.
+performance baseline.
 
 A subsequent 15-case post-hoc diagnostic obtained 15/15 correct labels with
 manually constructed sufficient evidence, 14/15 after adding distractors and
@@ -31,6 +31,14 @@ manually constructed sufficient evidence, 14/15 after adding distractors and
 preserved both evidence and input-token counts. These selected-case results
 motivate further sufficiency and ordering controls; they do not establish a
 generalisable accuracy improvement or a deployable retrieval method.
+
+The submission CLI was subsequently hardened as `vote-aware-v1`. In a paired
+54-case CSCS 70B development evaluation, its recoverable raw-label accuracy was
+41/54 (0.7593), compared with 40/54 (0.7407) for frozen `dense-v1`, but only
+23/54 candidate outputs satisfied the complete submission contract, compared
+with 32/54 for the baseline. The candidate rejected every gold-neutral case.
+This exploratory complete-system comparison does not demonstrate a raw NLI gain
+and does not support replacing `dense-v1` as the performance baseline.
 
 ## 1. Research question and application
 
@@ -40,8 +48,9 @@ find not only the topic but the correct proposition, number, condition and
 speaker. Our research question is whether hybrid lexical–dense retrieval or
 proposition-aware reranking improves classification over the existing dense
 SwissBERT retriever.
-The follow-up diagnostic asks whether observed errors persist under sufficient
-evidence, competing arguments and a controlled change in passage order.
+The follow-up diagnostics ask whether observed errors persist under sufficient
+evidence, competing arguments and a controlled change in passage order, and
+whether vote-aware validation improves accepted end-to-end answers.
 
 `make run` builds the CPU application and addresses a configured Apertus v1.5
 endpoint through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. The request names
@@ -51,11 +60,26 @@ booklet and retrieves five passages using SentenceSwissBERT mean-pooled cosine
 similarity. Both query and passage adapters use the known booklet language. Gold
 references and labels never enter extraction, ranking or judgement.
 
-All experimental arms use the same NLI prompt, strict JSON label parser and
-label codes: 0 entailment, 1 neutral and 2 contradiction. A citation is verified
-only when its quoted snippet occurs in supplied evidence after conservative
-whitespace and discretionary soft-hyphen normalisation. Verification establishes
-textual provenance, not semantic support.
+The current submission CLI is a separately versioned `vote-aware-v1` candidate.
+It retains the same SentenceSwissBERT encoder, booklet-language adapter,
+900-character chunks, cosine ranking and Top-5 depth, but retrieves with
+`Vote: <vote>\nClaim: <claim>`. The judge receives the original claim plus
+explicit vote metadata and speaker-attribution instructions. It must identify
+the proposal, select supplied passage IDs and declare evidence sufficiency.
+The application then copies exact source spans and validates vote identity,
+page-relative offsets and references. Candidate-only parsing may remove exactly
+one surplus final closing brace; it does not repair other malformed content.
+These are multiple pipeline changes, so the comparison below does not isolate
+the causal effect of vote awareness. Historical `dense-v1` inputs and artefacts
+remain frozen.
+
+All historical retrieval and evidence-sensitivity arms use the same NLI prompt,
+strict JSON label parser and label codes: 0 entailment, 1 neutral and 2
+contradiction. The vote-aware candidate deliberately changes the prompt and
+output contract described above. A citation is verified only against supplied
+evidence. Whether by normalised historical snippet matching or exact candidate
+source selection, verification establishes textual provenance, not semantic
+support.
 
 ## 2. Model and experimental setting
 
@@ -78,7 +102,7 @@ development evidence, not independent held-out estimates.
 
 ### 2.1 Cohorts and purposes
 
-Four studies must not be conflated:
+Five studies must not be conflated:
 
 1. **Full booklet versus retrieval (n=81).** The content-grouped development
    sample compares complete-PDF prompting with top-five within-booklet dense
@@ -97,6 +121,11 @@ Four studies must not be conflated:
    controls from the retrieval ablation compare recorded top-five evidence,
    manually constructed sufficient evidence, added distractors and reordered
    blocks. Two of the initial 17 cases were excluded after source adjudication.
+5. **Vote-aware paired evaluation (n=54; 108 calls).** Two examples were taken
+   from each claim-language × booklet-language × gold-label cell in the frozen
+   grouped plan. Alternating AB/BA calls compare complete `dense-v1` and
+   `vote-aware-v1` systems on CSCS Apertus v1.5 70B. This is exposed development
+   data, not an independent held-out test.
 
 Every ablation row was located in its booklet by the exact 60-character
 reference probe. This confirms corpus coverage for this sample, not semantic
@@ -130,9 +159,18 @@ retrieval scored 8/9 versus 3/9 for full-booklet prompting and used about 29
 times fewer input tokens. At 32K, five full-booklet inputs failed preflight;
 none was silently truncated. A 27-row prompt-only pilot on CSCS Apertus v1.5
 70B produced 23/27 correct under both prompts, with three prediction changes and
-18.8% more input tokens for the refined prompt. A one-example CSCS-backed
-Docker smoke passed the application acceptance checks; it is deployment
-evidence, not an accuracy estimate. Historical v1.1 results are retained in the
+18.8% more input tokens for the refined prompt. An earlier one-example
+CSCS-backed Docker smoke passed the original application acceptance checks.
+After P0 hardening, one Advanced Docker run of `vote-aware-v1` also completed
+against `swiss-ai/Apertus-v1.5-70B`: entailment, recognised vote, valid official
+JSON and a source-grounded page-19 citation. The call reported 1,330 input and
+91 output tokens and 1,340 ms inference latency. Its single-surplus-brace reply
+was accepted by the bounded deterministic recovery. The selected quotation
+begins mid-word (`aisons`) and includes trailing material, so this smoke exposes
+an evidence-boundary defect rather than showing that citation formatting is
+solved. The tracked [smoke record](docs/evidence/vote_aware_cscs_smoke_20261013.json)
+contains metrics and hashes. Both smokes are deployment evidence, not accuracy
+estimates. Historical v1.1 results are retained in the
 [archive](docs/archive/README.md) and do not satisfy the present v1.5 target.
 
 The historical audit reconstructed every saved prompt and matched PDF and text
@@ -324,7 +362,91 @@ interpretations, but generated explanations cannot be assumed to describe the
 model's internal decision process faithfully. Single observations cannot identify those
 mechanisms or establish deterministic causal effects of ordering.
 
-## 6. Discussion
+## 6. Vote-aware versus Dense: paired exploratory evaluation
+
+The frozen `vote-aware-paired-v2` plan was evaluated on 13 October 2026. It
+contains 54 paired cases, 49 distinct votes and 36 distinct PDFs: two examples
+for every combination of nine DE/FR/IT claim/booklet language pairs and three
+gold labels. SentenceSwissBERT Top-5 retrieval and CSCS
+`swiss-ai/Apertus-v1.5-70B` were used at temperature 0 with a 512-token output
+limit. Execution alternated AB/BA order. All 108 genuine primary calls are
+accounted for, and failed submission outputs remain in denominators.
+
+Raw label accuracy counts a recognised NLI label recovered from the model's
+response, whether or not the complete submission contract subsequently passed.
+Strict accuracy counts a case only when official output rendering succeeded and
+that accepted label matched gold. Valid output rate is the fraction that could
+be rendered as official submission JSON after identity, evidence and citation
+checks. Native JSON rate means parseable JSON without the candidate's one-brace
+recovery; it is not the same as contract validity.
+
+| Metric | `dense-v1` | `vote-aware-v1` |
+|---|---:|---:|
+| Raw label accuracy | 0.7407 | 0.7593 |
+| Strict accuracy | 0.5926 | 0.4259 |
+| Macro-F1 on strict outputs | 0.652 | 0.491 |
+| Valid output rate | 0.7963 | 0.4630 |
+| Errors | 11/54 | 29/54 |
+| Input tokens | 69,023 | 89,243 |
+| Mean input tokens | 1,278.20 | 1,652.65 |
+| Mean inference latency, all calls (s) | 1.743 | 1.623 |
+| Native JSON rate | 1.0000 | 0.9074 |
+
+The candidate used 29.3% more input tokens. Its slightly lower observed latency
+does not establish greater computational efficiency: calls were single-run
+remote requests, execution was interleaved, and caching and service load were
+not controlled. Five candidate replies required the permitted syntax recovery;
+all five then passed the full output contract.
+
+The central result is the gap between classification and accepted output. The
+candidate's 41/54 raw-correct labels do not demonstrate a meaningful improvement
+over the baseline's 40/54. After validation, candidate strict accuracy and
+coverage were lower. Its 29 rejections comprise 14 `vote_unrecognised` and 15
+`invalid_vote_status` outcomes. All still contained a parseable raw NLI label;
+18 matched gold and 11 did not. For the 18 gold-neutral cases, 12 raw labels
+were neutral, but none became an accepted output: 12 omitted vote status and six
+declared the vote unrecognised while returning contradiction. Entailment strict
+correctness was 15/18 versus 12/18 for dense; contradiction was 8/18 versus
+7/18. These class-specific gains therefore did not offset complete neutral
+rejection.
+
+The immediate rejection mechanism is the identity contract, but its upstream
+causes vary. In `official-row-1115`, the selected pages explicitly name the
+premium-relief initiative and the raw contradiction matches gold, yet the model
+returns `vote_status=unrecognised`; the answer is rejected before its selected
+evidence can become a verified final citation. In `official-row-728`, by
+contrast, all five candidate passages concern the Climate and Innovation Act
+rather than the requested COVID-19 amendment. The raw neutral label matches
+gold, but missing identity fields coincide with a clear retrieval-scope failure.
+In `official-row-964`, several passages explicitly identify the cash initiative,
+yet the model declares it unrecognised and incorrectly treats an unrelated tax
+claim as contradiction. Thus vote identification, retrieval scope and NLI
+judgement cannot be collapsed into one failure category.
+
+The baseline's 11 invalid outputs all lacked verified final citations; eight
+nevertheless had gold-matching raw labels. For the candidate, all 25 accepted
+outputs passed source-reference verification, while the 29 identity failures
+were stopped before final citation acceptance. This does not show that every
+rejected candidate answer would otherwise have satisfied the contract: 11 raw
+labels were wrong, and neither source occurrence nor a model-selected passage
+independently establishes semantic sufficiency.
+
+On strict correctness, dense-only correct cases numbered 18, vote-aware-only
+correct cases 9, both-correct cases 14 and both-incorrect cases 13. The exact
+two-sided McNemar p-value is 0.122078. At alpha 0.05 this does not establish a
+statistically significant strict-accuracy difference, so the experiment does
+not support a universal claim that vote-aware validation is worse. It does show
+a substantial output-coverage decrease on this sample.
+
+This is a small exploratory development evaluation with correlated examples,
+shared PDFs, previously exposed data and multiple simultaneous pipeline changes.
+It has no independent citation-sufficiency annotations. The compact tracked
+[result audit](docs/evidence/vote_aware_paired_results_20261013.json) records
+definitions, counts, source hashes and representative cases; raw plans,
+manifests, predictions and summaries remain ignored under
+`data/experiments/vote-aware-paired-v2/`.
+
+## 7. Discussion
 
 The retrieval experiments support two conclusions. First, focused within-booklet evidence
 is substantially more effective and cheaper than full-booklet prompting on the
@@ -332,6 +454,34 @@ earlier development cohort. Second, optimisation of a lexical reference-recall
 proxy did not improve downstream NLI in the new cohort. The negative result is
 operationally useful: hybrid and proposition-aware methods should remain
 research arms rather than enter the production path.
+
+The P0 comparison raises a related question: **when does stricter evidence
+validation improve reliability, and when does it merely prevent the system from
+answering?** The present pipeline couples vote identification, evidence
+retrieval, NLI classification and citation validation in one model response.
+Observed identity failures sometimes accompany wrong-scope retrieval and
+sometimes occur despite explicit proposal titles. This supports, but does not
+prove, the hypothesis that uncertainty about source identity is being conflated
+with uncertainty about the claim.
+
+A future architecture could separate these decisions:
+
+```text
+Vote Grounding
+    ↓
+Scope-aware Evidence Retrieval
+    ↓
+NLI Judgement
+    ↓
+Citation Verification
+```
+
+Independent vote grounding might reduce unnecessary refusals while retaining
+strict provenance, but it is an untested design proposal. The next step should
+be offline counterfactual replay and focused attribution of the recorded
+failures before any new live experiment. The results do not justify merging
+`vote-aware-v1` as the performance default; frozen `dense-v1` remains the
+baseline.
 
 The paired cases reveal an interface problem between retrieval and judgement.
 A ranker can recover more text overlapping an annotation while displacing the
@@ -349,7 +499,7 @@ speaker-specific sufficiency and explanation–label consistency alongside lexic
 recall. It does not justify promoting curated evidence or a new ranker into the
 production pipeline.
 
-## 7. Limitations and reproducibility
+## 8. Limitations and reproducibility
 
 All model measurements are single runs on development data. The ablation has 81
 cases, only 11 A–C discordances and no independent holdout. The oracle set was
@@ -359,6 +509,15 @@ support. Quantisation, prompt order, long-context behaviour and run-to-run
 variance are not isolated. Extraction may lose layout or image-only content.
 Managed Apertus 8B startup, a clean cold submission build, Linux/Windows
 execution and cross-platform determinism remain unverified.
+
+The vote-aware comparison has 54 pairs but only 27 strict discordances. Its
+examples share 36 PDFs and were selected from a previously exposed development
+plan. Because retrieval query, prompt, response schema, identity gate and
+citation mechanism changed together, it cannot attribute differences to vote
+metadata alone. No independent annotator assessed whether candidate citations
+were semantically sufficient. Raw ignored artefacts are not claimed to be
+available in the remote repository; the tracked compact audit includes their
+hashes and aggregate results instead.
 
 The evidence sensitivity sample is smaller still: 15 post-hoc selected cases,
 no neutral gold examples and one completion per case and condition. Minimal
@@ -390,7 +549,7 @@ comparison, retrieval audit and error analysis—are under
 report. Genuine local v1.5 MLX inference and one CSCS-backed Docker application
 smoke are recorded; the latter is one functional check, not a benchmark.
 
-## 8. Future research and conclusion
+## 9. Future research and conclusion
 
 The next experiment should repeat the C/D comparison in counterbalanced order,
 including repeated unchanged-prompt controls. Retain the decisive sentence,
@@ -402,10 +561,18 @@ manually curated evidence must not be scored as a deployable retrieval method.
 
 For final generalisation evidence, collect a new vote- or topic-disjoint test
 set with separately adjudicated neutral cases rather than reuse the exposed
-corpus. Until then, dense SwissBERT retrieval is the defensible production
-default. The present 243-call ablation supplies no
+corpus. Until then, frozen `dense-v1` is the defensible performance baseline;
+the submission CLI's vote-aware candidate is not promoted by these results.
+The present 243-call ablation supplies no
 evidence that hybrid RRF or proposition-aware reranking improves NLI accuracy,
 and its negative result should be retained.
+
+Before another live candidate comparison, replay the 29 rejected vote-aware
+records offline. Blindly annotate whether each Top-5 set identifies the vote,
+addresses the claim and supports any selected citation, then test identity
+validation separately from NLI. This offers more information than immediately
+rerunning the coupled system and avoids treating rejection as reliability by
+definition.
 
 The subsequent 60-call diagnostic shows that these selected cases can be resolved
 under sufficient evidence, but some outputs remain sensitive to competing

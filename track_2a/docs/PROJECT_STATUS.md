@@ -1,4 +1,13 @@
-# Project status — 12 October 2026
+# Project status — 13 October 2026
+
+**P0 candidate update:** the submission CLI now uses `vote-aware-v1`, with
+vote-conditioned dense Top-5 retrieval and source-selected citations. The
+original `dense-v1` Python experiment path remains unchanged in its ranking
+and prompt inputs. P0 offline checks are recorded in
+[P0_CORRECTNESS.md](P0_CORRECTNESS.md). Subsequent evidence comprises one
+successful candidate Advanced Docker smoke and a 54-case paired exploratory
+CSCS 70B development evaluation; neither is independent generalisation evidence.
+No historical result or frozen plan was rewritten.
 
 The specified-booklet application has genuine local Apertus v1.5 8B MLX
 evidence and one successful Docker run against CSCS Apertus v1.5 70B. The Docker
@@ -33,13 +42,13 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 | Exact submission v1.5 8B model identity | Passed statically; runtime unverified | Compose and the application require `swiss-ai/Apertus-v1.5-8B`; official weights were not loaded here |
 | Official model availability | Blocked locally | Colima is Linux arm64 with no NVIDIA runtime; access and weights were not tested or downloaded |
 | Specified booklet + claim, label and citations | Passed in local MLX and external Docker smokes | Both returned entailment with verified physical-page citations; n=1 each, not quality benchmarks |
-| All nine DE/FR/IT combinations | Development evidence only | Prompt pilot has one row per language-pair/label cell; exposed n=27, not independent quality evidence |
+| All nine DE/FR/IT combinations | Development evidence only | Candidate comparison has two rows per language-pair/label cell; exposed n=54, not independent quality evidence |
 | `make run` launches Docker from project root | Passed for external CSCS mode | Root forwarding, build and one real application inference passed on Apple Silicon; managed 8B inference remains blocked locally |
 | Clean checkout without preinstalled application dependencies | Partly verified | Docker build context is self-contained; fresh managed inference still needs an NVIDIA host and authorised model access |
 | Self-contained model startup | Implemented; runtime unverified | Optional managed vLLM overlay, GPU reservation, readiness dependency and stop-on-exit lifecycle |
 | `LLM_NAME`, `LLM_BASE_URL`, `LLM_API_KEY` | Passed for CSCS external mode | Compose forwarded the configured 70B model, endpoint and external credential; the credential was not recorded |
-| Input/output and failure contract | Passed offline and in one external Docker run | Request identity, strict label parsing, usage, finish reason and citation provenance passed; unreachable endpoints still fail without fallback |
-| CSCS v1.5 70B external backend | Docker smoke passed | Specified booklet, within-PDF retrieval, model inference, strict parsing and page citation completed in Docker; n=1, not accuracy evidence |
+| Input/output and failure contract | Passed offline and in candidate live calls | Request identity, strict parsing, usage, finish reason and citation provenance passed when accepted; candidate valid-output rate was 25/54 in exploratory development data |
+| CSCS v1.5 70B external backend | Candidate Docker smoke passed | Vote-aware specified-booklet retrieval, inference, bounded syntax recovery and page citation completed in Docker; n=1, not accuracy evidence |
 | Windows, macOS and Linux submission execution | Unverified | Submission recipe avoids POSIX assignments; Windows needs GNU Make; no OS runtime matrix |
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
@@ -71,6 +80,7 @@ reason and never silently falls back. See [RUNNING.md](RUNNING.md).
 | Historical `oracle` | Gold reference supplied to the judge | Diagnostic only; not Baseline A |
 | Historical `lexical` | Heuristic judge or BM25, depending on script | Never Apertus model quality |
 | Historical `baseline`, `t0`, `strict`, `select`, factorial arms | Prompt/evidence ablations | Not current application settings; strict was unsuccessful |
+| Frozen `dense-v1` versus candidate `vote-aware-v1` | Complete-system paired development comparison | n=54; raw accuracy 0.7407 versus 0.7593, strict accuracy 0.5926 versus 0.4259; not an isolated vote-awareness effect |
 
 The completed prompt-only comparison used identical retrieved evidence for both
 arms and CSCS `swiss-ai/Apertus-v1.5-70B`. Both scored 23/27. The refined arm
@@ -79,6 +89,20 @@ improved flip, one worsened flip and one both-wrong flip. Keep `current_v1` as
 production default. See the [tracked result](evidence/prompt_pilot27_results_v1.json).
 
 ## Verified results and preserved provenance
+
+- **Vote-aware paired evaluation, n=54:** 108/108 primary CSCS 70B calls are
+  accounted for. `dense-v1` versus `vote-aware-v1` raw label accuracy was
+  0.7407 versus 0.7593; strict accuracy was 0.5926 versus 0.4259, and valid
+  output rate was 0.7963 versus 0.4630. Candidate identity failures were 14
+  unrecognised and 15 invalid/missing statuses. Exact paired McNemar p=0.122078.
+  This is exploratory exposed development evidence. See the
+  [compact audit](evidence/vote_aware_paired_results_20261013.json).
+- **Vote-aware CSCS Docker smoke, n=1:** Advanced FR→FR inference returned
+  entailment with a recognised vote and verified page-19 source span; 1,330
+  input / 91 output tokens and 1.340 s inference. Bounded one-brace recovery
+  succeeded. The span starts mid-word and includes extraneous text, so citation
+  boundaries remain imperfect. See the
+  [compact smoke record](evidence/vote_aware_cscs_smoke_20261013.json).
 
 - **CSCS Docker smoke, n=1, FR→FR:** `swiss-ai/Apertus-v1.5-70B` through
   `make run-cscs`. Docker exit 0; entailment (0); verified page-19 citation;

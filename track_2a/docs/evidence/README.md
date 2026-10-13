@@ -3,6 +3,17 @@
 Raw inference records remain in ignored experiment directories; compact tracked
 summaries link to them without duplicating the data.
 
+- [Vote-aware paired result audit](vote_aware_paired_results_20261013.json):
+  54 paired development cases and 108 accounted CSCS 70B calls comparing frozen
+  `dense-v1` with the complete `vote-aware-v1` candidate. It records metric
+  definitions, failure counts, source hashes and three representative cases.
+  Raw plan, manifest, events, predictions and summaries remain ignored under
+  `data/experiments/vote-aware-paired-v2/`.
+- [Vote-aware CSCS Advanced smoke](vote_aware_cscs_smoke_20261013.json): one
+  successful Docker inference with recognised vote, page-19 source provenance
+  and bounded syntax recovery. The citation begins mid-word, so this is
+  functional evidence with a recorded boundary limitation, not a quality result.
+
 - [Evidence sensitivity v2 results](evidence_sensitivity_results_v2_20261012.json):
   60 completed calls on 15 post-hoc selected cases; all predictions, response
   text, token usage, independently recomputed metrics and raw-file hashes.
