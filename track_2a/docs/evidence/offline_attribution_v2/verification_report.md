@@ -128,9 +128,13 @@ semantic verification; no such quotation existed and no such annotation was run.
    per-case checks when the ignored tree is absent).
 2. The earlier `offline_attribution_v1` per-case annotations (`attribution.json`,
    `blind_annotations.jsonl`) are **AI-generated exploratory annotations produced
-   by the same model family that generated the predictions, not independent
-   human-adjudicated ground truth** (the v1 handoff says so explicitly). They may
-   be reused as a starting point, but a completed v2 must not treat them as
+   by a local Qwen-family assistant (`Local-Qwen`, MTPLX
+   flash-next-optimized-speed) — a different model family from the Apertus
+   models that generated the predictions — and not independent
+   human-adjudicated ground truth**. The v1 handoff recorded the analyst id but
+   its "same model family" caveat misstated the provenance; cross-family
+   sampling weakens a shared-decoder-bias concern yet does not establish
+   annotation reliability, so a completed v2 must not treat these records as
    independent truth: the identity / sufficiency / citation judgments still need
    independent adjudication before any validation-policy change.
 3. Freeze the annotation contract (identity check vs sufficiency check vs
@@ -147,3 +151,13 @@ entry in `docs/evidence/README.md`. The `predictions.jsonl` and v1 records are
 read-only inputs here, not edited artefacts. Nothing in this record should be read
 as causal attribution of the recorded failures; that requires independent
 annotation of the evidence listed in §4.
+
+Provenance addendum (13 October, after §4 was first written): the "same model
+family" claims in this record, in `technical_report.md` §7 and §9, and in the
+Git-ignored v1 `handoff.md` were replaced in place by the recorded analyst
+identity — a local Qwen-family assistant — because the paired-v2 predictions
+came from `swiss-ai/Apertus-v1.5-70B` (CSCS). The distinction preserved is
+that generator and annotator were different model families while the
+annotation remained AI-generated, procedurally blinded and unvalidated; the
+independence requirement above is unchanged. No count, definition, script or
+frozen artefact was altered by the correction.
