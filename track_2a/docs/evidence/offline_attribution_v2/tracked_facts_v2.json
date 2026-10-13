@@ -1,0 +1,75 @@
+{
+  "schema": "hackapertus-offline-attribution-verification-v2",
+  "date": "2026-10-13",
+  "scope": "analysis-only verification of aggregate claims for the 29 rejected vote-aware-v1 outputs; no inference and no frozen-artefact change",
+  "evidence_sources": [
+    "docs/evidence/vote_aware_paired_results_20261013.json",
+    "docs/evidence/paired_grouped81_plan_20261011.json",
+    "docs/REPOSITORY_AUDIT_20261013.md",
+    "docs/P0_CORRECTNESS.md",
+    "technical_report.md (sections 5, 6)",
+    "data/eval/mnli_swiss_v1.1.jsonl (whole-file substring search)",
+    "data/experiments/vote-aware-paired-v2/predictions.jsonl (per-case recount)",
+    "data/experiments/vote-aware-paired-v2/offline_attribution_v1/ (prior AI annotations)"
+  ],
+  "record_availability": {
+    "local": "predictions.jsonl is present and its SHA-256 matches the recorded value; the earlier offline_attribution_v1 directory (attribution.json, blind_annotations.jsonl, blind_cases.jsonl, handoff.md) is also present. The 29-case contingency table was recomputed from these records on 13 Oct 2026.",
+    "remote": "data/experiments/vote-aware-paired-v2/ (including offline_attribution_v1/) is Git-ignored and was never published, so a clean Git checkout does not automatically reproduce these per-case records; they must be restored from the snapshot environment. This is a reproducibility caveat, not missing data.",
+    "restore_check": "On a clean checkout, restore predictions.jsonl and compare its SHA-256 with 1d7553e0f85498b8c83316e35b34836f1db3fdba508623745509c00d4c34d1fe before trusting any recount; the companion script skips the per-case checks when the ignored tree is absent.",
+    "v1_annotation_status": "The offline_attribution_v1 per-case annotations are AI-generated exploratory annotations by the same model family that produced the predictions (per its own handoff), NOT independent human-adjudicated ground truth.",
+    "consequence": "per-case recount executed here against the local records; it reproduces the tracked published aggregates"
+  },
+  "verified_facts": {
+    "recomputed_from_predictions_jsonl": true,
+    "rejections_total": 29,
+    "rejection_taxonomy": {"vote_unrecognised": 14, "invalid_vote_status": 15, "sum": 29},
+    "raw_label_present_in_all_rejections": true,
+    "raw_label_correct_among_rejections": 18,
+    "raw_label_incorrect_among_rejections": 11,
+    "gold_distribution_among_rejections": {"entailment": 3, "neutral": 18, "contradiction": 8},
+    "raw_predicted_labels_among_rejections": {"entailment": 0, "neutral": 15, "contradiction": 14},
+    "gold_neutral_cases": 18,
+    "gold_neutral_all_rejected": true,
+    "gold_neutral_rejection_raw_labels": {"neutral": 12, "contradiction": 6},
+    "implied_non_neutral_gold_rejections": {"n": 11, "raw_correct": 6, "raw_incorrect": 5, "note": "recomputed from predictions.jsonl: of the 11 non-gold-neutral rejections (3 entailment-gold, 8 contradiction-gold) 6 carry a gold-matching raw label (all contradiction); their raw labels are 3 neutral + 8 contradiction"},
+    "candidate_accepted_outputs": 25,
+    "accepted_source_reference_verification": "25/25 passed",
+    "citation_verification_on_rejections": "not executed: all 29 rejections carry citations=[] and citation_verified=false, i.e. the citation fields are present-but-empty, not missing JSON keys, and no quotation was offered to verify; no rejection is asserted here to have passed or failed semantic citation verification",
+    "strict_by_gold": {"entailment": "15/18", "neutral": "0/18", "contradiction": "8/18"},
+    "coverage": {"vote_aware_valid": "25/54", "dense_valid": "43/54"},
+    "paired_strict": {"dense_only_correct": 18, "vote_aware_only_correct": 9, "both_correct": 14, "both_incorrect": 13, "mcnemar_exact_two_sided_p": 0.122078, "independent_recomputation": 0.12207812070846558},
+    "case_set_membership": {
+      "frozen_plan_file": "docs/evidence/paired_grouped81_plan_20261011.json",
+      "paired_v2_cases_are": "first two rows per claim-language x booklet-language x gold-label cell of the 81-row plan",
+      "template_ids_absent_from_plan_and_dataset": [2504, 1200, 567, 1311],
+      "template_ids_note": "2504 also exceeds the dataset range (60 dev rows + 1,428 complement = 1,488 rows; max plan row index 1,480); '2504' appears nowhere in data/eval/mnli_swiss_v1.1.jsonl",
+      "corrected_ids_are_accepted_gains_not_identity_failures": [106, 1383, 1224, 1407],
+      "tracked_identity_failure_representative": "official-row-1115 (also official-row-728 retrieval-scope, official-row-964 identity failure with wrong label)"
+    },
+    "quotation_exact_match_context": {
+      "this_experiment_29_rejections": "no quotation produced; citation-exact-match verification not applicable to them",
+      "previous_separate_verification": "docs/evidence/v15_paired_analysis_20261011.json records twelve quotation exact-match failures across eight cases of an eighteen-case v1.5-8B paired run (a different experiment, not the paired-v2 rejections)"
+    },
+    "arithmetic_reconciliation": {
+      "18_correct_plus_11_incorrect_equals_29": true,
+      "12_neutral_plus_6_contradiction_equals_18_gold_neutral_rejections": true,
+      "25_accepted_plus_29_rejected_equals_54": true,
+      "23_correct_accepted_plus_18_correct_rejected_equals_41_raw_correct": true,
+      "2_incorrect_accepted_plus_11_incorrect_rejected_equals_13_incorrect_arm": true,
+      "dense_32_strict_plus_8_correct_but_invalid_equals_40_raw_correct": true,
+      "corrected_raw_label_split": "the actual raw-label split over the 29 rejections is 0 entailment, 15 neutral, 14 contradiction (recomputed from predictions.jsonl); the quoted '12 neutral + 17 contradiction' matches neither count"
+    }
+  },
+  "claim_verification": [
+    {"claim": "20 rejected outputs are correctly relabelled", "tracked": 18, "status": "VERIFIED-INCONSISTENT"},
+    {"claim": "11 rejected outputs have incorrect raw labels", "tracked": 11, "status": "VERIFIED-CONSISTENT"},
+    {"claim": "9 rejected cases have gold label neutral", "tracked": 18, "status": "VERIFIED-INCONSISTENT"},
+    {"claim": "13 identity failures and 16 citation failures", "tracked": "29 identity-gate rejections = 14 vote_unrecognised + 15 invalid_vote_status; citation stage never executed on rejections (no quotation offered)", "status": "VERIFIED-INCONSISTENT"},
+    {"claim": "9 rejected outputs pass all citation checks", "tracked": "citation checks ran only on the 25 accepted outputs (25/25 passed); no rejection offered a quotation, so no citation was verified either way", "status": "NOT ESTABLISHED"},
+    {"claim": "20 rejected outputs pass syntax and evidence checks", "tracked": "no tracked source; 5 syntax-recovery replies all became accepted outputs, not rejections", "status": "NOT ESTABLISHED"},
+    {"claim": "5 of the 13 identity failures fail citation verification; 2 unknown", "tracked": "no citation was offered on any rejection; the citation fields are present-but-empty, so neither pass nor fail can be asserted", "status": "NOT ESTABLISHED"},
+    {"claim": "12 neutral and 17 contradiction labels among the 29", "tracked": "recomputed split is 15 neutral + 14 contradiction (0 entailment); neither quoted figure matches", "status": "VERIFIED-INCONSISTENT"},
+    {"claim": "case rows 2504, 1200, 567, 1311 are rejection cases", "tracked": "none in the 81-row plan and none a case_id in predictions.jsonl; 2504 out of dataset range", "status": "VERIFIED-INCONSISTENT"},
+    {"claim": "corrected valid-output ratio 51/1900", "tracked": "valid outputs 25/54 candidate and 43/54 dense; dataset 1,488 rows", "status": "VERIFIED-INCONSISTENT"}
+  ]
+}

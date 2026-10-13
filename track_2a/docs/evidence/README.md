@@ -9,6 +9,19 @@ summaries link to them without duplicating the data.
   definitions, failure counts, source hashes and three representative cases.
   Raw plan, manifest, events, predictions and summaries remain ignored under
   `data/experiments/vote-aware-paired-v2/`.
+- [Offline attribution v2 verification](offline_attribution_v2/verification_report.md):
+  analysis-only verification record for the 29 rejected `vote-aware-v1` outputs
+  of the paired run above; it is a diagnosis of recorded results, not a second
+  model evaluation or quality benchmark. The paired-v2 raw records and the earlier
+  `offline_attribution_v1` analysis exist in the local (Git-ignored) working tree
+  and were hash-verified and recounted here, but are not reproduced by a clean Git
+  checkout; the record cross-checks the aggregate claims against the result audit
+  and against a per-case recount of `predictions.jsonl`, and lists the independent
+  annotation still needed to complete a per-case analysis.
+  Companion machine-readable facts are in
+  [tracked_facts_v2.json](offline_attribution_v2/tracked_facts_v2.json); the
+  re-runnable aggregate check is
+  [verify_offline_attribution_v2.py](offline_attribution_v2/verify_offline_attribution_v2.py).
 - [Vote-aware CSCS Advanced smoke](vote_aware_cscs_smoke_20261013.json): one
   successful Docker inference with recognised vote, page-19 source provenance
   and bounded syntax recovery. The citation begins mid-word, so this is
