@@ -1,5 +1,6 @@
 """Focused offline contracts for the paired vote-aware evaluation."""
 import json
+import copy
 from pathlib import Path
 import sys
 import tempfile
@@ -10,6 +11,24 @@ import vote_aware_paired_eval as paired
 
 
 class VoteAwarePairedContracts(unittest.TestCase):
+    def test_manifest_configuration_must_match_frozen_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            plan = {"configuration": {"model": paired.CSCS_MODEL}, "cases": []}
+            manifest = {"schema": paired.SCHEMA, "configuration": dict(plan["configuration"]), "items": []}
+            for index in range(54):
+                case = {"row_index": index, "case_id": str(index), "gold": "neutral", "pdf_sha256": "pdf"}
+                plan["cases"].append(case)
+                manifest["items"].append(dict(case, arms={arm: {"passages": [{}] * 5,
+                    "prompt_sha256": "prompt"} for arm in paired.ARMS}))
+            (directory / paired.PLAN_NAME).write_text(json.dumps(plan))
+            manifest["plan_sha256"] = paired.digest((directory / paired.PLAN_NAME).read_bytes())
+            paired.validate_manifest(directory, plan, manifest)
+            changed = copy.deepcopy(manifest)
+            changed["configuration"]["model"] = "different-model"
+            with self.assertRaisesRegex(ValueError, "configuration differs"):
+                paired.validate_manifest(directory, plan, changed)
+
     def test_selection_is_balanced_deterministic_subset(self):
         rows = paired.load_rows(paired.DEFAULT_DATA)
         source = json.loads(paired.SOURCE_PLAN.read_text())
@@ -60,6 +79,35 @@ class VoteAwarePairedContracts(unittest.TestCase):
         paired.validate_logs(manifest, [record], [event])
         with self.assertRaisesRegex(ValueError, "duplicate event attempt"):
             paired.validate_logs(manifest, [record], [event, dict(event)])
+
+    def test_prediction_must_match_its_event_identity(self):
+        manifest = {"items": [{"row_index": 0}, {"row_index": 1}]}
+        event = {"schema": paired.SCHEMA, "key": "0:dense-v1",
+                 "attempt_id": "attempt-1", "row_index": 0,
+                 "arm": "dense-v1", "gold": "neutral", "case_id": "case-0",
+                 "attempt_number": 1, "configured_model": paired.CSCS_MODEL}
+        for changes in ({"key": "1:vote-aware-v1"}, {"gold": "entailment"},
+                        {"arm": "vote-aware-v1"}, {"row_index": 1},
+                        {"case_id": "case-1"}, {"attempt_number": 2},
+                        {"configured_model": "different-model"}):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, "event identity"):
+                paired.validate_logs(manifest, [dict(event, status="failed", **changes)], [event])
+
+    def test_partial_summary_does_not_report_a_full_plan_paired_estimate(self):
+        item = {"row_index": 0, "case_id": "case-0", "gold": "neutral",
+                "request": {"claim_language": "de", "booklet_language": "fr"}}
+        records = [{"key": "0:" + arm, "arm": arm, "gold": "neutral",
+                    "pred": "neutral" if arm == paired.FROZEN_PIPELINE else None,
+                    "strict_correct": arm == paired.FROZEN_PIPELINE,
+                    "status": "completed" if arm == paired.FROZEN_PIPELINE else "failed",
+                    "result": {}} for arm in paired.ARMS]
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            (directory / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
+            summary = paired.summarise_run(directory, {"items": [item]})
+        self.assertEqual(summary["paired"]["n"], 1)
+        self.assertIsNone(summary["paired"]["accuracy_difference"])
+        self.assertIsNone(summary["paired"]["mcnemar_exact_p"])
 
 
 if __name__ == "__main__":

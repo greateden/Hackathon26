@@ -215,6 +215,8 @@ def validate_manifest(directory, plan, manifest):
         raise ValueError("Manifest schema or item count is invalid")
     if manifest.get("plan_sha256") != digest((directory / PLAN_NAME).read_bytes()):
         raise ValueError("Manifest does not match its frozen plan")
+    if manifest.get("configuration") != plan.get("configuration"):
+        raise ValueError("Manifest configuration differs from frozen plan")
     expected = {(c["row_index"], c["case_id"], c["gold"], c["pdf_sha256"]) for c in plan["cases"]}
     actual = {(i.get("row_index"), i.get("case_id"), i.get("gold"), i.get("pdf_sha256")) for i in manifest["items"]}
     if actual != expected:
@@ -239,14 +241,14 @@ def schedule(items):
 
 def validate_logs(manifest, records, events):
     expected = {str(item["row_index"]) + ":" + arm for item, arm in schedule(manifest["items"])}
-    attempts = set()
+    attempts = {}
     for event in events:
         if event.get("schema") != SCHEMA or event.get("key") not in expected:
             raise ValueError("Event differs from the frozen schedule")
         attempt = event.get("attempt_id")
         if not isinstance(attempt, str) or attempt in attempts:
             raise ValueError("Missing or duplicate event attempt ID")
-        attempts.add(attempt)
+        attempts[attempt] = event
     record_attempts = set()
     for record in records:
         if record.get("schema") != SCHEMA or record.get("key") not in expected:
@@ -254,6 +256,11 @@ def validate_logs(manifest, records, events):
         attempt = record.get("attempt_id")
         if attempt not in attempts or attempt in record_attempts:
             raise ValueError("Prediction attempt does not match exactly one event")
+        event = attempts[attempt]
+        identity_fields = ("key", "row_index", "case_id", "arm", "gold",
+                           "attempt_number", "configured_model")
+        if any(record.get(field) != event.get(field) for field in identity_fields):
+            raise ValueError("Prediction differs from its event identity")
         record_attempts.add(attempt)
         if record.get("status") not in ("completed", "failed", "interrupted"):
             raise ValueError("Invalid prediction status")
@@ -392,8 +399,11 @@ def summarise_run(directory, manifest, status=None):
                 "dense_inference_s": (a.get("result") or {}).get("inference_s"),
                 "vote_aware_inference_s": (b.get("result") or {}).get("inference_s")})
     p = summary["paired"]
-    p["accuracy_difference"] = round((p["b_only_correct"] - p["a_only_correct"]) / 54, 4)
-    p["mcnemar_exact_p"] = round(binomial_two_sided(p["a_only_correct"], p["b_only_correct"]), 6)
+    p["n"] = sum(p[key] for key in ("both_correct", "a_only_correct", "b_only_correct", "both_incorrect"))
+    # A partially recorded run must not treat unobserved pairs as ties.
+    complete_pairs = p["n"] == planned // 2 and summary["missing_calls"] == 0
+    p["accuracy_difference"] = round((p["b_only_correct"] - p["a_only_correct"]) / p["n"], 4) if complete_pairs else None
+    p["mcnemar_exact_p"] = round(binomial_two_sided(p["a_only_correct"], p["b_only_correct"]), 6) if complete_pairs else None
     write_json(directory / "summary.json", summary)
     lines = ["# Vote-aware versus dense paired evaluation", "", "Status: " + summary["status"] + ".",
              f"Accounted for {summary['accounted_calls']}/{planned} primary calls; failures remain in denominators.", "",
@@ -407,7 +417,7 @@ def summarise_run(directory, manifest, status=None):
               f"Exact McNemar p-value: {p['mcnemar_exact_p']}.",
               f"Disagreements or validity changes: {len(p['disagreements'])}.", "",
               "Citation verification establishes mechanical source provenance, not semantic support."]
-    if summary["status"] != "COMPLETE":
+    if not complete_pairs:
         lines += ["", "No comparative conclusion is drawn until every planned primary call has an outcome."]
     (directory / "analysis.md").write_text("\n".join(lines) + "\n")
     return summary

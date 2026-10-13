@@ -101,6 +101,9 @@ def compare_runs(run_a, run_b):
     """Per-item (prompt_tokens, pred) comparison between two recorded runs."""
     a_items = {it["index"]: it for it in run_a["items"]}
     b_items = {it["index"]: it for it in run_b["items"]}
+    if (not a_items or set(a_items) != set(b_items)
+            or len(a_items) != len(run_a["items"]) or len(b_items) != len(run_b["items"])):
+        raise ValueError("Comparison requires non-empty unique matching row IDs")
     tok_diff, pred_diff = [], []
     for idx in sorted(set(a_items) & set(b_items)):
         a, b = a_items[idx], b_items[idx]
@@ -152,8 +155,8 @@ def part_b_recorded(runs):
     t0r2 = runs.get(("t0", "retrieve-v2", 2))
     selr = runs.get(("select", "retrieve-v2", 1))
     if not (t0r and selr):
-        print("   [skip] no retrieve-v2 runs in this ablation file")
-        return True
+        print("   [fail] required t0/select retrieve-v2 runs are missing")
+        return False
     ok = True
     if t0r2:
         n, tok, pred = compare_runs(t0r, t0r2)
@@ -166,7 +169,7 @@ def part_b_recorded(runs):
           f"{len(tok)}/{n} items; label flips: {len(pred)}")
     for idx, pa, pb, ta, tb in pred:
         src = "prompt differed" if idx in tok else \
-            "IDENTICAL PROMPT - decoding noise, not evidence effect"
+            "equal token counts; prompt identity and cause unverified"
         print(f"     item {idx}: {pa} -> {pb} ({src}; tokens {ta} vs {tb})")
         ok = ok and idx in tok
     # Redundancy/determinism check for twin cells (fires once the optional
@@ -176,7 +179,7 @@ def part_b_recorded(runs):
         rb = runs.get((cb, eb, 1)) or runs.get((cb, eb, 2))
         if ra and rb:
             n, tok, pred = compare_runs(ra, rb)
-            flag = ("PASS (identical inputs produced identical labels)"
+            flag = ("PASS (matching recorded labels; prompt identity needs separate verification)"
                     if not pred else
                     "MISMATCH - equivalence hypothesis or determinism broken")
             print(f"   twin cells {ca}/{ea} vs {cb}/{eb}: {n} items, "

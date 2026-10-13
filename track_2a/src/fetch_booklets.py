@@ -17,7 +17,7 @@ answer in the original PDFs, the same way the end-to-end task requires.
 Usage:
   python3 fetch_booklets.py --list            # show the plan + local cache state
   python3 fetch_booklets.py                   # fetch + extract + index (all)
-  python3 fetch_booklets.py --limit 6         # smoke run on the first 6 URLs
+  python3 fetch_booklets.py --limit 6 --out /tmp/booklet-smoke.json
   python3 fetch_booklets.py --skip-fetch      # re-extract/re-index only
 """
 import argparse
@@ -25,6 +25,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -85,7 +86,8 @@ def list_booklets(dataset) -> list:
 def fetch_pdf(url: str, dest: Path) -> str:
     """Download one PDF. Returns 'cached' | 'ok' | 'bad' | 'error:<msg>'."""
     if dest.exists() and dest.stat().st_size > 1024:
-        return "cached"
+        with dest.open("rb") as stream:
+            return "cached" if stream.read(4) == b"%PDF" else "bad:cached-not-pdf"
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
@@ -195,7 +197,14 @@ def main(argv=None):
                     help="only process the first N booklet URLs (smoke runs)")
     ap.add_argument("--skip-fetch", action="store_true",
                     help="do not download; re-extract/re-index the local cache")
+    ap.add_argument("--out", type=Path,
+                    help="separate corpus output (required for limited smoke runs)")
     args = ap.parse_args(argv)
+    output = args.out or BOOKLET_CORPUS_JSON
+    if args.limit < 0 or (args.limit and not args.list
+                         and output.resolve() == BOOKLET_CORPUS_JSON.resolve()):
+        print("ERROR: --limit must be non-negative; limited runs require a separate --out", file=sys.stderr)
+        return 1
 
     if not DATASET_PATH.exists():
         sys.exit(f"eval dataset not found: {DATASET_PATH} (run: make eval-data)")
@@ -231,6 +240,10 @@ def main(argv=None):
         if not pdf.exists():
             extract_states[entry["key"]] = "skipped(no-pdf)"
             continue
+        with pdf.open("rb") as stream:
+            if stream.read(4) != b"%PDF":
+                extract_states[entry["key"]] = "error:not-pdf"
+                continue
         extract_states[entry["key"]] = extract_text(pdf, txt_path(entry["url"]))
 
     ok_entries = [e for e in entries
@@ -238,24 +251,32 @@ def main(argv=None):
                   and extract_states.get(e["key"], "cached") in ("cached", "ok")]
     corpus, failures = build_corpus(ok_entries)
 
-    BOOKLET_CORPUS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    BOOKLET_CORPUS_JSON.write_text(json.dumps(corpus, ensure_ascii=False),
-                                   encoding="utf-8")
+    indexed_docs = {r["doc_id"] for r in corpus}
+    missing = [e["key"] for e in entries if e["key"] not in indexed_docs]
+    if not entries or not corpus or missing or failures:
+        print("ERROR: incomplete corpus; existing output preserved", file=sys.stderr)
+        print(f"Missing documents: {missing}", file=sys.stderr)
+        return 1
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output_mode = output.stat().st_mode & 0o777 if output.exists() else 0o644
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=output.parent,
+                                         prefix=output.name + ".", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(corpus, stream, ensure_ascii=False)
+        temporary.chmod(output_mode)
+        temporary.replace(output)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
     by_lang = {}
     for r in corpus:
         by_lang[r["lang"]] = by_lang.get(r["lang"], 0) + 1
     print(f"\nIndexed {len(corpus)} passages from {len(ok_entries)} booklets "
-          f"-> {BOOKLET_CORPUS_JSON}")
+          f"-> {output}")
     print(f"By language: {by_lang}")
-    indexed_docs = {r["doc_id"] for r in corpus}
-    missing = [e["key"] for e in entries if e["key"] not in indexed_docs]
-    if missing:
-        print(f"Docs with no passages indexed: {missing}")
-        print(f"Fetch states: "
-              f"{ {k: v for k, v in fetch_states.items() if v != 'cached'} }")
-        print(f"Extract states: "
-              f"{ {k: v for k, v in extract_states.items() if v != 'cached'} }")
     return 0
 
 
