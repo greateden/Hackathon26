@@ -16,9 +16,9 @@ import time
 from urllib.parse import urlparse
 import uuid
 
-from booklet_app import (CSCS_MODEL, MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
+from booklet_app import (CANDIDATE_PIPELINE, CSCS_MODEL, MLX_MODEL, MODEL, OFFICIAL_MODELS, BookletRetriever, SubmissionJudge,
                          build_messages, classify, digest, evidence_payload, load_booklet,
-                         submission_output, validate_request)
+                         referenced_citations, submission_output, validate_request)
 from config import EMBEDDING_MODEL, PROJECT_ROOT
 from eval_nli import DEFAULT_DATA, load_rows, summarise
 from eval_paired import coverage
@@ -649,6 +649,17 @@ def smoke(args):
              citation.get("source") == result.get("booklet")
              and citation.get("pdf_sha256") == result.get("pdf_sha256"))
             and citation in passages_ for citation in citations))
+        candidate = result.get("pipeline_version") == CANDIDATE_PIPELINE
+        if candidate:
+            try:
+                citation_ok = bool(result.get("citation_verified") and citations
+                                   and citations == referenced_citations(result, passages_)
+                                   and all(c.get("source") == (
+                                       "supplied_reference" if request["task"] == "beginner" else request["booklet"])
+                                       and (request["task"] == "beginner" or
+                                            c.get("pdf_sha256") == result.get("pdf_sha256")) for c in citations))
+            except (ValueError, TypeError, KeyError):
+                citation_ok = False
         record["citation"].update(verified=citation_ok, count=len(citations),
                                   pages=[citation.get("page") for citation in citations])
         usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
@@ -673,10 +684,12 @@ def smoke(args):
             "request_identity": (result.get("case_id") == request["id"]
                                  and result.get("claim") == request["claim"]
                                  and result.get("task") == request["task"]
-                                 and (passages_ == [{"page": None, "text": request["reference"],
+                                 and ([{k: p.get(k) for k in ("page", "text", "source")} for p in passages_]
+                                      == [{"page": None, "text": request["reference"],
                                                     "source": "supplied_reference"}]
                                       if request["task"] == "beginner" else
-                                      result.get("booklet") == request["booklet"])),
+                                      result.get("booklet") == request["booklet"]
+                                      and (not candidate or result.get("vote") == request["vote"]))),
             "no_lexical_fallback": (expected_model in OFFICIAL_MODELS
                                     and result.get("model") == expected_model),
         }

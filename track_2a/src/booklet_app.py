@@ -6,6 +6,7 @@ import argparse
 from contextlib import redirect_stdout
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -23,6 +24,42 @@ CSCS_MODEL = "swiss-ai/Apertus-v1.5-70B"
 MLX_MODEL = "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit"
 OFFICIAL_MODELS = (MODEL, CSCS_MODEL)
 LANGUAGES = ("de", "fr", "it")
+FROZEN_PIPELINE = "dense-v1"
+CANDIDATE_PIPELINE = "vote-aware-v1"
+
+VOTE_INSTRUCTIONS = (
+    "Resolve the specified vote against the supplied evidence, including translated "
+    "proposal names. Set vote_status to recognised only if it identifies one proposal "
+    "unambiguously; otherwise use ambiguous or unrecognised. Do not guess from the claim. "
+    "Judge only that proposal. Keep the Federal Council, Parliament, proponents and "
+    "opponents separate: disagreement between speakers does not contradict a claim "
+    "about what one of them says. If the requested position is absent, use neutral."
+)
+CANDIDATE_OUTPUT_CONTRACT = (
+    'Reply with exactly one JSON object and nothing else. It must contain every one of '
+    'these six fields: label, reasoning, vote_status, vote_reference, evidence_status, '
+    'and evidence_refs. Use exactly this structure: '
+    '{"label":"entailment","reasoning":"one short sentence",'
+    '"vote_status":"recognised","vote_reference":{"passage_id":"e1"},'
+    '"evidence_status":"sufficient",'
+    '"evidence_refs":[{"passage_id":"e2"}]}. '
+    'Never omit any field. For a specified vote, vote_status must be recognised only if '
+    'the evidence identifies one proposal unambiguously; otherwise use ambiguous or '
+    'unrecognised. When recognised, vote_reference must select a supplied passage that '
+    'establishes the proposal identity; otherwise it must be null. For a request without '
+    'a specified vote, both vote_status and vote_reference must be null. vote_reference '
+    'is separate from evidence_refs and is required even when the claim is neutral. '
+    'evidence_status must be "sufficient" for entailment or '
+    'contradiction, or "insufficient" for neutral. evidence_refs is a list such as '
+    '[{"passage_id":"e2"}]. Select only passages that jointly justify the label '
+    'for the claimed proposal and speaker, including necessary qualifications. '
+    'Do not select a passage merely because it mentions the topic. For neutral, '
+    'return an empty list. The application copies the selected source text directly; '
+    'do not generate quotations. An optional start/end pair selects zero-based, '
+    'end-exclusive character offsets within that passage; omit both to select '
+    'the complete passage. If evidence is insufficient, never invent a label '
+    'other than neutral or a source reference.'
+)
 
 
 def is_apertus_v15(model_id):
@@ -35,14 +72,45 @@ def token_preflight_mode():
 
     'optional' = endpoint without /tokenize (including CSCS and mlx_lm.server). Input
     length is then not pre-rejected; a reply only counts when the server reports
-    finish_reason='stop' plus a prompt token count, so truncation is still an
-    error rather than a silent verdict.
+    finish_reason='stop' plus valid token usage. This cannot independently detect
+    a server silently dropping input; that requires exact token preflight.
     """
     return os.environ.get("LLM_TOKEN_PREFLIGHT", "required")
 
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def strict_json(text):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("Duplicate JSON key")
+            result[key] = value
+        return result
+
+    def invalid_constant(value):
+        raise ValueError("Non-finite JSON number")
+
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid_constant)
+
+
+def candidate_json(text):
+    """Parse candidate output, tolerating only one surplus final ``}``."""
+    try:
+        value = strict_json(text)
+        recovered = False
+    except json.JSONDecodeError:
+        stripped = text.rstrip()
+        if not stripped.endswith("}"):
+            raise
+        value = strict_json(stripped[:-1] + text[len(stripped):])
+        recovered = True
+    if not isinstance(value, dict):
+        raise ValueError("Expected a JSON object")
+    return value, recovered
 
 
 def detect_language(text):
@@ -140,7 +208,14 @@ def evidence_payload(booklet, evidence):
     return "\n\n".join(f"[page {p['page']}]\n{p['text']}" for p in evidence)
 
 
-def build_messages(claim, evidence, system_prompt=SYSTEM_PROMPT):
+def build_messages(claim, evidence, system_prompt=SYSTEM_PROMPT, *, vote=None,
+                   pipeline_version=FROZEN_PIPELINE):
+    if pipeline_version == CANDIDATE_PIPELINE:
+        system_prompt = system_prompt.split("Reply with EXACTLY", 1)[0].rstrip()
+        if vote is not None:
+            system_prompt += "\n\n" + VOTE_INSTRUCTIONS
+            evidence = "Specified vote (request metadata): " + json.dumps(vote, ensure_ascii=False) + "\n\n" + evidence
+        system_prompt += "\n\n" + CANDIDATE_OUTPUT_CONTRACT
     return [{"role": "system", "content": system_prompt},
             {"role": "user", "content": USER_TEMPLATE.format(claim=claim, evidence=evidence)}]
 
@@ -159,7 +234,8 @@ def normalise_request(request, base_dir=None):
         raise ValueError("id must be a non-empty string")
     if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
         raise ValueError("claim.text must be a non-empty string")
-    normalised = {"id": case_id, "claim": claim["text"], "task": None}
+    normalised = {"id": case_id, "claim": claim["text"], "task": None,
+                  "pipeline_version": CANDIDATE_PIPELINE}
     if "language" in claim:
         normalised["claim_language"] = claim["language"]
     if "booklet" in request and "reference" in request:
@@ -191,6 +267,15 @@ def normalise_request(request, base_dir=None):
 
 def validate_request(request, base_dir=None):
     request = normalise_request(request, base_dir)
+    pipeline = request.get("pipeline_version", FROZEN_PIPELINE)
+    if pipeline not in (FROZEN_PIPELINE, CANDIDATE_PIPELINE):
+        raise ValueError("Unknown pipeline_version")
+    if request["task"] not in ("beginner", "advanced"):
+        raise ValueError("task must be beginner or advanced")
+    if "booklet" in request and "reference" in request:
+        raise ValueError("request must contain booklet or reference, not both")
+    if "id" in request and (not isinstance(request["id"], str) or not request["id"].strip()):
+        raise ValueError("id must be a non-empty string")
     if not isinstance(request.get("claim"), str) or not request["claim"].strip():
         raise ValueError("claim must be a non-empty string")
     for field in ("claim_language", "booklet_language", "reference_language"):
@@ -199,7 +284,7 @@ def validate_request(request, base_dir=None):
     if request["task"] == "advanced":
         if not isinstance(request.get("booklet"), str) or not request["booklet"].strip():
             raise ValueError("booklet must identify one PDF")
-        if request.get("id") is not None and (
+        if (request.get("id") is not None or pipeline == CANDIDATE_PIPELINE) and (
                 not isinstance(request.get("vote"), str) or not request["vote"].strip()):
             raise ValueError("vote must be a non-empty string")
         if request.get("evidence", "retrieved") not in ("full", "retrieved"):
@@ -227,6 +312,10 @@ class SubmissionJudge:
         base = os.environ.get("LLM_BASE_URL", "").rstrip("/")
         if not base:
             raise ValueError("Set LLM_BASE_URL to an Apertus v1.5 OpenAI-compatible endpoint; no lexical fallback")
+        parsed_base = urlparse(base)
+        if (parsed_base.scheme not in ("http", "https") or not parsed_base.hostname
+                or parsed_base.username or parsed_base.password or parsed_base.query or parsed_base.fragment):
+            raise ValueError("LLM_BASE_URL must be an HTTP(S) URL without credentials, query or fragment")
         self.base = base[:-3] if base.endswith("/v1") else base
         self.context = int(os.environ.get("LLM_CONTEXT_TOKENS", "32768"))
         self.max_tokens = 512
@@ -240,15 +329,22 @@ class SubmissionJudge:
         try:
             response = self.session.get(self.base + "/v1/models", timeout=10)
             response.raise_for_status()
-            if self.model not in [r["id"] for r in response.json()["data"]]:
+            listing = response.json()
+            rows = listing.get("data") if isinstance(listing, dict) else None
+            if not isinstance(rows, list) or any(
+                    not isinstance(r, dict) or not isinstance(r.get("id"), str) for r in rows):
+                raise ValueError("Invalid endpoint model listing")
+            if self.model not in [r["id"] for r in rows]:
                 raise ValueError("endpoint does not list the configured Apertus v1.5 model")
         except requests.RequestException as exc:
             raise RuntimeError("Apertus v1.5 endpoint preflight failed; check LLM_BASE_URL and credentials") from exc
 
-    def judge(self, claim, evidence, seed=20261011):
+    def judge(self, claim, evidence, seed=20261011, *, vote=None,
+              pipeline_version=FROZEN_PIPELINE):
         # Experimental runners may set a versioned system prompt. The default
         # remains the original production prompt byte-for-byte.
-        messages = build_messages(claim, evidence, getattr(self, "system_prompt", SYSTEM_PROMPT))
+        messages = build_messages(claim, evidence, getattr(self, "system_prompt", SYSTEM_PROMPT),
+                                  vote=vote, pipeline_version=pipeline_version)
         preflight = token_preflight_mode()
         out = {"label": None, "label_code": None, "model": self.model,
                "parser_version": LABEL_PARSE_VERSION, "temperature": 0, "seed": seed,
@@ -288,10 +384,15 @@ class SubmissionJudge:
             if data.get("model") != self.model:
                 out["error"] = "response_model_mismatch_or_missing"
                 return out
+            if not isinstance(data.get("choices"), list) or len(data["choices"]) != 1:
+                raise ValueError("Expected exactly one completion")
             choice = data["choices"][0]
             raw = choice["message"]["content"]
+            if not isinstance(raw, str) or not raw.strip():
+                raise ValueError("Missing completion text")
             out.update(raw_response=raw, usage=data.get("usage") or {}, finish_reason=choice.get("finish_reason"))
-            # Detect an endpoint silently reducing input or exhausting output.
+            # Required preflight detects input-count changes; both modes reject
+            # output exhaustion. Optional mode relies on the server's usage.
             reported = (data.get("usage") or {}).get("prompt_tokens")
             if preflight == "optional":
                 out["input_tokens"] = reported
@@ -304,11 +405,27 @@ class SubmissionJudge:
             completion_tokens = out["usage"].get("completion_tokens")
             if not out.get("error") and (type(completion_tokens) is not int or not 1 <= completion_tokens <= self.max_tokens):
                 out["error"] = "missing_completion_usage"
+            total = out["usage"].get("total_tokens")
+            if not out.get("error") and total is not None and (
+                    type(total) is not int or total != reported + completion_tokens):
+                out["error"] = "inconsistent_total_usage"
             if not out.get("error") and choice.get("finish_reason") != "stop":
                 out["error"] = "incomplete_completion"
             if not out.get("error"):
-                parsed = parse_nli_response(raw)
-                out.update({key: parsed[key] for key in ("label", "reasoning", "evidence_snippet", "error")
+                if pipeline_version == CANDIDATE_PIPELINE:
+                    try:
+                        structured, recovered = candidate_json(raw)
+                    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                        out["error"] = f"model_response_parse_error:{type(exc).__name__}"
+                        return out
+                    if recovered:
+                        out["syntax_recovery"] = "removed_single_trailing_closing_brace"
+                    parse_input = json.dumps(structured, ensure_ascii=False)
+                else:
+                    parse_input = raw
+                parsed = parse_nli_response(parse_input)
+                out.update({key: parsed[key] for key in ("label", "reasoning", "evidence_snippet", "error", "vote_status", "vote_reference",
+                                                       "evidence_status", "evidence_refs")
                             if key in parsed})
                 if out.get("error"):
                     out["label"] = None
@@ -327,11 +444,111 @@ def normalise_citation(text):
     return " ".join(text.split())
 
 
+def source_passages(booklet, selected):
+    """Attach exact offsets in extracted physical pages, without fuzzy matching."""
+    pages = {p["page"]: p["text"] for p in booklet["pages"]}
+    chunks = {p["id"]: p for p in passages(booklet)}
+    located = []
+    for index, passage in enumerate(selected, 1):
+        text = passage["text"]
+        page = pages[passage["page"]]
+        start, end = passage.get("page_start"), passage.get("page_end")
+        if "page_start" not in passage and "page_end" not in passage:
+            chunk = chunks.get(passage.get("id"))
+            if chunk and chunk["page"] == passage["page"] and chunk["text"] == text:
+                start = (int(chunk["id"].rsplit("c", 1)[1]) - 1) * 900
+            else:
+                start = page.find(text)
+                if start < 0 or page.find(text, start + 1) >= 0:
+                    raise ValueError("Ambiguous or missing source passage")
+            end = start + len(text)
+        if (type(start) is not int or type(end) is not int
+                or not 0 <= start < end <= len(page) or page[start:end] != text):
+            raise ValueError("Invalid source passage offsets")
+        located.append(dict(passage, id="e" + str(index), page_start=start, page_end=end))
+    return located
+
+
+def referenced_citations(result, selected):
+    """Verify source selection independently of the model's semantic judgement."""
+    refs = result.get("evidence_refs")
+    if not isinstance(refs, list):
+        raise ValueError("missing_evidence_refs")
+    if result.get("label") == "neutral":
+        if refs or result.get("evidence_status") != "insufficient":
+            raise ValueError("invalid_neutral_evidence")
+        return []
+    if result.get("evidence_status") != "sufficient" or not refs:
+        raise ValueError("insufficient_evidence")
+    return resolve_references(refs, selected)
+
+
+def resolve_references(refs, selected):
+    """Copy exactly the source spans selected by the model."""
+    by_id = {p["id"]: p for p in selected}
+    citations = []
+    seen = set()
+    for ref in refs:
+        if not isinstance(ref, dict) or not isinstance(ref.get("passage_id"), str):
+            raise ValueError("invalid_evidence_reference")
+        passage = by_id.get(ref["passage_id"])
+        if passage is None:
+            raise ValueError("unknown_evidence_reference")
+        text = passage["text"]
+        start, end = ref.get("start", 0), ref.get("end", len(text))
+        if (("start" in ref) != ("end" in ref) or type(start) is not int or type(end) is not int
+                or not 0 <= start < end <= len(text) or not text[start:end].strip()):
+            raise ValueError("invalid_citation_offsets")
+        identity = (ref["passage_id"], start, end)
+        if identity in seen:
+            raise ValueError("duplicate_evidence_reference")
+        seen.add(identity)
+        citations.append(dict(passage, text=text[start:end],
+                              passage_start=start, passage_end=end,
+                              page_start=passage["page_start"] + start,
+                              page_end=passage["page_start"] + end))
+    return citations
+
+
+def candidate_result(result, selected, vote=None):
+    citations = []
+    if not result.get("error"):
+        try:
+            if vote is not None and result.get("vote_status") != "recognised":
+                status = result.get("vote_status")
+                raise ValueError("vote_" + status if status in ("ambiguous", "unrecognised")
+                                 else "invalid_vote_status")
+            if vote is not None:
+                result["vote_citation"] = resolve_references([result.get("vote_reference")], selected)[0]
+            citations = referenced_citations(result, selected)
+        except ValueError as exc:
+            result.update(label=None, label_code=None, error=str(exc))
+    result.update(passages=selected, citations=citations, citation_verified=bool(citations),
+                  pipeline_version=CANDIDATE_PIPELINE,
+                  citation_method="source-selection-v1", semantic_support="model_judgement_only")
+    return result
+
+
+def candidate_evidence(selected):
+    return "\n\n".join("[" + p["id"] + "; page " + str(p["page"]) + "]\n" + p["text"]
+                       for p in selected)
+
+
 def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     request = validate_request(request)
+    pipeline = request.get("pipeline_version", FROZEN_PIPELINE)
+    candidate = pipeline == CANDIDATE_PIPELINE
     claim = request["claim"]
     if request["task"] == "beginner":
         reference = request["reference"]
+        if candidate:
+            selected = [{"id": "e1", "page": None, "text": reference,
+                         "source": "supplied_reference", "source_sha256": digest(reference.encode()),
+                         "page_start": 0, "page_end": len(reference)}]
+            result = judge.judge(claim, candidate_evidence(selected), seed=seed,
+                                 pipeline_version=pipeline)
+            result.update(case_id=request.get("id"), claim=claim, task="beginner", retrieval_s=0.0)
+            return candidate_result(result, selected)
         result = judge.judge(claim, reference, seed=seed)
         snippet = result.get("evidence_snippet", "")
         if not isinstance(snippet, str):
@@ -354,7 +571,8 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
                     for p in booklet["pages"]]
     else:
         top_k = request.get("top_k", 5)
-        selected = (retriever or BookletRetriever()).retrieve(booklet, claim, top_k)
+        query = ("Vote: " + request["vote"] + "\nClaim: " + claim) if candidate else claim
+        selected = (retriever or BookletRetriever()).retrieve(booklet, query, top_k)
     retrieval_s = time.perf_counter() - started
     if not selected:
         raise ValueError("No evidence extracted/retrieved")
@@ -362,6 +580,16 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     if any(p.get("source") != booklet["source"] or p.get("pdf_sha256") != booklet["sha256"]
            or p.get("page") not in pages or p["text"] not in pages[p["page"]] for p in selected):
         raise ValueError("Evidence is not from the selected booklet")
+    if candidate:
+        selected = source_passages(booklet, selected)
+        result = judge.judge(claim, candidate_evidence(selected), seed=seed,
+                             vote=request["vote"], pipeline_version=pipeline)
+        result.update(claim=claim, evidence_mode=mode, booklet=booklet["source"],
+                      pdf_sha256=booklet["sha256"], case_id=request.get("id"), task="advanced",
+                      vote=request["vote"], retrieval_query=query if mode == "retrieved" else None,
+                      claim_language=request.get("claim_language"), booklet_language=booklet["language"],
+                      retrieval_s=retrieval_s)
+        return candidate_result(result, selected, request["vote"])
     result = judge.judge(claim, evidence_payload(booklet, selected), seed=seed)
     snippet = result.get("evidence_snippet", "")
     if not isinstance(snippet, str):
@@ -370,7 +598,8 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
     citations = [p for p in selected if snippet.strip()
                  and normalise_citation(snippet) in normalise_citation(p["text"])]
     result.update(claim=claim, evidence_mode=mode, booklet=booklet["source"], pdf_sha256=booklet["sha256"],
-                  case_id=request.get("id"), task="advanced",
+                  case_id=request.get("id"), task="advanced", pipeline_version=pipeline,
+                  vote=request.get("vote"), retrieval_query=query if mode == "retrieved" else None,
                   claim_language=request.get("claim_language"), booklet_language=booklet["language"],
                   passages=selected, citations=citations, citation_verified=bool(citations),
                   retrieval_s=retrieval_s)
@@ -383,15 +612,26 @@ def submission_output(result):
         raise ValueError("classification did not produce a valid label")
     label_name = result["label"]
     label = label_to_code(label_name)
-    if label is None or result.get("label_code") != label:
+    if label is None or type(result.get("label_code")) is not int or result.get("label_code") != label:
         raise ValueError("label name/code mismatch")
     evidence = []
+    candidate = result.get("pipeline_version") == CANDIDATE_PIPELINE
+    if candidate:
+        if result.get("task") == "advanced" and result.get("vote_status") != "recognised":
+            raise ValueError("unresolved_vote")
+        if result.get("task") == "advanced" and result.get("vote_citation") != resolve_references(
+                [result.get("vote_reference")], result["passages"])[0]:
+            raise ValueError("vote_source_mismatch")
+        citations = referenced_citations(result, result["passages"])
+        if citations != result.get("citations"):
+            raise ValueError("citation_source_mismatch")
     if label_name != "neutral":
         if not result.get("citation_verified") or not result.get("citations"):
             raise ValueError("entailment and contradiction require grounded evidence")
         snippet = result.get("evidence_snippet", "")
         for citation in result["citations"]:
-            text = snippet if snippet and snippet in citation["text"] else citation["text"]
+            text = citation["text"] if candidate else (
+                snippet if snippet and snippet in citation["text"] else citation["text"])
             evidence.append({"page": citation.get("page"), "text": text})
     usage = result.get("usage") or {}
     input_tokens = result.get("input_tokens")
@@ -401,7 +641,7 @@ def submission_output(result):
         raise ValueError("missing actual input token usage")
     if type(output_tokens) is not int or output_tokens < 1:
         raise ValueError("missing actual output token usage")
-    if not isinstance(inference_s, (int, float)) or inference_s < 0:
+    if type(inference_s) not in (int, float) or not math.isfinite(inference_s) or inference_s < 0:
         raise ValueError("missing actual inference latency")
     case_id = result.get("case_id")
     if not isinstance(case_id, str) or not case_id:
@@ -418,8 +658,14 @@ def main():
     ap.add_argument("--out")
     args = ap.parse_args()
     try:
-        request = json.loads(Path(args.input).read_text(encoding="utf-8"))
+        request = strict_json(Path(args.input).read_text(encoding="utf-8"))
         request = validate_request(request, Path(args.input).parent)
+        # The CLI always uses the candidate. Flat requests without a version are
+        # retained only for the frozen Python experiment runners.
+        request["pipeline_version"] = CANDIDATE_PIPELINE
+        request = validate_request(request)
+        if not request.get("id"):
+            raise ValueError("id must be a non-empty string")
         args.out = args.out or os.environ.get("RESULT_FILE")
         diagnostics = os.environ.get("DIAGNOSTICS_FILE")
         if args.out and diagnostics and Path(args.out).resolve() == Path(diagnostics).resolve():

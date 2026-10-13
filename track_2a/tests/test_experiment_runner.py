@@ -359,6 +359,9 @@ class RunnerContracts(unittest.TestCase):
                     request = json.loads(Path(env["REQUEST_FILE"]).read_text())
                     judge = Mock()
                     judge.judge.return_value = dict(self.reply, input_tokens=10, evidence_snippet="Evidence",
+                                                   vote_status="recognised", vote_reference={"passage_id": "e1"},
+                                                   evidence_status="sufficient",
+                                                   evidence_refs=[{"passage_id": "e1", "start": 0, "end": 8}],
                                                    model=app.MODEL, response_model=app.MODEL)
                     document = dict(self.booklet, source=request.get("booklet"))
                     retriever = Mock()

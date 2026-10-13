@@ -22,6 +22,10 @@ class ApplicationTests(unittest.TestCase):
     def measured(label="entailment", snippet="Verbatim support"):
         return {"label": label, "label_code": app.label_to_code(label),
                 "evidence_snippet": snippet, "input_tokens": 41,
+                "vote_status": "recognised", "vote_reference": {"passage_id": "e1"},
+                "evidence_status": "insufficient" if label == "neutral" else "sufficient",
+                "evidence_refs": [] if label == "neutral" else [
+                    {"passage_id": "e1", "start": 0, "end": len(snippet)}],
                 "usage": {"prompt_tokens": 41, "completion_tokens": 7},
                 "inference_s": 0.125}
 
@@ -39,7 +43,8 @@ class ApplicationTests(unittest.TestCase):
             "metrics": {"input_tokens": 41, "output_tokens": 7,
                         "inference_time_ms": 125}})
         judge.judge.assert_called_once_with(
-            "Example claim", "Verbatim support from the supplied reference.", seed=20261011)
+            "Example claim", "[e1; page None]\nVerbatim support from the supplied reference.",
+            seed=20261011, pipeline_version=app.CANDIDATE_PIPELINE)
 
     def test_official_advanced_input_page_provenance_and_nine_language_pairs(self):
         claims = {"de": "Beispielbehauptung", "fr": "Exemple d'affirmation",
