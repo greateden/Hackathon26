@@ -143,7 +143,9 @@ documented in the technical report; both use exposed development data.
 ## Evaluation and repository map
 
 - [Project status](docs/PROJECT_STATUS.md): requirements, verified work and remaining gaps.
-- [Technical report](technical_report.md): template-aligned draft with paired development results and deployment evidence.
+- [Technical report](technical_report.md): concise submission report (≤6 pages) with retrieval, evidence-sensitivity and paired results.
+- [Long-form technical reference](docs/TECHNICAL_REPORT_LONG.md): full methodology, per-case analysis and counterfactual design.
+- [Interactive diagnostic](docs/experience/courage-to-be-wrong/README.md): failure-first presentation layer with data-verification guard (no model, no server, no network).
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
 - [Historical archive](docs/archive/README.md): original research measurements and integrity caveats.
 - `src/`: application, paired evaluation and preserved research scripts.
