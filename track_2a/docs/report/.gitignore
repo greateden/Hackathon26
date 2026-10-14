@@ -1,0 +1,5 @@
+# Build intermediates — regenerate with `make pdf`
+figure*.pdf
+*.aux
+*.log
+*.out

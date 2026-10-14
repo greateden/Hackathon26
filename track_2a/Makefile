@@ -11,7 +11,7 @@ MLX_MODEL ?= swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4
 MLX_SERVER_HOST ?= 127.0.0.1
 MLX_SERVER_PORT ?= 8080
 
-.PHONY: help run run-cscs smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full
+.PHONY: help run run-cscs smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full pdf
 
 help:
 	@echo "run                    - Docker v1.5 application using LLM_NAME/LLM_BASE_URL/LLM_API_KEY"
@@ -33,6 +33,7 @@ help:
 	@echo "fetch-booklets         - download 60 booklet PDFs + extract passage corpus"
 	@echo "eval-e2e-quick         - 60-item class-balanced end-to-end retrieval eval"
 	@echo "eval-e2e-full          - full 1,488-item end-to-end retrieval eval"
+	@echo "pdf                    - rebuild technical_report.pdf from LaTeX source"
 	@echo "ablation-smoke         - offline wiring check of the ablation harness (dry-run; plumbing only)"
 	@echo "ablation-dev           - FULL prompt-config ablation, fixed dev split (needs serve-apertus; ran 2026-10-10, report §4.3)"
 
@@ -142,3 +143,13 @@ eval-e2e-quick:
 
 eval-e2e-full:
 	cd src && python3 eval_e2e.py --configs lexical,emb_v1,emb_v2,hyb_rrf,two_stage_lex,two_stage --dump-failures 10
+
+## PDF build (requires TeX Live with pdflatex + rsvg-convert)
+pdf:
+	@mkdir -p docs/report
+	@for f in docs/figures/figure*.svg; do \
+	  rsvg-convert -f pdf -o "docs/report/$$(basename $$f .svg).pdf" "$$f"; \
+	done
+	cd docs/report && pdflatex -interaction=nonstopmode technical_report.tex && \
+	  pdflatex -interaction=nonstopmode technical_report.tex
+	@echo "PDF: docs/report/technical_report.pdf"

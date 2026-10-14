@@ -1,6 +1,6 @@
-# Swiss voting-booklet claim verification
+# VoteLens: The Courage to Be Wrong
 
-**HackApertus Track 2A — OST: Multilingual Natural Language Inference over
+**HackApertus Track 2A — OST: Multilingual Document-Grounded NLI over
 Swiss Official Voting Booklets.**
 
 Give the application either a reference passage and claim (Beginner), or a
@@ -143,7 +143,8 @@ documented in the technical report; both use exposed development data.
 ## Evaluation and repository map
 
 - [Project status](docs/PROJECT_STATUS.md): requirements, verified work and remaining gaps.
-- [Technical report](technical_report.md): concise submission report (≤6 pages) with retrieval, evidence-sensitivity and paired results.
+- [Technical report](technical_report.md): concise submission report (6 pages) with retrieval, evidence-sensitivity and paired results.
+- [Technical report PDF](docs/report/technical_report.pdf): 6-page A4 render; rebuild via `make pdf` from this directory.
 - [Long-form technical reference](docs/TECHNICAL_REPORT_LONG.md): full methodology, per-case analysis and counterfactual design.
 - [Interactive diagnostic](docs/experience/courage-to-be-wrong/README.md): failure-first presentation layer with data-verification guard (no model, no server, no network).
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
@@ -152,6 +153,6 @@ documented in the technical report; both use exposed development data.
 - `tests/`: offline regression checks; `make test` runs them without inference.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
-No final report PDF or submission has been produced. Team metadata, demo and
+Report PDF is at `build/technical_report.pdf` (6 pages, A4). Team metadata, demo and
 code licensing still need review. Report licence: CC-BY-4.0, following the
 [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
