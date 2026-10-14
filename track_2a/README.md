@@ -150,9 +150,11 @@ documented in the technical report; both use exposed development data.
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
 - [Historical archive](docs/archive/README.md): original research measurements and integrity caveats.
 - `src/`: application, paired evaluation and preserved research scripts.
-- `tests/`: offline regression checks; `make test` runs them without inference.
+- `tests/`: offline regression checks. Run from the repository root:
+  - `make test` — portable unit tests (no model, no data, no network); data-dependent tests skip transparently.
+  - `make test-integrity` — additionally runs experiment-integrity checks that require git-ignored raw records (`data/experiments/`, `data/eval/`). Skips cleanly in a clean checkout.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
-Report PDF is at `build/technical_report.pdf` (6 pages, A4). Team metadata, demo and
+Report PDF is at `docs/report/technical_report.pdf` (6 pages, A4). Team metadata, demo and
 code licensing still need review. Report licence: CC-BY-4.0, following the
 [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).

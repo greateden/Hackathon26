@@ -11,7 +11,7 @@ MLX_MODEL ?= swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4
 MLX_SERVER_HOST ?= 127.0.0.1
 MLX_SERVER_PORT ?= 8080
 
-.PHONY: help run run-cscs smoke serve-apertus run-native test test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full pdf
+.PHONY: help run run-cscs smoke serve-apertus run-native test test-integrity test-full test-docker test-docker-pipeline eval-data eval-lex-quick eval-lex-full eval-lex-docker eval-apertus-quick eval-apertus-full eval-apertus-docker eval-apertus-oracle-docker ablation-dev ablation-smoke fetch-booklets eval-e2e-quick eval-e2e-full pdf
 
 help:
 	@echo "run                    - Docker v1.5 application using LLM_NAME/LLM_BASE_URL/LLM_API_KEY"
@@ -21,6 +21,7 @@ help:
 	@echo "serve-apertus          - serve the Apertus MLX checkpoint natively (host GPU; separate terminal)"
 	@echo "run-native             - same, natively with python3 (needed for the MLX backend)"
 	@echo "test                   - offline unit checks, native (no model/corpus needed)"
+	@echo "test-integrity          - experiment-integrity checks (skips without local raw data)"
 	@echo "test-full              - also run the retrieval smoke test, native (needs corpus)"
 	@echo "test-docker            - offline unit checks inside the container (no model server needed)"
 	@echo "test-docker-pipeline   - full-pipeline smoke test in Docker (needs corpus + embedding model)"
@@ -116,6 +117,10 @@ run-native:
 test:
 	cd src && "$(VENV_PY)" test_judge.py && "$(VENV_PY)" -m py_compile *.py
 	PYTHONPATH=src "$(VENV_PY)" -m unittest discover -s tests -p 'test_*.py'
+
+test-integrity:
+	@echo ">> Experiment-integrity checks (require git-ignored raw data; skips cleanly without it)."
+	PYTHONPATH=src "$(VENV_PY)" -m unittest tests.test_evidence_sensitivity tests.test_evidence_sensitivity_v2 tests.test_retrieval_ablation tests.test_vote_aware_paired_eval
 
 test-full: test
 	cd src && python3 test_pipeline.py

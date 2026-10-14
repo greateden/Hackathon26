@@ -30,6 +30,8 @@ class VoteAwarePairedContracts(unittest.TestCase):
                 paired.validate_manifest(directory, plan, changed)
 
     def test_selection_is_balanced_deterministic_subset(self):
+        if not paired.DEFAULT_DATA.exists():
+            self.skipTest("requires data/eval/mnli_swiss_v1.1.jsonl")
         rows = paired.load_rows(paired.DEFAULT_DATA)
         source = json.loads(paired.SOURCE_PLAN.read_text())
         first = paired.selected_indices(rows, source)

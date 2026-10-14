@@ -7,7 +7,10 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import evidence_sensitivity as experiment
 
+_DATA_READY = (experiment.SOURCE / "predictions.jsonl").exists()
 
+
+@unittest.skipUnless(_DATA_READY, "requires data/experiments/retrieval-ablation-v1/predictions.jsonl")
 class EvidenceSensitivityTests(unittest.TestCase):
     def test_frozen_selection_and_pending_approval(self):
         annotation = json.loads(experiment.ANNOTATIONS.read_text())

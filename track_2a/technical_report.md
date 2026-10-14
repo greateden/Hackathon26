@@ -8,7 +8,7 @@
 
 We present VOTELENS, a diagnostic system for document-grounded natural-language inference over official Swiss voting booklets. Given a booklet and a claim, the system retrieves page-grounded evidence and classifies entailment, neutral or contradiction using Apertus v1.5. Three observations drive this report; all are single-run analyses on *exposed development data*, not held-out benchmarks.
 
-**(1) Retrieval scope.** Focusing on five within-booklet passages achieved accuracy 0.827 and macro-F1 0.824 at 96.3% fewer input tokens than full-booklet prompting. However, optimising a lexical reference-recall proxy did *not* improve downstream NLI: proposition reranking raised Recall@5 from 0.580 to 0.716 while accuracy fell from 0.827 to 0.790.
+**(1) Retrieval scope.** Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519, n = 81 paired cases) at 96.3% fewer input tokens. On a separate frozen 81-case development sample, optimising a lexical reference-recall proxy did *not* improve downstream NLI: dense retrieval scored 0.827 (macro-F1 0.824) but proposition reranking raised Recall@5 from 0.580 to 0.716 while accuracy fell to 0.790.
 
 **(2) Coverage ≠ correctness.** A strict `vote-aware-v1` candidate achieved slightly higher raw-label accuracy (41/54 vs 40/54) yet dramatically lower valid-output coverage (25/54 vs 43/54). Of its 29 rejections, 18 were gold-correct. It rejected every gold-neutral case. Higher conditional accuracy among accepted answers does not imply higher overall strict correctness.
 
@@ -18,7 +18,7 @@ All three are exploratory development evidence. The 54-case comparison uses Aper
 
 ## 1. Introduction
 
-Swiss direct democracy places exceptional demands on evidence reliability. Citizens must adjudicate complex referenda — often multiple questions on one voting day — using official booklets that are multilingual (DE/FR/IT), structurally repetitive, and frequently place supporting and opposing arguments in the same document. Martin et al. (2024) identify precisely this setting as a high-stakes domain for LLM-based retrieval-augmented generation: the risk is not merely factual inaccuracy but the *erosion of shared epistemic ground* upon which democratic deliberation depends. Their position paper motivates semantic verification frameworks that validate the factual content of LLM-generated summaries before they reach voters, proposing knowledge-graph-assisted cross-checking as a possible architecture.
+Swiss direct democracy places exceptional demands on evidence reliability. Citizens must adjudicate complex referenda — often multiple questions on one voting day — using official booklets that are multilingual (DE/FR/IT), structurally repetitive, and frequently place supporting and opposing arguments in the same document. Martin et al. (2024) identify precisely this setting as a high-stakes domain for LLM-based retrieval-augmented generation and frame the civic risk as potential *erosion of shared epistemic ground* upon which democratic deliberation depends. Their position paper motivates semantic verification frameworks that validate the factual content of LLM-generated summaries before they reach voters, proposing knowledge-graph-assisted cross-checking as a possible architecture.
 
 VOTELENS addresses a narrower but adjacent question: given that a judge model *has* produced a label and a cited passage, can we trace whether the cited evidence textually occurs in the supplied booklet (mechanical provenance), and what failure modes arise at the interface between retrieval and judgement? We do not implement the knowledge-graph verification layer of Martin et al. (2024); our development experiments expose a concrete gap between output-contract validation (citation string matching) and semantic evidence sufficiency (whether a passage *establishes* a claim), which their framework would need to resolve before deployment.
 
@@ -55,6 +55,17 @@ Five studies are reported; none constitutes an independent held-out benchmark. A
 | Vote-aware paired | 54 | 70B CSCS | Complete-system comparison |
 
 All experiments used temperature 0, 512-token output allowance, strict JSON parsing, and failed/invalid outputs remain in denominators (never silently converted to neutral or defaulted).
+
+**Metric definitions.** Four distinct measures appear in the results:
+
+- **Raw-label accuracy**: the model's recognised label (parsed from JSON or plain text) matches the gold label, whether or not the output contract would accept the response. In the retrieval ablation (§3.1), some correct raw labels failed citation verification yet still contribute to this measure.
+- **Strict correctness** (Table 3.2): correct label AND accepted official response (passed the identity gate and citation gate).
+- **Valid-output coverage**: fraction of cases satisfying the full output contract; rejects and endpoint failures count against coverage.
+- **Citation verified**: mechanical source-string occurrence — the quoted evidence snippet or selected passage span is found verbatim in the supplied booklet. This is a provenance check, not semantic support.
+
+The retrieval ablation (§3.1) reports raw-label accuracy. The paired comparison (§3.2) distinguishes raw-label accuracy, strict correctness and valid-output coverage. The 15-case sensitivity diagnostic (§3.3) contains only entailment and contradiction gold labels; its macro-F1 is averaged over those two classes and is not directly comparable with the three-class macro-F1 used elsewhere.
+
+Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser; this is format normalisation, not semantic interpretation. Unparseable outputs remain errors.
 
 ### 2.3 Failure taxonomy
 
@@ -116,17 +127,17 @@ The immediate rejection mechanism is the identity gate. However, *where* an outp
 
 **This is not selective classification** (Geifman and El-Yaniv, 2017): the gate does not optimise a coverage–risk frontier; it uniformly destroyed coverage without demonstrating a risk guarantee.
 
-![Paired outcomes.](docs/figures/figure2_paired_outcomes.svg)
+![Paired strict-correctness outcomes (n = 54).](docs/figures/figure2_paired_54_outcomes.svg)
 
-**Figure 2.** Paired changes in strict correctness. 54 paired cases.
+**Figure 2.** Paired strict-correctness outcomes for the 54-case vote-aware comparison (Apertus v1.5 70B). Four cells: both correct 14, dense-only correct 18, vote-aware-only correct 9, both incorrect 13. Exact McNemar p = 0.122.
 
-![Coverage and accuracy.](docs/figures/figure4_coverage_accuracy_frontier.svg)
+![Coverage and strict correctness (n = 54).](docs/figures/figure3_paired_coverage.svg)
 
-**Figure 3.** Accuracy vs coverage-style rates (five non-comparable points; different models, cohorts and x-axis definitions). Only the paired pair (n=54, shared denominator, one model) is genuinely comparable. Reading axes across colours is a category error. The interactive version with per-point denominators is at `docs/experience/courage-to-be-wrong/`.
+**Figure 3.** Valid-output coverage versus strict correctness for the 54-case paired comparison (one model, one denominator). Two genuinely comparable points. Not a risk-coverage frontier; the gate was not calibrated. The interactive version with additional context is at `docs/experience/courage-to-be-wrong/`.
 
 ### 3.3 Evidence sensitivity diagnostic
 
-15 post-hoc selected cases (8 entailment, 7 contradiction; no neutral gold), 60 calls, 8B MLX. Four conditions per case:
+15 post-hoc selected cases (8 entailment, 7 contradiction; no neutral gold), 60 calls, 8B MLX. Macro-F1 here averages over the two gold-supported classes only. Four conditions per case:
 
 - A: original recorded retrieval top-5.
 - B: manually constructed sufficient evidence (case-informed upper bound).
@@ -152,7 +163,7 @@ B represents a case-informed upper bound; it is not a deployable retrieval metho
 
 **Evidence-grounded NLI and retrieval.** The retrieve-then-judge pipeline structure is established (Lewis et al., 2020; Thorne et al., 2018). Our contribution is not the architecture but the failure anatomy: showing that in Swiss booklets, the interface between retrieval and judgement produces errors that cannot be attributed to either stage alone.
 
-**Interpretable entailment and structured representations.** Silva et al. (2018) construct a knowledge graph from natural-language dictionary definitions to provide interpretable reasoning traces for textual entailment. Their representation organises semantic relationships (hypernymy, meronymy, thematic roles) to make entailment decisions auditable. Our Evidence Passport — Claim → Vote → Source → Stakeholder → Position — shares the goal of making evidence relationships inspectable, but is currently a *provenance-oriented diagnostic representation* rather than a verified knowledge graph. The system has not independently adjudicated the semantic sufficiency of those relationships; the chain records *where* a citation was found, not whether it *establishes* the claim. This gap between source occurrence and semantic support is precisely what Silva et al.'s structured representations would expose but VOTELENS does not yet resolve.
+**Interpretable entailment and structured representations.** Silva et al. (2018) construct a knowledge graph from natural-language dictionary definitions to provide interpretable reasoning traces for textual entailment. Their representation organises semantic relationships (hypernymy, meronymy, thematic roles) to make entailment decisions auditable. Our Evidence Passport — Claim → Vote → Source → Stakeholder → Position — shares the goal of making evidence relationships inspectable, but is currently a *provenance-oriented diagnostic representation* rather than a verified knowledge graph. The system has not independently adjudicated the semantic sufficiency of those relationships; the chain records *where* a citation was found, not whether it *establishes* the claim. This gap between source occurrence and semantic support is a problem that structured-representation approaches (such as Silva et al.'s) are designed to make auditable, though it is not established that their knowledge-graph architecture would resolve our stakeholder-attribution and evidence-sufficiency problems without independent semantic adjudication.
 
 **Sentence embeddings.** SentenceSwissBERT is an adaptation of SwissBERT (Vamvas et al., 2023) using a SimCSE-derived procedure (Gao et al., 2021), related to but distinct from Sentence-BERT (Reimers and Gurevych, 2019).
 
@@ -168,7 +179,7 @@ B represents a case-informed upper bound; it is not a deployable retrieval metho
 
 ## 5. Limitations and reproducibility
 
-All measurements are single runs on exposed development data. Denominators differ across panels; x-axis metrics differ (completion coverage, citation rate, valid-output coverage); the five data points in Figure 3 are not one frontier.
+All measurements are single runs on exposed development data. Denominators differ across panels; x-axis metrics differ (completion coverage, citation rate, valid-output coverage); Figure 3 presents only the two genuinely comparable points from the 54-case paired comparison.
 
 The 54-case comparison uses 70B, not the 8B submission target. Retrieval query, prompt, schema, identity gate and citation mechanism changed simultaneously — no factor can be attributed independently.
 
@@ -182,19 +193,17 @@ Dataset provenance: HackApertus-provided MNLI-over-Swiss-Voting-Booklets v1.1 un
 
 ### Reproducibility Passport
 
-| Layer | What it covers | Reproducibility status |
-|---|---|---|
-| 70B paired development evidence | 54-case paired comparison, CSCS API | Requires CSCS API key; not reproducible offline |
-| Third-party quantised MLX 8B diagnostics | Retrieval ablation, evidence sensitivity, oracle | Requires Apple Silicon + cached MLX model; not the submission target |
-| Official 8B submission runtime | `swiss-ai/Apertus-v1.5-8B` via vLLM or managed Docker | Configured but **untested** end-to-end |
-| Publicly tracked summaries | `data/experiments/*/summary.json` | Git-tracked; recomputable via `courage_data.py` |
-| Git-ignored raw results | Per-case JSON under `data/logs/`, `data/eval/` | Not distributed; regenerate with `fetch_eval_data.py` |
-| Build-time verification | `make test` (offline regression checks) | Runs without model; guards label mapping, parser, pipeline contract |
-| Independent reproduction limitations | All panels | Single runs; no variance control; exposed development data only |
+| Layer | Reproducibility status |
+|---|---|
+| Tracked source + evidence | `make test` (portable, no model/data needed). `docs/evidence/` supports SHA-256 byte-identity checks; `courage_data.py` verifies provenance when local raw records exist (byte identity ≠ semantic verification). |
+| 70B paired development | Requires CSCS API key; not reproducible offline. |
+| MLX 8B diagnostics | Requires Apple Silicon + cached model; not the submission target. |
+| Official 8B submission | Configured but **untested** end-to-end. |
+| Git-ignored records | `data/experiments/`, `data/eval/` not distributed; `fetch_eval_data.py` downloads the dataset only, not model predictions. Single runs; no variance control. |
 
 Management of the full experiment code and raw records is described in `docs/PROJECT_STATUS.md`; the long-form technical reference is at `docs/TECHNICAL_REPORT_LONG.md`.
 
-Reproduction starts with `docs/RUNNING.md`. The interactive diagnostic (no model, no server) is at `docs/experience/courage-to-be-wrong/`; its data-verification guard (`courage_data.py`) recomputes every displayed figure from run records and exits non-zero on disagreement.
+Reproduction starts with `docs/RUNNING.md`. The interactive diagnostic (no model, no server) is at `docs/experience/courage-to-be-wrong/`; its data-verification guard (`courage_data.py`) checks provenance hashes and recomputes selected figures from local raw records, and exits non-zero on file mismatch. In a clean checkout without raw records, the diagnostic page displays static values from `facts.json`; the verification script detects their absence rather than silently recomputing them.
 
 ## 6. Future work (designed, not run)
 

@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import retrieval_ablation as ablation
 from eval_nli import load_rows
 
+_DATA_READY = ablation.DEFAULT_DATA.exists()
+
 
 class FakeEncoder:
     def encode(self, texts, lang_code=None):
@@ -22,6 +24,8 @@ class FakeEncoder:
 
 class RetrievalAblationTests(unittest.TestCase):
     def test_frozen_plan_is_balanced_grouped_and_excludes_known_content(self):
+        if not ablation.DEFAULT_DATA.exists():
+            self.skipTest("requires data/eval/mnli_swiss_v1.1.jsonl")
         rows = load_rows(ablation.DEFAULT_DATA)
         plan = json.loads(ablation.PLAN.read_text())
         indices = ablation.validate_plan(plan, rows, ablation.DEFAULT_DATA)

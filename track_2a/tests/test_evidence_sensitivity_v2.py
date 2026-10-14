@@ -10,7 +10,12 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import evidence_sensitivity_v2 as experiment
 
+# Data-dependent integrity tests: require git-ignored records from
+# data/experiments/retrieval-ablation-v1/ and optionally the eval dataset.
+_DATA_READY = (experiment.SOURCE / "predictions.jsonl").exists()
 
+
+@unittest.skipUnless(_DATA_READY, "requires data/experiments/retrieval-ablation-v1/predictions.jsonl")
 class EvidenceSensitivityV2Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
