@@ -1,6 +1,6 @@
 {
   "schema": "hackapertus-courage-to-be-wrong-v1",
-  "generated_utc": "2026-10-14T08:17:37+00:00",
+  "generated_utc": "2026-10-14T20:55:48+00:00",
   "provenance": {
     "paired_predictions_sha256": "1d7553e0f85498b8c83316e35b34836f1db3fdba508623745509c00d4c34d1fe",
     "sensitivity_predictions_sha256": "805550d07f9a7c69fea05269d6c2f2b055d43db635a8383d32a1b6497533dc85",
@@ -285,7 +285,7 @@
       "gold": "contradiction",
       "title": "It read the number, then changed the label",
       "story": "The relevant article specifies a 4% requirement, not 10%. '10% required' is denied by evidence stating 4%, so the gold label is contradiction.",
-      "observed": "On the recorded top-five and on the re-ordered late-evidence run, the model's explanation correctly says '4%, not 10%' — and then emits neutral, not contradiction. The raw JSON already contained neutral, so the parser did not change it.",
+      "observed": "On the re-ordered late-evidence run (D), the model's explanation correctly says '4%, not 10%' — and then emits neutral, not contradiction. The raw JSON already contained neutral, so the parser did not change it.",
       "error_class": "Numeric/relation error despite sufficient evidence",
       "evidence_class": "OBSERVED. Whether position caused the flip is a hypothesis: C and D share the same evidence, only the block order differs, on single runs.",
       "status": "PARTIALLY VERIFIED",

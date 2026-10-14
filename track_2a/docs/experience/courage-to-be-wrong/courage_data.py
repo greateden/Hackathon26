@@ -266,8 +266,7 @@ GALLERY_CASES = [
         "story": "The relevant article specifies a 4% requirement, not 10%. "
                  "'10% required' is denied by evidence stating 4%, so the gold "
                  "label is contradiction.",
-        "observed": "On the recorded top-five and on the re-ordered late-evidence "
-                    "run, the model's explanation correctly says '4%, not 10%' — "
+        "observed": "On the re-ordered late-evidence run (D), the model's explanation correctly says '4%, not 10%' — "
                     "and then emits neutral, not contradiction. The raw JSON "
                     "already contained neutral, so the parser did not change it.",
         "error_class": "Numeric/relation error despite sufficient evidence",

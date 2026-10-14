@@ -78,7 +78,7 @@ python3 docs/experience/courage-to-be-wrong/counterfactual_experiment.py --dry-r
 ## Integrity limits (what is NOT true here — do not oversell)
 
 - **No benchmark.** All figures are single-run, exposed-development observations.
-  The paired run is **Apertus v1.5 70B**, not the 8B submission target.
+  The paired run is **Apertus v1.5 70B**, the selected 70B submission model.
 - **Different denominators, different metrics.** Coverage and accuracy are
   computed on different bases per panel; the three coverage metrics (completion,
   citation-verification rate, valid-output coverage) are deliberately kept

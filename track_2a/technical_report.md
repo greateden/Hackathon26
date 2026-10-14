@@ -1,11 +1,5 @@
 # Technical report — VoteLens: The Courage to Be Wrong
 
-<!-- Working title only: the 14 October team meeting did NOT finalise the team or
-project name, and no confirmed decision is recorded in this repository. Retained
-teammate scratch note (for human review, delete or replace before submission):
-"something more academic etc — a purpose vote check / claim checking with purpose".
-HUMAN DECISION REQUIRED. -->
-
 **Subtitle:** Evidence Traceability and Failure Anatomy in Multilingual Document-Grounded NLI over Swiss Voting Booklets
 
 - **Track:** Track 2A — OST: Multilingual Document-Grounded NLI over Swiss Official Voting Booklets
@@ -13,15 +7,17 @@ HUMAN DECISION REQUIRED. -->
 - **Team:** *not finalised — placeholder pending team confirmation (three members; no member has confirmed a public team name or member list).*
 - **Demo:** [The Courage to Be Wrong — interactive research demo](docs/experience/courage-to-be-wrong/README.md), located at `docs/experience/courage-to-be-wrong/` (open `index.html` in a browser). This is a **recorded-results interactive research demonstration**, not a live Apertus inference service: no model, no server, no network. No public hosting URL exists.
 
-*Status: submission draft, 14 October 2026. All results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
+*All research results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
 
 ## 1. Summary
 
+The practical objective is valid three-way NLI, evaluated primarily by held-out **Macro-F1**. In the 54-case development comparison, errors included in the denominators, dense-v1 scored 0.652 Macro-F1 and vote-aware-v1 0.491. The unchanged vote-aware gate remains a scoring risk, especially for neutral; accepted-only accuracy is not the submission metric. The selected runtime is external official Apertus v1.5 70B on CSCS, requiring an authorised key. See [release validation](docs/RELEASE_CANDIDATE_20261014.md).
+
 **The problem and the approach.** Swiss direct democracy asks citizens to adjudicate complex referenda — often several questions on one voting day — from official booklets that are multilingual (DE/FR/IT), structurally repetitive, and place supporting and opposing arguments in the same document. Martin et al. (2024) identify this setting as a high-stakes domain for LLM-based retrieval-augmented generation and frame the civic risk as erosion of the shared epistemic ground on which democratic deliberation depends. VoteLens is a document-grounded NLI diagnostic built for that setting: given a booklet (or a supplied reference) and a claim, it retrieves up to five within-booklet passages, asks an Apertus v1.5 model to judge the claim as entailment, neutral or contradiction, and validates the model's JSON answer — vote identity, citation occurrence, output schema — before returning it.
 
-**Headline finding — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
+**Recorded research finding (headline subject to team review) — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
 
-This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, **not** the official 8B submission target; results do not transfer to 8B without testing.
+This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, the selected official 70B submission model; these development results are not held-out scores.
 
 **Supporting findings (secondary, not equal in weight to the headline).**
 
@@ -52,9 +48,9 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 
 ## 3. Use of Apertus
 
-- **Official submission target:** `swiss-ai/Apertus-v1.5-8B` (inference only), addressed via the standard `LLM_NAME` / `LLM_BASE_URL` / `LLM_API_KEY` environment variables against an externally provisioned endpoint, or via the optional managed vLLM service. **NOT TESTED end-to-end with official 8B weights** — configuration is verified statically only (see §7).
+- **Official submission target:** `swiss-ai/Apertus-v1.5-70B` via CSCS, using `LLM_NAME` / `LLM_BASE_URL` / `LLM_API_KEY` (or `CSCS_INFERENCE_API_KEY`). Real Docker Beginner and Advanced smokes passed; credentials and network remain external requirements. Managed official 8B is an untested alternative.
 - **Third-party quantised 8B MLX diagnostics:** `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit` (revision `9a3c32df`, 6-bit affine quantisation, 81,920-token context), served locally by `mlx_lm.server` on Apple Silicon. Used for the full-booklet comparison, retrieval ablation and evidence-sensitivity diagnostic. Its quantisation and serving behaviour differ from the submission target; its numbers are diagnostics, not submission evidence.
-- **70B CSCS exploratory development:** `swiss-ai/Apertus-v1.5-70B` via the CSCS inference API. Used for the 54-case paired comparison (the headline result), the n=1 Advanced Docker smoke and the 27-example prompt-only pilot. Neither performance nor response patterns should be assumed to transfer to the 8B target.
+- **70B CSCS exploratory development:** `swiss-ai/Apertus-v1.5-70B` via the CSCS inference API. Used for the 54-case paired comparison (the headline result), the n=1 Advanced Docker smoke and the 27-example prompt-only pilot. Neither performance nor response patterns should be assumed to transfer to an untested official 8B deployment.
 
 **Decoding and prompts.** All experiments used temperature 0, a 512-token output allowance and strict JSON parsing; failed or invalid outputs remain in denominators. Managed and native arms pass seed 20261011; the CSCS path uses standard OpenAI-compatible fields and does not send the vLLM-specific thinking control or seed. The production prompt is `current_v1`; a 27-example prompt-only pilot on 70B found no accuracy gain from the refined prompt (23/27 both arms, 18.8% more input tokens), so no prompt change was promoted. Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser — format normalisation, not semantic interpretation; unparseable outputs remain errors.
 
@@ -63,7 +59,7 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 - **Evaluation set.** HackApertus-provided MNLI-over-Swiss-Voting-Booklets v1.1 (1,488 items; 60-item dev split), fetched by `fetch_eval_data.py` into git-ignored `data/eval/`. Twenty-four of the 60 dev rows duplicate claim/reference/label triples in the 1,428-row complement (25 share claims, 46 share references); the complement is **not** held out. All development samples used in §5 are drawn from this historically exposed corpus and are exploratory evidence, not unbiased generalisation estimates.
 - **Booklet PDF corpus.** Sixty booklet PDFs discovered via the eval set's `booklet_url` field, text-extracted into a 16,618-passage corpus (`data/booklets/corpus.json`, git-ignored, rebuilt by `make fetch-booklets`). 1,470/1,488 (98.8%) gold evidence strings locate inside it; the 18 that do not are mostly FR/IT reference strings that match neither verbatim nor by shingle coverage — the two spot-checked are not verbatim booklet text at all, probably labelling artefacts (unresolved).
 - **Exposure.** Every case used in §5 was previously inspected during development, and the 15-case sensitivity diagnostic was selected *post hoc* after observing failures, with curated evidence designed with knowledge of claims and gold labels.
-- **Licensing constraints.** No full booklet text, PDF or long verbatim source block is redistributed in `docs/` or in the demo; short per-case strings in the demo are model outputs or <25-word quotations, marked and provenance-stamped there. Third-party code and source-data licences (Swiss federation booklet texts, Hugging Face model cards, SentenceSwissBERT) require final review before publication — no redistribution permission is claimed here beyond what has been verified.
+- **Licensing constraints.** Original PDFs and model weights are not distributed. Existing evidence plans contain source excerpts; the demo shows short source/model-output strings with provenance. These external materials are not relicensed by the project. Third-party code and source-data licences (Swiss federation booklet texts, Hugging Face model cards, SentenceSwissBERT) require final review before publication — no redistribution permission is claimed here beyond what has been verified.
 - **Personal data.** None: the pipeline processes official publications and synthetic or published evaluation claims; no human-subject data or personal information is stored.
 
 ## 5. Evaluation
@@ -130,7 +126,7 @@ C→D produced three regressions (rows 1026, 1344, 189) with identical passage m
 ## 6. Limitations
 
 - **Exposure and selection.** All measurements are single runs on exposed development data; the 54- and 15-case samples were drawn after failures were observed; curated evidence was designed with knowledge of claims and gold labels. None of the samples supports unbiased generalisation estimates.
-- **Wrong target model.** The headline comparison uses 70B, not the 8B submission target. Nothing here validates 8B behaviour.
+- **Model transfer limits.** The headline comparison uses 70B, the selected 70B submission model. Nothing here validates 8B behaviour.
 - **Confounding.** The paired comparison changes retrieval, prompt, schema, identity gate and citation mechanism simultaneously; no factor is separable, and no causal attribution (including to the identity gate) follows.
 - **Metric non-comparability.** Denominators and x-axis metrics differ across panels (completion coverage, citation rate, valid-output coverage); Figure 2 deliberately shows only the two points that share one denominator. The McNemar result is underpowered at n = 54.
 - **No human semantic adjudication.** Due to the limited duration of the hackathon, independent human semantic adjudication was not undertaken. A blind annotation protocol (BlindAdjudicationProbe) is specified in the long-form technical reference (`docs/TECHNICAL_REPORT_LONG.md` §9.1, item 4) and a review-ready export format exists, but no functioning blind export interface is operational, no human annotations exist, and no inter-annotator agreement figures exist. Semantic evidence sufficiency (L2) remains independently unverified; error attributions are exploratory post-hoc analyses, not validated classifications.
@@ -149,13 +145,13 @@ Three open research questions organise future attribution work (not established 
 | Missing raw records | `data/experiments/` and `data/eval/` are git-ignored and not distributed; `fetch_eval_data.py` downloads the dataset only, not model predictions. In a clean checkout the demo shows static `facts.json` values and its guard reports NOT RE-VERIFIED IN THIS BUILD. |
 | 70B paired development | Requires a CSCS API key; not reproducible offline. |
 | MLX 8B diagnostics | Requires Apple Silicon + the cached third-party 6-bit conversion; not the submission target. |
-| Official 8B submission | Configured but **untested** end-to-end (`make run` default path against a provisioned v1.5 endpoint). |
+| Official 70B submission | CSCS external Docker smokes verified; see [release record](docs/RELEASE_CANDIDATE_20261014.md). Not self-contained. |
 
 Reproduction starts with `docs/RUNNING.md`; the demo README documents local opening and re-verification. Development evidence was produced on branch `feature/votelens-research-positioning` (base commit `f424b36`) on Apple Silicon macOS; see §6 for the absence of variance control.
 
 ## 8. Next steps
 
-All items below are **designed, not executed** (details in `docs/TECHNICAL_REPORT_LONG.md` §9.1): (1) oracle-evidence control; (2) evidence-order ablation with repeated controls to test the §5.3 placement observation; (3) `StanceAttributionChallenge` for L3 speaker attribution; (4) `BlindAdjudicationProbe` for independent human semantic adjudication. Before promoting any retrieval or validation policy: replay the 29 rejected records offline with per-case identity/sufficiency/citation adjudication independent of the generating model — a deterministic replay cannot establish how the model would answer a prompt it never received. Beyond the research line: one clean-checkout `make run` with official `swiss-ai/Apertus-v1.5-8B` weights on an NVIDIA Docker host, and a Windows/Linux portability matrix, are the minimum steps to move the deployment claims beyond NOT TESTED.
+All items below are **designed, not executed** (details in `docs/TECHNICAL_REPORT_LONG.md` §9.1): (1) oracle-evidence control; (2) evidence-order ablation with repeated controls to test the §5.3 placement observation; (3) `StanceAttributionChallenge` for L3 speaker attribution; (4) `BlindAdjudicationProbe` for independent human semantic adjudication. Before promoting any retrieval or validation policy: replay the 29 rejected records offline with per-case identity/sufficiency/citation adjudication independent of the generating model — a deterministic replay cannot establish how the model would answer a prompt it never received. Beyond the research line: confirm judge credentials for the selected CSCS 70B endpoint, validate a fully cold Advanced run and extend the portability matrix. Managed 8B remains an optional untested alternative.
 
 ## AI Assistance Declaration
 
@@ -163,7 +159,7 @@ Generative AI was used **substantially** in this project: Qwen-based coding agen
 
 ## License
 
-Report text: Creative Commons Attribution 4.0 (CC-BY-4.0), following the official HackApertus template ("All HackApertus projects are open-sourced"). Repository code and third-party source-data licensing are under separate final review (§4); no permissions beyond those verified are claimed.
+Report text: Creative Commons Attribution 4.0 (CC-BY-4.0), following the official HackApertus template ("All HackApertus projects are open-sourced"). Team-authored code is Apache-2.0 under the root LICENSE. External data and models retain separate terms; see [third-party notices](../THIRD_PARTY_NOTICES.md). Existing excerpt permissions still require human review.
 
 ## References
 

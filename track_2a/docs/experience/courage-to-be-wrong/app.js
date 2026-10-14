@@ -226,9 +226,9 @@
     stage.appendChild(el("h2", { class: "layer-title", text: "2 · Evidence Sufficiency Lab" }));
     stage.appendChild(el("p", { class: "layer-sub",
       text: "One claim, four evidence configurations. 'Sufficient' (B) is "
-          + "manually constructed for the case — a case-informed <em>upper bound</em>, "
+          + "manually constructed for the case — a case-informed upper bound, "
           + "not a retrievable oracle. C adds reviewed non-decisive distractors; D "
-          + "moves the sufficient block <em>behind</em> them, so C and D carry "
+          + "moves the sufficient block behind them, so C and D carry "
           + "identical facts and token counts. Default view shows all four. ← / → "
           + "change the case; press a letter key to toggle a configuration." }));
 

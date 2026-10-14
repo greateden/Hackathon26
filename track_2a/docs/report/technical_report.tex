@@ -32,14 +32,14 @@
 {\LARGE\bfseries VoteLens: The Courage to Be Wrong}\\[6pt]
 {\large Evidence Traceability and Failure Anatomy in Multilingual\\
 Document-Grounded NLI over Swiss Voting Booklets}\\[10pt]
-{\small Track 2A, OST \textbullet\ Submission draft, 14 October 2026 \textbullet\ Status: development evidence}
+{\small Track 2A, OST \textbullet\ 14 October 2026 \textbullet\ Exploratory development evidence}
 \end{center}
 
 \section*{Abstract}
 
 We present \votelens{}, a diagnostic system for document-grounded natural-language inference over official Swiss voting booklets. Given a booklet and a claim, the system retrieves page-grounded evidence, classifies entailment, neutral or contradiction using Apertus v1.5, and validates the model answer against an output contract (vote identity, citation occurrence, schema). Three observations drive this report; all are single-run analyses on \emph{exposed development data}, not held-out benchmarks.
 
-\textbf{(1) Headline --- coverage $\neq$ correctness.} A strict \texttt{vote-aware-v1} candidate achieved slightly higher raw-label accuracy (41/54 vs 40/54) yet dramatically lower valid-output coverage (25/54 vs 43/54). Of its 29 rejections, 18 were gold-correct; among 18 gold-neutral cases, none became a valid accepted output. Conditional accuracy among accepted answers was 23/25 = 92\% while overall strict correctness was 23/54 = 42.6\% (paired exact McNemar $p = 0.122$): \emph{an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones}. The 54-case comparison uses Apertus v1.5 70B, not the 8B submission target, and changes several pipeline components together --- it is not a single-factor causal experiment.
+\textbf{(1) Headline --- coverage $\neq$ correctness.} A strict \texttt{vote-aware-v1} candidate achieved slightly higher raw-label accuracy (41/54 vs 40/54) yet dramatically lower valid-output coverage (25/54 vs 43/54). Of its 29 rejections, 18 were gold-correct; among 18 gold-neutral cases, none became a valid accepted output. Conditional accuracy among accepted answers was 23/25 = 92\% while overall strict correctness was 23/54 = 42.6\% (paired exact McNemar $p = 0.122$): \emph{an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones}. The 54-case comparison uses Apertus v1.5 70B, the selected 70B submission model, and changes several pipeline components together --- it is not a single-factor causal experiment.
 
 \textbf{(2) Retrieval scope.} Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519, $n = 81$ paired cases) at 96.3\% fewer input tokens. On a separate frozen 81-case development sample, optimising a lexical reference-recall proxy did \emph{not} improve downstream NLI: dense retrieval scored 0.827 (macro-F1 0.824) but proposition reranking raised Recall@5 from 0.580 to 0.716 while accuracy fell to 0.790.
 
@@ -71,8 +71,8 @@ These are questions for future controlled tests, not established causal findings
 
 The application retrieves five 900-character passages from the specified booklet. The judge receives the claim, retrieved evidence and speaker-attribution instructions, and must output a JSON object with a label code (0~=~entailment, 1~=~neutral, 2~=~contradiction), cited passage IDs and source spans. The application validates vote identity, page-relative offsets and citation occurrence before rendering the official response. A citation is \emph{verified} only against supplied evidence; verification establishes textual provenance, not semantic support.
 
-The submission target is \texttt{swiss-ai/Apertus-v1.5-8B}. Local experiments use the third-party conversion\\
-\texttt{m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit} (revision 9a3c32df, 6-bit quantisation). The 54-case paired comparison uses \texttt{swiss-ai/Apertus-v1.5-70B} via CSCS; neither performance nor response patterns should be assumed to transfer to the 8B target without testing.
+The submission target is \texttt{swiss-ai/Apertus-v1.5-70B} via CSCS. Local experiments use the third-party conversion\\
+\texttt{m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit} (revision 9a3c32df, 6-bit quantisation). The 54-case paired comparison uses \texttt{swiss-ai/Apertus-v1.5-70B} via CSCS; its results do not establish official 8B performance.
 
 \subsection{Experiment design}
 
@@ -140,13 +140,13 @@ The immediate rejection mechanism is the identity gate. However, \emph{where} an
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.46\textwidth]{figure2_paired_54_outcomes.pdf}
+\includegraphics[width=0.60\textwidth]{figure2_paired_54_outcomes.pdf}
 \caption{Paired strict-correctness outcomes for the 54-case vote-aware comparison (Apertus v1.5 70B) --- the central figure. Four cells: both correct 14, dense-only correct 18, vote-aware-only correct 9, both incorrect 13. Exact McNemar $p = 0.122$.}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.50\textwidth]{figure3_paired_coverage.pdf}
+\includegraphics[width=0.60\textwidth]{figure3_paired_coverage.pdf}
 \caption{Valid-output coverage versus strict correctness for the 54-case paired comparison (one model, one denominator, shared axis transform). Two genuinely comparable points. Not a risk-coverage frontier; the gate was not calibrated and no direction of improvement is implied.}
 \end{figure}
 
@@ -172,7 +172,7 @@ C \textbullet{} prop.\ rerank & 0.790 & 0.784 & 0.716 & 44.4\% & 1{,}314 \\
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.58\textwidth]{figure1_recall_accuracy.pdf}
+\includegraphics[width=0.65\textwidth]{figure1_recall_accuracy.pdf}
 \caption{Reference Recall@5 versus NLI accuracy (81-case ablation). Source: \texttt{data/experiments/}\allowbreak\texttt{retrieval-ablation-v1/summary.json}.}
 \end{figure}
 
@@ -220,22 +220,24 @@ Following Turpin et~al.~(2023), we flag explanation--label inconsistencies (rows
 \paragraph{Selective classification.}
 The coverage collapse is not a calibrated reject-option system (Geifman and El-Yaniv, 2017). No risk--coverage curve was computed; no abstention threshold was calibrated.
 
-\paragraph{Methodological note on metric selection.}
-The paired comparison in \S3.1 illustrates the point emphasised by Hutiri et~al.~(2024): system-level conclusions are sensitive to the base metric, the choice between ratio-based and difference-based comparison, and the aggregation level. Our 92\% conditional accuracy on 25 accepted outputs versus 42.6\% strict accuracy on 54 total cases would support contradictory narratives about system reliability. We report all denominators explicitly and resist collapsing them into a single summary figure.
+\paragraph{Metric selection.}
+Hutiri et~al.~(2024) caution that metric choice changes conclusions. Our accepted-only accuracy excludes rejected cases; all denominators must remain visible.
 
 \paragraph{Statistical methodology.}
 Paired comparisons use exact McNemar/sign tests following Dietterich~(1998).
+
+The official primary metric is three-way held-out Macro-F1. The practical goal is valid NLI output; accepted-only accuracy is insufficient. Neutral rejection remains an unresolved scoring risk.
 
 \section{Limitations and Reproducibility}
 
 All measurements are single runs on exposed development data. Denominators differ across panels; $x$-axis metrics differ; Figure~2 presents only the two genuinely comparable points from the 54-case paired comparison.
 
-The 54-case comparison uses 70B, not the 8B submission target. Retrieval query, prompt, schema, identity gate and citation mechanism changed simultaneously --- no factor can be attributed independently.
+The 54-case comparison uses 70B, the selected 70B submission model. Retrieval query, prompt, schema, identity gate and citation mechanism changed simultaneously --- no factor can be attributed independently.
 
 The 15-case evidence diagnostic was selected post-hoc after observing failures. Curated evidence was designed with knowledge of claims and gold labels.
 
 \paragraph{Human annotation.}
-Due to the limited duration of the hackathon, independent human semantic adjudication was not undertaken. A blind annotation protocol (BlindAdjudicationProbe) is specified in the long-form technical reference (\S9.1, item 4) and a review-ready export format exists; however, no functioning blind export interface is currently operational, no human annotations have been collected, and no inter-annotator agreement figures exist. Semantic evidence sufficiency (L2) remains independently unverified. Error attributions remain exploratory post-hoc analyses, not validated classifications.
+No independent human semantic adjudication or inter-annotator agreement is available. A blind protocol exists in the long-form reference, but no operational blind interface or collected annotations exist. Semantic sufficiency remains unverified; error attribution is exploratory.
 
 A first exploratory annotation pass was AI-generated (Qwen-family assistant), a \emph{different model family} from the Apertus predictors but \textbf{not independent ground truth}.
 
@@ -251,7 +253,7 @@ Layer & Status \\
 Tracked source + evidence & \texttt{make test} (portable, no model/data needed). \texttt{docs/evidence/} supports SHA-256 byte-identity checks; \texttt{courage\_data.py} verifies provenance when local raw records exist (byte identity $\neq$ semantic verification). \\
 70B paired development & Requires CSCS API key; not reproducible offline. \\
 MLX 8B diagnostics & Requires Apple Silicon + cached model; not the submission target. \\
-Official 8B submission & Configured but \textbf{untested} end-to-end. \\
+Official 70B submission & External CSCS; authorised credentials required. See release smoke record. \\
 Git-ignored records & \texttt{data/experiments/}, \texttt{data/eval/} not distributed; \texttt{fetch\_eval\_data.py} downloads the dataset only, not model predictions. Single runs; no variance control. \\
 \bottomrule
 \end{tabular}
@@ -263,7 +265,7 @@ Reproduction starts with \texttt{docs/RUNNING.md}. The diagnostic at \texttt{doc
 
 Four controlled experiments are specified in the long-form reference (\S9.1) --- oracle-evidence control, evidence-order ablation with repeated controls, \texttt{StanceAttributionChallenge} and \texttt{BlindAdjudicationProbe} --- none has been executed.
 
-\votelens{} contributes a failure anatomy for document-grounded NLI over Swiss voting booklets. The headline evidence shows that output-contract validation can destroy coverage without improving correctness: 18 of the candidate's 29 rejected outputs were gold-correct, and 92\% conditional accuracy on accepted answers concealed 42.6\% strict correctness overall --- a system can look reliable when evaluated only on accepted answers while rejecting many otherwise correct ones. The supporting evidence shows that retrieval quality does not straightforwardly transfer to NLI quality and that metric selection determines whether the system appears reliable. None of these findings is a causal result; all require replication on the 8B target with independent semantic adjudication before deployment claims are warranted.
+\votelens{} contributes a failure anatomy for document-grounded NLI over Swiss voting booklets. The headline evidence shows that output-contract validation can destroy coverage without improving correctness: 18 of the candidate's 29 rejected outputs were gold-correct, and 92\% conditional accuracy on accepted answers concealed 42.6\% strict correctness overall --- a system can look reliable when evaluated only on accepted answers while rejecting many otherwise correct ones. The supporting evidence shows that retrieval quality does not straightforwardly transfer to NLI quality and that metric selection determines whether the system appears reliable. None of these findings is a causal result; all require held-out replication with independent semantic adjudication before deployment claims are warranted.
 
 \section*{AI Assistance Declaration}
 
@@ -271,7 +273,7 @@ Generative AI was used \textbf{substantially} in this project: Qwen-based coding
 
 \section*{License}
 
-Report: CC-BY-4.0. Repository code and source-data licensing require final review.
+Report: CC-BY-4.0. Team-authored code: Apache-2.0. External data and model terms remain separate; see the root licensing notices.
 
 \section*{References}
 

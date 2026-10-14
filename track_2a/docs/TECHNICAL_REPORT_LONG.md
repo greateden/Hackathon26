@@ -1,8 +1,6 @@
 # Retrieval quality and multilingual NLI over Swiss voting booklets
 
-**Track:** 2A, OST · **Event:** Online · **Status:** submission draft, 13
-October 2026. Team names and demo link remain to be supplied. This Markdown is
-not yet the final, at-most-six-page PDF.
+**Track:** 2A, OST · **Event:** Online · **Release reference:** 14 October 2026. Team names and hosted demo link await approval. This is the long-form reference; the six-page PDF is a separate artefact.
 
 ## TL;DR
 
@@ -31,7 +29,7 @@ fixed — a placement *observation* on single runs, not a proven positional caus
 multi-stage — retrieval *scope*, evidence *sufficiency*, *attribution*, and
 *output-contract* compliance — not one lever. **What this does not prove:** no
 generalisable accuracy gain, no method ready for production, no causal attribution
-of any single error, and nothing about the 8B submission target (the 54-case run
+of any single error, and nothing about an untested official 8B deployment (the 54-case run
 is 70B). Read the method section as *how we checked*, not as evidence that the
 system works.
 
@@ -39,7 +37,7 @@ system works.
 
 ### The coverage–accuracy picture (this is the evidence, not a method pitch)
 
-![Accuracy versus a coverage-style rate, five non-comparable points.](docs/figures/figure4_coverage_accuracy_frontier.svg)
+![Accuracy versus a coverage-style rate, five non-comparable points.](figures/figure4_coverage_accuracy_frontier.svg)
 
 **Figure 4. Accuracy vs a coverage-style rate, five points on three different
 axes.** These are *not* one comparable frontier and are deliberately not joined:
@@ -90,7 +88,7 @@ it is gated and offline, and **no number is claimed from it.**
 ### Limits on all of the above
 
 Different denominators per panel; single runs; exposed development data; the
-54-case comparison is **Apertus v1.5 70B, not the 8B target**; the evidence lab is
+54-case comparison is **Apertus v1.5 70B, not an untested official 8B deployment**; the evidence lab is
 a 15-case post-hoc sample with no independent adjudication; generated explanations
 are not assumed faithful to the decision process.
 
@@ -194,7 +192,7 @@ from the single runs reported here:
 
 ## 2. Model and experimental setting
 
-The submission target is `swiss-ai/Apertus-v1.5-8B`, inference only (Swiss AI
+The submission target is `swiss-ai/Apertus-v1.5-70B` via CSCS, inference only (Swiss AI
 Initiative, model card). The local experiments use the third-party conversion
 `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`, revision
 `9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e`, with 6-bit affine quantisation,
@@ -282,10 +280,10 @@ JSON and a source-grounded page-19 citation. The call reported 1,330 input and
 was accepted by the bounded deterministic recovery. The selected quotation
 begins mid-word (`aisons`) and includes trailing material, so this smoke exposes
 an evidence-boundary defect rather than showing that citation formatting is
-solved. The tracked [smoke record](docs/evidence/vote_aware_cscs_smoke_20261013.json)
+solved. The tracked [smoke record](evidence/vote_aware_cscs_smoke_20261013.json)
 contains metrics and hashes. Both smokes are deployment evidence, not accuracy
 estimates. Historical v1.1 results are retained in the
-[archive](docs/archive/README.md) and do not satisfy the present v1.5 target.
+[archive](archive/README.md) and do not satisfy the present v1.5 target.
 
 The historical audit reconstructed every saved prompt and matched PDF and text
 hashes. All nine 80K full-booklet replies were neutral, while all 13 replies
@@ -315,7 +313,7 @@ not be interpreted as evidence correctness.
 | B · hybrid RRF | 65/81 | 0.802 | 0.797 | 50/81 (0.617) | 0.741 | 0.877 | 40/81 (49.4%) | 1,326 |
 | C · proposition reranking | 64/81 | 0.790 | 0.784 | 58/81 (0.716) | 0.840 | 0.877 | 36/81 (44.4%) | 1,314 |
 
-![Grouped bars comparing reference Recall@5 and NLI accuracy across methods A, B and C.](docs/figures/figure1_recall_accuracy.svg)
+![Grouped bars comparing reference Recall@5 and NLI accuracy across methods A, B and C.](figures/figure1_recall_accuracy.svg)
 
 **Figure 1. Reference Recall@5 versus downstream NLI accuracy.** Percentages use
 the same 81 paired cases per method. Source: recorded `summary.json` and
@@ -340,13 +338,13 @@ The tests condition on discordant pairs and are underpowered because only
 8–11 pairs change. None supports a statistically significant difference, and
 the intervals include equal win/loss probability.
 
-![Stacked paired outcomes showing gains, losses and ties for A to B, A to C and B to C.](docs/figures/figure2_paired_outcomes.svg)
+![Stacked paired outcomes showing gains, losses and ties for A to B, A to C and B to C.](figures/figure2_paired_outcomes.svg)
 
 **Figure 2. Paired changes in classification correctness.** Each bar contains
 81 paired cases; a win or loss refers to the later method. Source:
 `paired_comparison.csv` and `summary.json` in the ablation directory.
 
-![Two-panel chart comparing verified citation rate and mean prompt tokens per case.](docs/figures/figure3_grounding_cost.svg)
+![Two-panel chart comparing verified citation rate and mean prompt tokens per case.](figures/figure3_grounding_cost.svg)
 
 **Figure 3. Grounding and input-cost trade-offs.** Citation rates and mean
 reported prompt tokens use 81 calls per method. Source: ablation `summary.json`;
@@ -357,7 +355,7 @@ totals were 98,387, 107,408 and 106,465 prompt tokens for A, B and C.
 A and C differ in correctness on 11 cases: C improves four and regresses seven.
 The complete passage-by-passage analysis, including ordered passage IDs,
 coverage, citation status and multilingual claims, appears in the
-[supplement](docs/RETRIEVAL_ABLATION_PAIRED_ANALYSIS.md). The categories below
+[supplement](RETRIEVAL_ABLATION_PAIRED_ANALYSIS.md). The categories below
 overlap and describe observed patterns rather than proven causes.
 
 | Outcome | Rows | Main observation |
@@ -432,11 +430,11 @@ counts come from raw completion usage and agree with the saved nested
 `token_latency` totals. The summary's flat token-total fields incorrectly contain
 zeros; those historical fields and the evaluation code were not rewritten.
 
-The [compact result and audit](docs/evidence/evidence_sensitivity_results_v2_20261012.json)
+The [compact result and audit](evidence/evidence_sensitivity_results_v2_20261012.json)
 contains all 60 predictions, response text, usage, paired changes and original
 file hashes. Exact evidence, page offsets and PDF provenance are in the
-[frozen plan](docs/evidence/evidence_sensitivity_plan_v2_20261012.json), with
-[review decisions](docs/evidence/evidence_sensitivity_annotations_v2_20261012.json).
+[frozen plan](evidence/evidence_sensitivity_plan_v2_20261012.json), with
+[review decisions](evidence/evidence_sensitivity_annotations_v2_20261012.json).
 Original manifest, events, predictions and summaries remain under
 `data/experiments/evidence-sensitivity-v2/`.
 
@@ -578,9 +576,9 @@ This is a small exploratory development evaluation with correlated examples,
 shared PDFs, previously exposed data and multiple simultaneous pipeline changes.
 The 54-case remote comparison uses Apertus v1.5 70B; neither its measured
 performance nor its particular vote-status response patterns should be assumed
-to transfer to the 8B submission target without testing. It has no independent
+to transfer to an untested official 8B deployment without testing. It has no independent
 citation-sufficiency annotations. The compact tracked
-[result audit](docs/evidence/vote_aware_paired_results_20261013.json) records
+[result audit](evidence/vote_aware_paired_results_20261013.json) records
 definitions, counts, source hashes and representative cases; raw plans,
 manifests, predictions and summaries remain ignored under
 `data/experiments/vote-aware-paired-v2/`.
@@ -672,7 +670,7 @@ variance are not isolated. Extraction may lose layout or image-only content.
 Managed Apertus 8B startup, a clean cold submission build, Linux/Windows
 execution and cross-platform determinism remain unverified. The deployed 70B
 endpoint's returned model name does not cryptographically prove the served
-weights, and the 70B observations are not measurements of the submission 8B.
+weights, and the 70B observations are not measurements of official 8B.
 The SentenceSwissBERT model card specifies a CC BY-NC 4.0 licence and documents
 news-domain training; licence compatibility with any intended redistribution
 and cross-domain generalisation to legal voting booklets require separate review.
@@ -710,7 +708,7 @@ Apple Silicon macOS with 128 GiB RAM, mlx-lm 0.32.0, mlx 0.32.3, Transformers
 The warning provenance is `data/logs/v15_first_real_20261011_1839/server.log`;
 the model and experiment settings are recorded in the manifests.
 
-Reproduction starts with [docs/RUNNING.md](docs/RUNNING.md). The ablation's
+Reproduction starts with [docs/RUNNING.md](RUNNING.md). The ablation's
 append-only records—manifest, preflight, events, predictions, summary, paired
 comparison, retrieval audit and error analysis—are under
 `data/experiments/retrieval-ablation-v1/`. No inference was rerun for this
@@ -809,7 +807,7 @@ production prompt, retrieval, validation policy, or the submission response sche
 ## License
 
 Report: Creative Commons Attribution 4.0 (CC-BY-4.0), following the template.
-Repository code and source-data licensing require final review.
+Team-authored code: Apache-2.0. External data and model terms remain separate; see THIRD_PARTY_NOTICES.md.
 
 ## References
 
@@ -864,4 +862,4 @@ Repository code and source-data licensing require final review.
 16. [Official HackApertus project template](https://github.com/HackApertus/project-template).
 17. [OST Track 2A challenge page](https://hackapertus.notion.site/track-2a-ost).
 18. Internal experimental provenance is linked in the relevant sections and
-    indexed in [docs/evidence/README.md](docs/evidence/README.md).
+    indexed in [docs/evidence/README.md](evidence/README.md).
