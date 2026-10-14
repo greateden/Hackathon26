@@ -100,17 +100,26 @@ class CandidateResultGateTests(unittest.TestCase):
         self.assertIsNone(out["label"])
         self.assertIn("vote_ambiguous", out.get("error", ""))
 
-    def test_05_wrong_vote_evidence_rejects(self):
-        """Case 5: vote_reference points to wrong passage → rejection via
-        submission_output recheck."""
+    def test_05_wrong_topic_evidence_not_rejected_by_mechanical_gate(self):
+        """Case 5: topically unrelated evidence whose cited offsets still occur
+        in the supplied text is NOT rejected; the gate checks mechanical
+        provenance only.
+
+        This documents observed behaviour, not an endorsement: a mechanically
+        valid citation may still be semantically wrong (wrong-topic passage).
+        Semantic topic/sufficiency adjudication is outside the output-contract
+        gate's scope (see the module docstring and the L2 taxonomy layer);
+        adding a semantic check would be a research change, not a bug fix.
+        """
         # A valid result but where vote_reference is not actually about the right vote
         result = make_result(label="entailment", label_code=0,
                              evidence_status="sufficient",
                              evidence_refs=[{"passage_id": "e1", "start": 0, "end": 50}])
         selected = make_selected("completely unrelated text that has nothing to do with the vote")
         out = app.candidate_result(result, selected, vote="SomeReferendum")
-        # The gate resolves references; this tests that wrong text still produces a result
-        # (the semantic correctness is outside the mechanical gate scope)
+        # The gate resolves references; this documents that wrong-topic text with
+        # valid offsets still produces a result (semantic correctness is outside
+        # the mechanical gate scope).
         self.assertIsNotNone(out["label"])
 
     def test_06_missing_vote_reference_rejects(self):

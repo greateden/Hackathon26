@@ -1,113 +1,78 @@
-# VoteLens: The Courage to Be Wrong
+# Technical report — VoteLens: The Courage to Be Wrong
+
+<!-- Working title only: the 14 October team meeting did NOT finalise the team or
+project name, and no confirmed decision is recorded in this repository. Retained
+teammate scratch note (for human review, delete or replace before submission):
+"something more academic etc — a purpose vote check / claim checking with purpose".
+HUMAN DECISION REQUIRED. -->
 
 **Subtitle:** Evidence Traceability and Failure Anatomy in Multilingual Document-Grounded NLI over Swiss Voting Booklets
 
-**Track:** 2A, OST · **Status:** submission draft, 14 October 2026.
+- **Track:** Track 2A — OST: Multilingual Document-Grounded NLI over Swiss Official Voting Booklets
+- **Event:** HackApertus (online)
+- **Team:** *not finalised — placeholder pending team confirmation (three members; no member has confirmed a public team name or member list).*
+- **Demo:** [The Courage to Be Wrong — interactive research demo](docs/experience/courage-to-be-wrong/README.md), located at `docs/experience/courage-to-be-wrong/` (open `index.html` in a browser). This is a **recorded-results interactive research demonstration**, not a live Apertus inference service: no model, no server, no network. No public hosting URL exists.
 
-## Abstract
+*Status: submission draft, 14 October 2026. All results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
 
-We present VOTELENS, a diagnostic system for document-grounded natural-language inference over official Swiss voting booklets. Given a booklet and a claim, the system retrieves page-grounded evidence and classifies entailment, neutral or contradiction using Apertus v1.5. Three observations drive this report; all are single-run analyses on *exposed development data*, not held-out benchmarks.
+## 1. Summary
 
-**(1) Retrieval scope.** Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519, n = 81 paired cases) at 96.3% fewer input tokens. On a separate frozen 81-case development sample, optimising a lexical reference-recall proxy did *not* improve downstream NLI: dense retrieval scored 0.827 (macro-F1 0.824) but proposition reranking raised Recall@5 from 0.580 to 0.716 while accuracy fell to 0.790.
+**The problem and the approach.** Swiss direct democracy asks citizens to adjudicate complex referenda — often several questions on one voting day — from official booklets that are multilingual (DE/FR/IT), structurally repetitive, and place supporting and opposing arguments in the same document. Martin et al. (2024) identify this setting as a high-stakes domain for LLM-based retrieval-augmented generation and frame the civic risk as erosion of the shared epistemic ground on which democratic deliberation depends. VoteLens is a document-grounded NLI diagnostic built for that setting: given a booklet (or a supplied reference) and a claim, it retrieves up to five within-booklet passages, asks an Apertus v1.5 model to judge the claim as entailment, neutral or contradiction, and validates the model's JSON answer — vote identity, citation occurrence, output schema — before returning it.
 
-**(2) Coverage ≠ correctness.** A strict `vote-aware-v1` candidate achieved slightly higher raw-label accuracy (41/54 vs 40/54) yet dramatically lower valid-output coverage (25/54 vs 43/54). Of its 29 rejections, 18 were gold-correct. It rejected every gold-neutral case. Higher conditional accuracy among accepted answers does not imply higher overall strict correctness.
+**Headline finding — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
 
-**(3) Placement observation.** In a 15-case diagnostic, moving the same decisive evidence behind distractors — identical input-token counts — produced three label regressions. These are single-run observations motivating a controlled ordering experiment; they do not establish a positional cause.
+This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, **not** the official 8B submission target; results do not transfer to 8B without testing.
 
-All three are exploratory development evidence. The 54-case comparison uses Apertus v1.5 70B, not the 8B submission target. No causal attribution of any single error follows from these data.
+**Supporting findings (secondary, not equal in weight to the headline).**
 
-## 1. Introduction
+- **A · Evidence scope.** Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519 on 81 paired development cases) at 96.3% fewer input tokens.
+- **B · Retrieval ablation.** On a separate frozen 81-case development sample, higher Recall@5 did *not* imply higher downstream NLI accuracy: proposition reranking raised R@5 from 0.580 to 0.716 while accuracy fell from 0.827 to 0.790.
+- **C · Evidence placement.** A 15-case diagnostic found three label regressions when the same decisive evidence was moved behind distractors at identical input-token counts — an exploratory observation that suggests possible positional sensitivity, without causal proof.
 
-Swiss direct democracy places exceptional demands on evidence reliability. Citizens must adjudicate complex referenda — often multiple questions on one voting day — using official booklets that are multilingual (DE/FR/IT), structurally repetitive, and frequently place supporting and opposing arguments in the same document. Martin et al. (2024) identify precisely this setting as a high-stakes domain for LLM-based retrieval-augmented generation and frame the civic risk as potential *erosion of shared epistemic ground* upon which democratic deliberation depends. Their position paper motivates semantic verification frameworks that validate the factual content of LLM-generated summaries before they reach voters, proposing knowledge-graph-assisted cross-checking as a possible architecture.
+## 2. Architecture
 
-VOTELENS addresses a narrower but adjacent question: given that a judge model *has* produced a label and a cited passage, can we trace whether the cited evidence textually occurs in the supplied booklet (mechanical provenance), and what failure modes arise at the interface between retrieval and judgement? We do not implement the knowledge-graph verification layer of Martin et al. (2024); our development experiments expose a concrete gap between output-contract validation (citation string matching) and semantic evidence sufficiency (whether a passage *establishes* a claim), which their framework would need to resolve before deployment.
+**Production data flow (submission path, `src/booklet_app.py`).**
 
-Because booklets are per-language editions of one vote day, the case analyses in §3 suggest distinct proposal-scope and stakeholder-attribution failure modes rather than simple topic-matching errors: the system may find topically related material from a *different* proposal, or correctly extract the right proposition but credit it to the wrong institutional voice. These are post-hoc attributions from paired error inspection, not statistical clustering.
+1. **Input.** Two official request shapes: *Beginner* supplies a reference passage and claim directly; *Advanced* supplies a booklet PDF path, a vote name and a claim. Booklet language is detected as DE/FR/IT; the claim may be in any of those languages. Gold references and labels never enter extraction, ranking or judgement.
+2. **Extraction.** Poppler extracts text with physical page boundaries (Advanced only; no silent truncation).
+3. **Retrieval.** The *supplied booklet only* is chunked into 900-character passages; Top-5 are selected by SentenceSwissBERT mean-pooled cosine similarity (Vamvas et al., 2023; SimCSE-derived procedure per Gao et al., 2021), with query and passage adapters using the booklet language. There is no global cross-booklet search on the submission path.
+4. **Apertus inference.** The judge receives the claim, retrieved evidence and speaker-attribution instructions, and must return a JSON object with a label code (0 = entailment, 1 = neutral, 2 = contradiction), cited passage IDs and source spans, and a vote-status field.
+5. **Output validation.** Before rendering, the application validates vote identity, page-relative offsets, citation occurrence and schema consistency. Invalid, ungrounded or incomplete results exit non-zero — no lexical fallback, no silently defaulted neutral.
 
-The submission CLI accepts a specified booklet and claim, returns entailment/neutral/contradiction with page-grounded citations. Poppler extracts physical pages; retrieval chunks the supplied booklet and retrieves Top-5 passages using SentenceSwissBERT mean-pooled cosine similarity (Vamvas et al., 2023; SimCSE-derived contrastive procedure per Gao et al., 2021). Both query and passage adapters use the booklet language. The system checks that quoted citations occur in the supplied evidence (a mechanical provenance check, *not* a semantic-support judgment). Gold references and labels never enter extraction, ranking or judgement.
-
-Three open research questions organise the attribution analysis:
-
-- **RQ1.** Can a model distinguish uncertainty about a referendum's identity from insufficient evidence for a claim?
-- **RQ2.** Does independent vote grounding reduce invalid outputs without sacrificing evidence provenance?
-- **RQ3.** How much of the observed failure is attributable to retrieval scope, NLI reasoning, and output-contract compliance?
-
-These are questions for future controlled tests, not established causal findings from the single runs reported here.
-
-## 2. Method
-
-### 2.1 Pipeline
-
-The application retrieves five 900-character passages from the specified booklet. The judge receives the claim, retrieved evidence and speaker-attribution instructions, and must output a JSON object with a label code (0 = entailment, 1 = neutral, 2 = contradiction), cited passage IDs and source spans. The application validates vote identity, page-relative offsets and citation occurrence before rendering the official response. A citation is *verified* only against supplied evidence; verification establishes textual provenance, not semantic support.
-
-The submission target is `swiss-ai/Apertus-v1.5-8B` (inference). Local experiments use the third-party conversion `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit` (revision `9a3c32df`, 6-bit affine quantisation, 81,920-token context). The 54-case paired comparison uses `swiss-ai/Apertus-v1.5-70B` via CSCS; neither the measured performance nor the response patterns should be assumed to transfer to the 8B target without testing.
-
-### 2.2 Experiment design
-
-Five studies are reported; none constitutes an independent held-out benchmark. All data were previously inspected during development.
-
-| Study | n | Model | Purpose |
-|---|---|---|---|
-| Full-booklet vs retrieval | 81 | 8B MLX | Evidence scope |
-| Oracle diagnostic | 19 | 8B MLX | Judgement under gold evidence |
-| Retrieval ablation (3 arms) | 81 | 8B MLX | Ranker effect on NLI |
-| Evidence sensitivity (4 conditions) | 15 | 8B MLX | Placement and sufficiency |
-| Vote-aware paired | 54 | 70B CSCS | Complete-system comparison |
-
-All experiments used temperature 0, 512-token output allowance, strict JSON parsing, and failed/invalid outputs remain in denominators (never silently converted to neutral or defaulted).
-
-**Metric definitions.** Four distinct measures appear in the results:
-
-- **Raw-label accuracy**: the model's recognised label (parsed from JSON or plain text) matches the gold label, whether or not the output contract would accept the response. In the retrieval ablation (§3.1), some correct raw labels failed citation verification yet still contribute to this measure.
-- **Strict correctness** (Table 3.2): correct label AND accepted official response (passed the identity gate and citation gate).
-- **Valid-output coverage**: fraction of cases satisfying the full output contract; rejects and endpoint failures count against coverage.
-- **Citation verified**: mechanical source-string occurrence — the quoted evidence snippet or selected passage span is found verbatim in the supplied booklet. This is a provenance check, not semantic support.
-
-The retrieval ablation (§3.1) reports raw-label accuracy. The paired comparison (§3.2) distinguishes raw-label accuracy, strict correctness and valid-output coverage. The 15-case sensitivity diagnostic (§3.3) contains only entailment and contradiction gold labels; its macro-F1 is averaged over those two classes and is not directly comparable with the three-class macro-F1 used elsewhere.
-
-Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser; this is format normalisation, not semantic interpretation. Unparseable outputs remain errors.
-
-### 2.3 Failure taxonomy
-
-Failures are assigned to the earliest independently measurable stage:
+**Three separable stages.** Retrieval *selects* evidence; Apertus *judges* the claim; output validation *checks contract compliance*. A citation is "verified" only in the mechanical sense that the quoted string occurs in the supplied evidence — textual provenance, **not** semantic support. The observed failures do not decompose along stage boundaries; the diagnostic frame used in §5 assigns each failure to the earliest independently measurable layer:
 
 - **L1 Retrieval scope** — evidence left the named vote, or the decisive proposition was displaced by the ranker.
 - **L2 Semantic sufficiency** — evidence is relevant but does not *establish* the claim. *No independent annotation of this layer exists yet.*
 - **L3 Speaker attribution** — the right proposition, credited to the wrong stakeholder.
 - **L4 Output contract** — a correct raw label rejected by the identity/citation gate.
 
-Two distinctions maintained throughout: **output-validation failure ≠ reasoning failure**, and **evidence supported ≠ evidence sufficient**.
+Two distinctions are maintained throughout: **output-validation failure ≠ reasoning failure**, and **evidence supported ≠ evidence sufficient**.
 
-## 3. Results
+**Where each component runs.** Retrieval and validation run in a CPU-only Docker container (or natively with `python3`); the model runs at an external OpenAI-compatible endpoint (default `make run`) or in an optional managed vLLM service. Apple Silicon MLX serving is a development-only path and is never part of the submission image.
 
-### 3.1 Retrieval ablation
+## 3. Use of Apertus
 
-Three arms compared on 81 frozen development cases (27 per NLI label, 9 per DE/FR/IT language-pair combination). Method A: dense SentenceSwissBERT. B: dense + BM25 with reciprocal rank fusion (Cormack et al., 2009). C: B followed by proposition-aware reranking. All 243 calls completed without errors.
+- **Official submission target:** `swiss-ai/Apertus-v1.5-8B` (inference only), addressed via the standard `LLM_NAME` / `LLM_BASE_URL` / `LLM_API_KEY` environment variables against an externally provisioned endpoint, or via the optional managed vLLM service. **NOT TESTED end-to-end with official 8B weights** — configuration is verified statically only (see §7).
+- **Third-party quantised 8B MLX diagnostics:** `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit` (revision `9a3c32df`, 6-bit affine quantisation, 81,920-token context), served locally by `mlx_lm.server` on Apple Silicon. Used for the full-booklet comparison, retrieval ablation and evidence-sensitivity diagnostic. Its quantisation and serving behaviour differ from the submission target; its numbers are diagnostics, not submission evidence.
+- **70B CSCS exploratory development:** `swiss-ai/Apertus-v1.5-70B` via the CSCS inference API. Used for the 54-case paired comparison (the headline result), the n=1 Advanced Docker smoke and the 27-example prompt-only pilot. Neither performance nor response patterns should be assumed to transfer to the 8B target.
 
-| Method | Accuracy | Macro-F1 | R@5 | Citation verified | Mean tokens |
-|---|---:|---:|---:|---:|---:|
-| A · dense SentenceSwissBERT | 0.827 | 0.824 | 0.580 | 51.9% | 1,215 |
-| B · hybrid RRF | 0.802 | 0.797 | 0.617 | 49.4% | 1,326 |
-| C · proposition reranking | 0.790 | 0.784 | 0.716 | 44.4% | 1,314 |
+**Decoding and prompts.** All experiments used temperature 0, a 512-token output allowance and strict JSON parsing; failed or invalid outputs remain in denominators. Managed and native arms pass seed 20261011; the CSCS path uses standard OpenAI-compatible fields and does not send the vLLM-specific thinking control or seed. The production prompt is `current_v1`; a 27-example prompt-only pilot on 70B found no accuracy gain from the refined prompt (23/27 both arms, 18.8% more input tokens), so no prompt change was promoted. Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser — format normalisation, not semantic interpretation; unparseable outputs remain errors.
 
-**Key observation:** C increased R@5 by 11/81 cases yet produced three fewer correct labels. The original RRF work evaluated retrieval ranking effectiveness (Cormack et al., 2009); its reported gains do not imply improvements in our separate downstream NLI objective.
+## 4. Data
 
-Paired comparisons (81 cases per transition):
+- **Evaluation set.** HackApertus-provided MNLI-over-Swiss-Voting-Booklets v1.1 (1,488 items; 60-item dev split), fetched by `fetch_eval_data.py` into git-ignored `data/eval/`. Twenty-four of the 60 dev rows duplicate claim/reference/label triples in the 1,428-row complement (25 share claims, 46 share references); the complement is **not** held out. All development samples used in §5 are drawn from this historically exposed corpus and are exploratory evidence, not unbiased generalisation estimates.
+- **Booklet PDF corpus.** Sixty booklet PDFs discovered via the eval set's `booklet_url` field, text-extracted into a 16,618-passage corpus (`data/booklets/corpus.json`, git-ignored, rebuilt by `make fetch-booklets`). 1,470/1,488 (98.8%) gold evidence strings locate inside it; the 18 that do not are mostly FR/IT reference strings that match neither verbatim nor by shingle coverage — the two spot-checked are not verbatim booklet text at all, probably labelling artefacts (unresolved).
+- **Exposure.** Every case used in §5 was previously inspected during development, and the 15-case sensitivity diagnostic was selected *post hoc* after observing failures, with curated evidence designed with knowledge of claims and gold labels.
+- **Licensing constraints.** No full booklet text, PDF or long verbatim source block is redistributed in `docs/` or in the demo; short per-case strings in the demo are model outputs or <25-word quotations, marked and provenance-stamped there. Third-party code and source-data licences (Swiss federation booklet texts, Hugging Face model cards, SentenceSwissBERT) require final review before publication — no redistribution permission is claimed here beyond what has been verified.
+- **Personal data.** None: the pipeline processes official publications and synthetic or published evaluation claims; no human-subject data or personal information is stored.
 
-| Transition | Wins | Losses | Ties | Sign test |
-|---|---:|---:|---:|---:|
-| A→B | 3 | 5 | 73 | p=0.727 |
-| A→C | 4 | 7 | 70 | p=0.549 |
+## 5. Evaluation
 
-The tests condition on discordant pairs only (8–11 pairs change) and are underpowered. None supports a statistically significant difference.
+**Metrics and denominators.** Four distinct measures appear below: *raw-label accuracy* (the model's recognised label matches gold, whether or not the output contract would accept the response); *strict correctness* (correct label AND accepted official response); *valid-output coverage* (fraction of cases satisfying the full output contract; rejects and endpoint failures count against coverage); *citation verified* (mechanical source-string occurrence, not semantic support). Failed or unparseable outputs are recorded as errors (`pred = None`), never defaulted to neutral. The 15-case sensitivity panel contains only entailment and contradiction gold labels, so its macro-F1 averages over two classes and is not comparable with three-class figures elsewhere.
 
-![Recall vs accuracy across methods.](docs/figures/figure1_recall_accuracy.svg)
+### 5.1 Headline: the 54-case paired coverage result
 
-**Figure 1.** Reference Recall@5 versus NLI accuracy. Source: `data/experiments/retrieval-ablation-v1/summary.json`.
-
-### 3.2 Paired vote-aware comparison (the coverage result)
-
-54 paired cases on CSCS Apertus v1.5 70B. Two examples per language-pair × gold-label cell, alternating AB/BA order, 108 accounted calls. This is a complete-system comparison (retrieval query, prompt, schema, identity gate and citation mechanism changed together); it cannot isolate the effect of vote awareness.
+54 paired cases on CSCS Apertus v1.5 70B (two examples per language-pair × gold-label cell, alternating AB/BA order, 108 accounted calls). This is a complete-system comparison — retrieval query, prompt, schema, identity gate and citation mechanism changed together — so it cannot isolate the effect of vote awareness.
 
 | Metric | `dense-v1` | `vote-aware-v1` |
 |---|---:|---:|
@@ -117,32 +82,41 @@ The tests condition on discordant pairs only (8–11 pairs change) and are under
 | Rejections | 11 | 29 |
 | Macro-F1 (invalid = error) | 0.652 | 0.491 |
 
-The candidate's 29 rejections: 14 `vote_unrecognised`, 15 `invalid_vote_status`. All 29 still contained a parseable raw NLI label; **18 matched gold**. Among the 18 gold-neutral cases, 12 returned a correctly neutral raw label; none became an accepted output — 12 returned JSON `null` for `vote_status`, the remaining six returned contradiction.
+The candidate's 29 rejections: 14 `vote_unrecognised`, 15 `invalid_vote_status`. All 29 still contained a parseable raw NLI label; 18 matched gold. Conditional accuracy among the candidate's 25 accepted outputs was 23/25 = 92% — against 23/54 = 42.6% strict correctness over all cases (the control's conditional figure is 32/43 = 74.4%). Reporting only the conditional figure would create a misleading impression of reliability. On strict correctness: 18 dense-only correct, 9 candidate-only correct, 14 both correct, 13 both incorrect; paired exact McNemar p = 0.122078 (not significant; does not establish equivalence or absence of difference either).
 
-On strict correctness: 18 dense-only correct, 9 candidate-only correct, 14 both correct, 13 both incorrect. Exact McNemar p = 0.122 (not significant at 0.05; does not establish equivalence or absence of difference).
+*Where the rejections happened is not why the answers went wrong.* In row 728, all five retrieved passages concerned the Climate and Innovation Act for a COVID-19 claim — a retrieval-scope failure alongside an identity failure. In row 1115, the evidence explicitly named the requested initiative and the raw label was correct, yet the gate rejected the output. In row 964, several passages identified the cash initiative, yet the model declared it unrecognised and produced an incorrect label. These three cases are not one mechanism, so the identity gate is not claimed to have caused every error.
 
-**Denominators and metric selection.** The `vote-aware-v1` candidate's accepted-output accuracy is 23/25 = 92% (conditional on passing the gate), while its strict correctness over all 54 cases is 23/54 = 42.6%. The `dense-v1` conditional accuracy is 32/43 = 74.4% (strict correct among valid outputs). Reporting only the conditional figure would create a misleading impression of system reliability. Hutiri et al. (2024) demonstrate empirically — in the unrelated domain of speaker verification bias — that base-metric selection, the choice between ratio and difference measures, and aggregation methodology can produce contradictory conclusions from identical raw data. We adopt the same caution here: no single metric should be quoted as *the* system accuracy. The paired comparison changes multiple factors simultaneously (retrieval, prompt, schema, gate), so it is not a single-factor causal experiment; the appropriate summary reports raw accuracy, strict accuracy, and valid-output coverage separately, with explicit denominators.
-
-The immediate rejection mechanism is the identity gate. However, *where* an output was rejected (the contract gate) is distinct from *why* the answer went wrong (scope, sufficiency or attribution). In row 728, all five retrieved passages concerned the Climate and Innovation Act for a COVID-19 claim — a retrieval-scope failure alongside an identity failure. In row 1115, the evidence explicitly named the requested initiative and the raw label was correct, yet the gate rejected the output. In row 964, several passages identified the cash initiative, yet the model declared it unrecognised and produced an incorrect label. These three cases are not one mechanism.
-
-**This is not selective classification** (Geifman and El-Yaniv, 2017): the gate does not optimise a coverage–risk frontier; it uniformly destroyed coverage without demonstrating a risk guarantee.
+*This is not selective classification* (Geifman and El-Yaniv, 2017): the gate optimises no coverage–risk frontier and offers no risk guarantee; it uniformly destroyed coverage. The methodological caution of Hutiri et al. (2024) applies — in their unrelated domain of speaker-verification bias they show empirically that base-metric selection, ratio-versus-difference comparison and aggregation can produce contradictory conclusions from identical data. We therefore report all denominators explicitly and quote no single figure as *the* system accuracy.
 
 ![Paired strict-correctness outcomes (n = 54).](docs/figures/figure2_paired_54_outcomes.svg)
 
-**Figure 2.** Paired strict-correctness outcomes for the 54-case vote-aware comparison (Apertus v1.5 70B). Four cells: both correct 14, dense-only correct 18, vote-aware-only correct 9, both incorrect 13. Exact McNemar p = 0.122.
+**Figure 1.** Paired strict-correctness outcomes for the 54-case vote-aware comparison (Apertus v1.5 70B). Four cells: both correct 14, dense-only correct 18, vote-aware-only correct 9, both incorrect 13. Exact McNemar p = 0.122.
 
 ![Coverage and strict correctness (n = 54).](docs/figures/figure3_paired_coverage.svg)
 
-**Figure 3.** Valid-output coverage versus strict correctness for the 54-case paired comparison (one model, one denominator). Two genuinely comparable points. Not a risk-coverage frontier; the gate was not calibrated. The interactive version with additional context is at `docs/experience/courage-to-be-wrong/`.
+**Figure 2.** Valid-output coverage versus strict correctness for the 54-case paired comparison (one model, one denominator; shared axis transform). Two genuinely comparable points — **not** a risk-coverage frontier: the gate was not calibrated and no direction of improvement is implied. The interactive version with additional context is at `docs/experience/courage-to-be-wrong/`.
 
-### 3.3 Evidence sensitivity diagnostic
+### 5.2 Supporting A and B: evidence scope and the retrieval ablation
 
-15 post-hoc selected cases (8 entailment, 7 contradiction; no neutral gold), 60 calls, 8B MLX. Macro-F1 here averages over the two gold-supported classes only. Four conditions per case:
+Full-booklet vs Top-5 retrieval, 81 paired development cases on the 8B MLX diagnostic model: accuracy 0.519 → 0.802 at 96.3% fewer input tokens (one retrieved run hit the output limit; 80/81 completed). This motivates the retrieved-evidence architecture; it is a development design decision, not a benchmark result.
 
-- A: original recorded retrieval top-5.
-- B: manually constructed sufficient evidence (case-informed upper bound).
-- C: B + two reviewed non-decisive distractors (longer input than B).
-- D: identical to C, but the B block moved *behind* distractors (identical input-token counts to C).
+Retrieval ablation, three arms on a frozen 81-case development sample (27 per NLI label, 9 per DE/FR/IT combination), all 243 calls completed:
+
+| Method | Accuracy | Macro-F1 | R@5 | Citation verified | Mean tokens |
+|---|---:|---:|---:|---:|---:|
+| A · dense SentenceSwissBERT | 0.827 | 0.824 | 0.580 | 51.9% | 1,215 |
+| B · hybrid RRF | 0.802 | 0.797 | 0.617 | 49.4% | 1,326 |
+| C · proposition reranking | 0.790 | 0.784 | 0.716 | 44.4% | 1,314 |
+
+Arm C increased R@5 by 11/81 cases yet produced three fewer correct labels: optimising a lexical reference-recall proxy did not improve downstream NLI. The original RRF work evaluated retrieval-ranking effectiveness (Cormack et al., 2009); its gains do not imply improvements in our separate downstream objective. Paired sign tests (A→B: 3 wins/5 losses; A→C: 4/7; 70–73 ties) condition on 8–11 discordant pairs and are underpowered; none supports a significant difference.
+
+![Recall vs accuracy across methods.](docs/figures/figure1_recall_accuracy.svg)
+
+**Figure 3.** Reference Recall@5 versus NLI accuracy (81-case ablation). Source: `data/experiments/retrieval-ablation-v1/summary.json` (git-ignored).
+
+### 5.3 Supporting C: evidence placement (exploratory)
+
+15 post-hoc selected cases (8 entailment, 7 contradiction; no neutral gold), 60 calls, 8B MLX. Conditions: A original Top-5; B manually constructed sufficient evidence (case-informed upper bound); C = B + two reviewed non-decisive distractors; D = identical to C with the B block moved *behind* distractors (identical input-token counts).
 
 | Condition | Correct | Accuracy | Macro-F1 | Input tokens |
 |---|---:|---:|---:|---:|
@@ -151,73 +125,45 @@ The immediate rejection mechanism is the identity gate. However, *where* an outp
 | C · B + distractors | 14/15 | 0.933 | 0.933 | 9,570 |
 | D · distractors + B | 11/15 | 0.733 | 0.786 | 9,570 |
 
-**C→D produced three regressions** (rows 1026, 1344, 189) with identical passage multisets and identical per-case token counts. This is related to positional sensitivity in long contexts (Liu et al., 2024), but our short selected examples cannot establish the same mechanism; single runs cannot identify a deterministic causal effect of ordering.
+C→D produced three regressions (rows 1026, 1344, 189) with identical passage multisets and token counts — suggestive of the positional sensitivity studied by Liu et al. (2024), but 15 post-hoc cases in a single run cannot establish that mechanism. Row 1344 shows an explanation–label inconsistency (the output states "4%, not 10%" yet labels neutral against a contradiction gold), flagged following Turpin et al. (2023); B is an upper bound, not a retrieval method, and only 11/15 B citations passed the strict source-occurrence check.
 
-Row 1344 illustrates an explanation–label inconsistency: the model's output correctly states "4%, not 10%" yet labels the claim neutral (gold: contradiction). This is an output inconsistency, not a parser error; the raw JSON already contained `neutral`.
+## 6. Limitations
 
-B represents a case-informed upper bound; it is not a deployable retrieval method. Only 11/15 B citations passed the strict source-occurrence check.
+- **Exposure and selection.** All measurements are single runs on exposed development data; the 54- and 15-case samples were drawn after failures were observed; curated evidence was designed with knowledge of claims and gold labels. None of the samples supports unbiased generalisation estimates.
+- **Wrong target model.** The headline comparison uses 70B, not the 8B submission target. Nothing here validates 8B behaviour.
+- **Confounding.** The paired comparison changes retrieval, prompt, schema, identity gate and citation mechanism simultaneously; no factor is separable, and no causal attribution (including to the identity gate) follows.
+- **Metric non-comparability.** Denominators and x-axis metrics differ across panels (completion coverage, citation rate, valid-output coverage); Figure 2 deliberately shows only the two points that share one denominator. The McNemar result is underpowered at n = 54.
+- **No human semantic adjudication.** Due to the limited duration of the hackathon, independent human semantic adjudication was not undertaken. A blind annotation protocol (BlindAdjudicationProbe) is specified in the long-form technical reference (`docs/TECHNICAL_REPORT_LONG.md` §9.1, item 4) and a review-ready export format exists, but no functioning blind export interface is operational, no human annotations exist, and no inter-annotator agreement figures exist. Semantic evidence sufficiency (L2) remains independently unverified; error attributions are exploratory post-hoc analyses, not validated classifications.
+- **AI-generated annotation is not ground truth.** A first exploratory annotation pass was AI-generated (Qwen-family assistant) — a different model family from the Apertus predictors, but **not independent ground truth**.
+- **Deployment gaps.** Official 8B inference is NOT TESTED; the managed vLLM path has not passed a real Docker smoke; Windows/Linux execution and cold builds are unverified. Citation boundaries remain imperfect (the n=1 CSCS smoke citation starts mid-word).
+- **Single machine, no variance control.** All numbers come from one machine (Apple MPS/float32 and the CSCS endpoint), single runs, no seed or variance control.
 
-## 4. Positioning and related work
+Three open research questions organise future attribution work (not established findings): **RQ1** — can a model distinguish uncertainty about a referendum's identity from insufficient evidence for a claim? **RQ2** — does independent vote grounding reduce invalid outputs without sacrificing evidence provenance? **RQ3** — how much observed failure is attributable to retrieval scope, NLI reasoning and output-contract compliance respectively?
 
-**Civic information infrastructure.** Martin et al. (2024) provide the closest conceptual antecedent. Their position paper motivates semantic verification of LLM-RAG outputs in Swiss direct democracy, proposes a knowledge-graph framework for cross-referencing generated claims against structured sources, and identifies the civic risk of unverified generation during referenda. VOTELENS does not implement their knowledge-graph verification; our contribution is empirical rather than architectural: we expose what happens at the *evidence-to-label* interface when provenance checking (string occurrence) is present but semantic sufficiency adjudication is absent, and show that the resulting coverage failure is invisible to any metric that counts only accepted outputs.
-
-**Evidence-grounded NLI and retrieval.** The retrieve-then-judge pipeline structure is established (Lewis et al., 2020; Thorne et al., 2018). Our contribution is not the architecture but the failure anatomy: showing that in Swiss booklets, the interface between retrieval and judgement produces errors that cannot be attributed to either stage alone.
-
-**Interpretable entailment and structured representations.** Silva et al. (2018) construct a knowledge graph from natural-language dictionary definitions to provide interpretable reasoning traces for textual entailment. Their representation organises semantic relationships (hypernymy, meronymy, thematic roles) to make entailment decisions auditable. Our Evidence Passport — Claim → Vote → Source → Stakeholder → Position — shares the goal of making evidence relationships inspectable, but is currently a *provenance-oriented diagnostic representation* rather than a verified knowledge graph. The system has not independently adjudicated the semantic sufficiency of those relationships; the chain records *where* a citation was found, not whether it *establishes* the claim. This gap between source occurrence and semantic support is a problem that structured-representation approaches (such as Silva et al.'s) are designed to make auditable, though it is not established that their knowledge-graph architecture would resolve our stakeholder-attribution and evidence-sufficiency problems without independent semantic adjudication.
-
-**Sentence embeddings.** SentenceSwissBERT is an adaptation of SwissBERT (Vamvas et al., 2023) using a SimCSE-derived procedure (Gao et al., 2021), related to but distinct from Sentence-BERT (Reimers and Gurevych, 2019).
-
-**Positional sensitivity.** Our C→D comparison relates to Liu et al. (2024) but is a 15-case, single-run, short-context observation, not a replication of their multi-document findings.
-
-**Explanation faithfulness.** We flag explanation–label inconsistencies (rows 1344, 964) following Turpin et al. (2023). We do not assume that model-generated explanations faithfully describe the internal decision process.
-
-**Selective classification.** The coverage collapse is not a calibrated reject-option system (Geifman and El-Yaniv, 2017). No risk–coverage curve was computed; no abstention threshold was calibrated.
-
-**Methodological note on metric selection.** The paired comparison in §3.2 illustrates the methodological point emphasised by Hutiri et al. (2024): system-level conclusions are sensitive to the base metric, the choice between ratio-based and difference-based comparison, and the aggregation level. Our 92% conditional accuracy on 25 accepted outputs versus 42.6% strict accuracy on 54 total cases would support contradictory narratives about system reliability. We therefore report all denominators explicitly and resist collapsing them into a single summary figure.
-
-**Paired statistical comparisons** use exact McNemar/sign tests following the recommendation of Dietterich (1998) for paired classifier comparisons.
-
-## 5. Limitations and reproducibility
-
-All measurements are single runs on exposed development data. Denominators differ across panels; x-axis metrics differ (completion coverage, citation rate, valid-output coverage); Figure 3 presents only the two genuinely comparable points from the 54-case paired comparison.
-
-The 54-case comparison uses 70B, not the 8B submission target. Retrieval query, prompt, schema, identity gate and citation mechanism changed simultaneously — no factor can be attributed independently.
-
-The 15-case evidence diagnostic was selected post-hoc after observing failures. Curated evidence was designed with knowledge of claims and gold labels.
-
-**Human annotation.** Due to the limited duration of the hackathon, independent human semantic adjudication was not undertaken. A blind annotation protocol (BlindAdjudicationProbe) is specified in the long-form technical reference (§9.1, item 4) and a review-ready export format exists; however, no functioning blind export interface is currently operational, no human annotations have been collected, and no inter-annotator agreement figures exist. Semantic evidence sufficiency (L2 in the taxonomy) remains independently unverified. Error attributions remain exploratory post-hoc analyses, not validated classifications.
-
-A first exploratory annotation pass was AI-generated (Qwen-family assistant), is a *different model family* from the Apertus predictors but is **not independent ground truth**.
-
-Dataset provenance: HackApertus-provided MNLI-over-Swiss-Voting-Booklets v1.1 under `data/eval/`. Twenty-four of 60 dev rows duplicate claim/reference/label triples in the 1,428-row complement. The 81-case and 54-case samples are drawn from this historically exposed corpus. These are exploratory development evidence, not unbiased generalisation estimates.
-
-### Reproducibility Passport
+## 7. Reproducibility
 
 | Layer | Reproducibility status |
 |---|---|
-| Tracked source + evidence | `make test` (portable, no model/data needed). `docs/evidence/` supports SHA-256 byte-identity checks; `courage_data.py` verifies provenance when local raw records exist (byte identity ≠ semantic verification). |
-| 70B paired development | Requires CSCS API key; not reproducible offline. |
-| MLX 8B diagnostics | Requires Apple Silicon + cached model; not the submission target. |
-| Official 8B submission | Configured but **untested** end-to-end. |
-| Git-ignored records | `data/experiments/`, `data/eval/` not distributed; `fetch_eval_data.py` downloads the dataset only, not model predictions. Single runs; no variance control. |
+| Clean-checkout unit tests | `make test` (from `track_2a/`, portable, no model/data/network needed): judge/parser/label checks, gate-contract tests, py_compile. Data-dependent tests skip transparently. |
+| Compact evidence records | `docs/evidence/` supports SHA-256 byte-identity checks; `docs/experience/courage-to-be-wrong/courage_data.py` recomputes ledger figures and exits non-zero on mismatch **when local raw records exist** (byte identity ≠ semantic verification). |
+| Missing raw records | `data/experiments/` and `data/eval/` are git-ignored and not distributed; `fetch_eval_data.py` downloads the dataset only, not model predictions. In a clean checkout the demo shows static `facts.json` values and its guard reports NOT RE-VERIFIED IN THIS BUILD. |
+| 70B paired development | Requires a CSCS API key; not reproducible offline. |
+| MLX 8B diagnostics | Requires Apple Silicon + the cached third-party 6-bit conversion; not the submission target. |
+| Official 8B submission | Configured but **untested** end-to-end (`make run` default path against a provisioned v1.5 endpoint). |
 
-Management of the full experiment code and raw records is described in `docs/PROJECT_STATUS.md`; the long-form technical reference is at `docs/TECHNICAL_REPORT_LONG.md`.
+Reproduction starts with `docs/RUNNING.md`; the demo README documents local opening and re-verification. Development evidence was produced on branch `feature/votelens-research-positioning` (base commit `f424b36`) on Apple Silicon macOS; see §6 for the absence of variance control.
 
-Reproduction starts with `docs/RUNNING.md`. The interactive diagnostic (no model, no server) is at `docs/experience/courage-to-be-wrong/`; its data-verification guard (`courage_data.py`) checks provenance hashes and recomputes selected figures from local raw records, and exits non-zero on file mismatch. In a clean checkout without raw records, the diagnostic page displays static values from `facts.json`; the verification script detects their absence rather than silently recomputing them.
+## 8. Next steps
 
-## 6. Future work (designed, not run)
+All items below are **designed, not executed** (details in `docs/TECHNICAL_REPORT_LONG.md` §9.1): (1) oracle-evidence control; (2) evidence-order ablation with repeated controls to test the §5.3 placement observation; (3) `StanceAttributionChallenge` for L3 speaker attribution; (4) `BlindAdjudicationProbe` for independent human semantic adjudication. Before promoting any retrieval or validation policy: replay the 29 rejected records offline with per-case identity/sufficiency/citation adjudication independent of the generating model — a deterministic replay cannot establish how the model would answer a prompt it never received. Beyond the research line: one clean-checkout `make run` with official `swiss-ai/Apertus-v1.5-8B` weights on an NVIDIA Docker host, and a Windows/Linux portability matrix, are the minimum steps to move the deployment claims beyond NOT TESTED.
 
-Four controlled experiments are specified in the long-form reference (Section 9.1): oracle-evidence control, evidence-order ablation with repeated controls, `StanceAttributionChallenge`, and `BlindAdjudicationProbe`. None has been executed. A deterministic replay cannot establish how the model would answer a prompt it never received.
+## AI Assistance Declaration
 
-Before promoting any new retrieval or validation policy: replay the 29 rejected records offline with per-case identity/sufficiency/citation adjudication independent of the generating model.
-
-## 7. Conclusion
-
-VOTELENS contributes a failure anatomy for document-grounded NLI over Swiss voting booklets. The evidence shows that (a) retrieval quality does not straightforwardly transfer to NLI quality, (b) output-contract validation can destroy coverage without improving correctness, and (c) metric selection determines whether the system appears reliable. None of these findings is a causal result; all require replication on the 8B target with independent semantic adjudication before deployment claims are warranted.
+Generative AI was used **substantially** in this project: Qwen-based coding agents with OpenCode; ChatGPT for research planning, interpretation and drafting assistance; and Codex for independent cross-model repository auditing and review. Functions included code generation and modification, debugging and test generation, experimental planning, data-analysis assistance, literature discovery, technical report drafting, repository auditing and scientific claim checking. The team directed this work and remains responsible for all submitted content. Automated tests and recorded results were used to check applicable claims. **Cross-model AI auditing is not independent human verification, and no independent human semantic adjudication was performed** (see §6); the first-pass case annotations are AI-generated and are not ground truth. A separate UZH ECTS declaration is a different document and does not replace this one.
 
 ## License
 
-Report: CC-BY-4.0. Repository code and source-data licensing require final review.
+Report text: Creative Commons Attribution 4.0 (CC-BY-4.0), following the official HackApertus template ("All HackApertus projects are open-sourced"). Repository code and third-party source-data licensing are under separate final review (§4); no permissions beyond those verified are claimed.
 
 ## References
 
@@ -237,9 +183,11 @@ Report: CC-BY-4.0. Repository code and source-data licensing require final revie
 12. Dietterich, T. G. (1998). *Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms*. Neural Computation, 10(7), 1895–1923. https://doi.org/10.1162/089976698300017197
 13. Martin, A., Witschel, H. F., Mandl, M., and Stockhecke, M. (2024). *Semantic Verification in Large Language Model-based Retrieval Augmented Generation*. Proceedings of the AAAI Symposium Series, 3(1), 188–192. https://doi.org/10.1609/aaaiss.v3i1.31199
 14. Hutiri, W., Patel, T., Ding, A. Y., and Scharenborg, O. (2024). *As Biased as You Measure: Methodological Pitfalls of Bias Evaluations in Speaker Verification Research*. Interspeech 2024, 4268–4272. https://doi.org/10.21437/Interspeech.2024-1158
-15. Silva, V., Freitas, A., and Handschuh, S. (2018). *Building a Knowledge Graph from Natural Language Definitions for Interpretable Text Entailment Recognition*. LREC 2018. https://aclanthology.org/L18-1542/
+15. Silva, V., Freitas, A., and Handschuh, S. (2018). *Building a Knowledge Graph from Natural Language Definitions for Interpretable Text Entailment Recognition*. LREC 2018 (no DOI assigned; verified via ACL Anthology). https://aclanthology.org/L18-1542/
 
-### Model cards and experimental records
+*Positioning note.* Martin et al. (2024) motivate semantic verification of LLM-RAG outputs in Swiss direct democracy; Silva et al. (2018) make entailment relationships auditable through a knowledge graph built from dictionary definitions. VoteLens does **not** implement either architecture: these works motivate and contextualise the questions studied here, they do not establish our findings. Our Evidence Passport shares Silva et al.'s inspectability goal but remains a provenance-oriented diagnostic representation; the retrieve-then-judge structure is established work (Lewis et al., 2020; Thorne et al., 2018), and our contribution is the failure anatomy at the evidence-to-label interface, not the architecture.
+
+### Model cards and project records
 
 16. Grosjean, J. *SentenceSwissBERT* (`jgrosjean-mathesis/sentence-swissbert`), model card. https://huggingface.co/jgrosjean-mathesis/sentence-swissbert
 17. Swiss AI Initiative. *Apertus v1.5 8B*, model card. https://huggingface.co/swiss-ai/Apertus-v1.5-8B
