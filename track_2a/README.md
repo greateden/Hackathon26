@@ -40,7 +40,7 @@ unverified. The committed Beginner request needs neither a PDF nor an encoder
 download. Advanced requests need the specified local PDF and a cached or
 downloadable SentenceSwissBERT model.
 
-For the opt-in CSCS Apertus v1.5 70B backend, set
+For the selected CSCS Apertus v1.5 70B default, set
 `CSCS_INFERENCE_API_KEY` outside the repository, edit `data/request.json`, and
 run `make run-cscs`. This uses the external Docker application and the existing
 optional token-preflight contract because CSCS does not document `/tokenize`.
@@ -51,7 +51,7 @@ See [RUNNING.md](docs/RUNNING.md) for the exact checks and limitations.
 2. Edit `data/request.json` to identify the booklet and claim.
 3. Run `make run` from this directory. The repository-root Makefile also forwards here.
 
-For an optional self-managed server, `make run SUBMISSION_MODE=managed` builds
+For an optional self-managed server, `LLM_NAME=swiss-ai/Apertus-v1.5-8B make run SUBMISSION_MODE=managed` builds
 the CPU application and starts the official v1.5 vLLM GPU service,
 waits for readiness, then runs `src/booklet_app.py`. The model service downloads
 uncached weights into a persistent Docker volume. Both services stop when the
@@ -113,8 +113,8 @@ incomplete results exit non-zero instead of inventing fields.
 
 | Path | Model and configuration | Verification |
 |---|---|---|
-| Submission Docker | `swiss-ai/Apertus-v1.5-8B`; external endpoint by default; optional managed official vLLM server | External endpoints use strict response checks without requiring `/tokenize`; managed inference pending |
-| CSCS external (opt-in) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | One booklet/retrieval Docker smoke passed on Apple Silicon; n=1 |
+| Submission Docker | `swiss-ai/Apertus-v1.5-70B`; CSCS external endpoint by default; optional managed official vLLM server | External endpoints use strict response checks without requiring `/tokenize`; managed inference pending |
+| CSCS external (default) | `swiss-ai/Apertus-v1.5-70B`; `https://api.inference.cscs.ch/v1`; optional token preflight | One booklet/retrieval Docker smoke passed on Apple Silicon; n=1 |
 | Native Apple Silicon development | `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`; MLX; new paired runner requires exact token preflight | Historical n=1 smoke used optional preflight; new wrapper runtime pending |
 | Historical research | Apertus v1.1 4B MLX INT4, global retrieval, oracle diagnostics and lexical controls | Archived measurements; not current submission results |
 
@@ -156,5 +156,7 @@ documented in the technical report; both use exposed development data.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
 Report PDF is at `docs/report/technical_report.pdf` (6 pages, A4). Team metadata, demo and
-code licensing still need review. Report licence: CC-BY-4.0, following the
+external-material licensing still need human review. Report licence: CC-BY-4.0, following the
 [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
+
+Release validation and remaining approval conditions: [14 October release record](docs/RELEASE_CANDIDATE_20261014.md). Team-authored source: Apache-2.0; documentation: CC-BY-4.0; external materials retain their own terms ([notices](../THIRD_PARTY_NOTICES.md)).

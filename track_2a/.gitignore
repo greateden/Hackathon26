@@ -3,6 +3,7 @@
 /data/*
 !/data/README.md
 !/data/request.json
+!/data/examples/
 !/data/example_claims.json
 # Scratch probes are retained locally; existing tracked probes are preserved explicitly.
 /tmp/*

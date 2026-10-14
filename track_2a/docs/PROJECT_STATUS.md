@@ -1,3 +1,5 @@
+> **14 October release update:** the submission default is external CSCS official Apertus v1.5 70B. Four bounded Docker calls and remaining neutral/approval blockers are recorded in [the release record](RELEASE_CANDIDATE_20261014.md). Earlier 8B-target and runtime status entries below are historical.
+
 # Project status — 13 October 2026
 
 **P0 candidate update:** the submission CLI now uses `vote-aware-v1`, with

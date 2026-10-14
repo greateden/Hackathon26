@@ -6,14 +6,14 @@ The submission uses `src/booklet_app.py`; historical experiments use
 
 ## Existing external endpoint (default)
 
-An operator must provision an Apertus v1.5 OpenAI-compatible endpoint; the
+The selected default is CSCS official Apertus v1.5 70B. An operator must provision an Apertus v1.5 OpenAI-compatible endpoint; the
 official template does not promise an endpoint, API key or GPU from the judges.
 The application container does not need NVIDIA access. Export the standard variables
 or put them in `.env`:
 
 ```text
-LLM_NAME=swiss-ai/Apertus-v1.5-8B
-LLM_BASE_URL=http://host.docker.internal:8000
+LLM_NAME=swiss-ai/Apertus-v1.5-70B
+LLM_BASE_URL=https://api.inference.cscs.ch/v1
 LLM_API_KEY=
 LLM_CONTEXT_TOKENS=32768
 ```
@@ -49,7 +49,7 @@ Accept the official checkpoint's access conditions and set `HF_TOKEN`. Edit
 `data/request.json`, then run:
 
 ```text
-make run SUBMISSION_MODE=managed
+LLM_NAME=swiss-ai/Apertus-v1.5-8B make run SUBMISSION_MODE=managed
 ```
 
 This merges `compose.submission.yaml` (CPU application) and
@@ -183,3 +183,28 @@ to the preserved repository-root `.venv` and then `python3`. No model inference
 is required. The existing native environment passes `pip check`; combining
 the portable Transformers pin with current MLX requirements in a fresh native
 environment remains unsupported. Docker's application dependencies are separate.
+
+## Release examples and credentials
+
+The default endpoint/model are explicitly CSCS 70B; there is no automatic switching.
+Compose accepts `LLM_API_KEY`, or falls back to `CSCS_INFERENCE_API_KEY`. The repository
+does not automatically read private credential files. On the development machine:
+
+```sh
+set +x
+set -a
+. "$HOME/.config/hackapertus/cscs.env"
+set +a
+make run
+# From either repository root or track_2a:
+REQUEST_FILE=/app/data/examples/advanced-entailment.json make run
+REQUEST_FILE=/app/data/examples/advanced-neutral.json make run
+```
+
+Judges need their own authorised CSCS key and network access, or an explicitly
+configured allowlisted official 8B/70B endpoint. This is not self-contained.
+Never display `env`, the credential file, or interpolated `docker compose config`
+while recording. Advanced requests accept a supplied PDF URL or a path under mounted
+`/app/data`; no code changes or historical evaluation corpus are required. First use
+may download the PDF and SentenceSwissBERT; no Apertus weights are downloaded.
+See `data/examples/README.md` for gold provenance and actual smoke outcomes.
