@@ -1,6 +1,6 @@
 {
   "schema": "hackapertus-courage-to-be-wrong-v1",
-  "generated_utc": "2026-10-13T20:01:44+00:00",
+  "generated_utc": "2026-10-14T08:17:37+00:00",
   "provenance": {
     "paired_predictions_sha256": "1d7553e0f85498b8c83316e35b34836f1db3fdba508623745509c00d4c34d1fe",
     "sensitivity_predictions_sha256": "805550d07f9a7c69fea05269d6c2f2b055d43db635a8383d32a1b6497533dc85",
@@ -176,7 +176,10 @@
       "evidence_class": "OBSERVED (record content) — the causal claim that the identity gate is what lost a correct answer is INFERRED from the recorded fields, not proven.",
       "status": "PARTIALLY VERIFIED",
       "next_step": "Replay with vote identity checked independently of the NLI label, and confirm whether the citation would have verified.",
-      "annotation_provenance": "Human-authored interpretation (AI-assisted); source-recorded fields, not a model evaluation.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); not a model evaluation, not independent human review.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "arms": {
         "vote-aware-v1": {
           "raw_label": "contradiction",
@@ -211,7 +214,10 @@
       "evidence_class": "OBSERVED. The two models disagree on whether the climate evidence speaks to a COVID-19 claim at all.",
       "status": "PARTIALLY VERIFIED",
       "next_step": "Check whether the same claim's evidence, scoped to the named vote, supports entailment, and keep failures in the denominator either way.",
-      "annotation_provenance": "Human-authored interpretation (AI-assisted); source-recorded fields, not a model evaluation.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); not a model evaluation, not independent human review.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "arms": {
         "vote-aware-v1": {
           "raw_label": "neutral",
@@ -246,7 +252,10 @@
       "evidence_class": "OBSERVED. Generated reasoning cannot be assumed to reflect the internal decision (cf. Turpin et al., 2023).",
       "status": "PARTIALLY VERIFIED",
       "next_step": "Separate 'not about this claim' (neutral) from 'denied by this claim' (contradiction) in a controlled prompt test.",
-      "annotation_provenance": "Human-authored interpretation (AI-assisted); source-recorded fields, not a model evaluation.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); not a model evaluation, not independent human review.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "arms": {
         "dense-v1": {
           "raw_label": "neutral",
@@ -281,7 +290,10 @@
       "evidence_class": "OBSERVED. Whether position caused the flip is a hypothesis: C and D share the same evidence, only the block order differs, on single runs.",
       "status": "PARTIALLY VERIFIED",
       "next_step": "Counterbalance block order with repeated unchanged controls before attributing the flip to position.",
-      "annotation_provenance": "Human-authored interpretation (AI-assisted); source-recorded fields, not a model evaluation.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); not a model evaluation, not independent human review.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "arms": {}
     }
   ],
@@ -417,7 +429,7 @@
           "raw_prediction": "contradiction",
           "contract_validity": "rejected / invalid",
           "validator_error": "vote_unrecognised",
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "NOT_REACHED",
           "passages": [
             {
               "id": "e1",
@@ -450,7 +462,7 @@
           "raw_prediction": "contradiction",
           "contract_validity": "valid",
           "validator_error": "none",
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "p4-c2",
@@ -481,9 +493,12 @@
         }
       },
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED (a passage appearing in the source does not prove it supports the claim).",
-      "semantic_sufficiency_status": "NOT ANNOTATED (no independent adjudication)",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (no independent evidence-adequacy review was performed)",
       "insufficiency_scope": "Evidence addresses the claim; no document-wide search was run, so full-booklet extent is NOT VERIFIED.",
-      "annotation_provenance": "Human-authored interpretation over source-recorded fields; reasoning strings are the model's own output (AI-ANNOTATED).",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Replay with vote identity checked independently of the NLI label, and confirm whether the citation would have verified."
     },
     {
@@ -499,7 +514,7 @@
           "raw_prediction": "neutral",
           "contract_validity": "rejected / invalid",
           "validator_error": "invalid_vote_status",
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "NOT_REACHED",
           "passages": [
             {
               "id": "e1",
@@ -532,7 +547,7 @@
           "raw_prediction": "entailment",
           "contract_validity": "valid",
           "validator_error": "none",
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "p33-c1",
@@ -563,9 +578,12 @@
         }
       },
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED (a passage appearing in the source does not prove it supports the claim).",
-      "semantic_sufficiency_status": "NOT ANNOTATED (no independent adjudication)",
-      "insufficiency_scope": "Retrieved top-5 does not establish the claim; whether it is absent from the whole named booklet is NOT VERIFIED (only the retrieved five were inspected). Top-5 absence never proves booklet-wide absence.",
-      "annotation_provenance": "Human-authored interpretation over source-recorded fields; reasoning strings are the model's own output (AI-ANNOTATED).",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (no independent evidence-adequacy review was performed)",
+      "insufficiency_scope": "Evidence-insufficiency audit status: (1) Gold label neutral is SOURCE-RECORDED (eval annotation). (2) Whether the retrieved Top-5 addresses the claim was AI-inspected during annotation (AI-GENERATED); not independently adjudicated. (3) Evidence sufficiency for the correct label is NOT ADJUDICATED (no independent evidence-adequacy review). (4) Full-booklet absence is NOT VERIFIED (no document-wide search was run). Top-5 absence never proves booklet-wide absence; gold-neutral does not establish 'no relevant evidence elsewhere'.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Check whether the same claim's evidence, scoped to the named vote, supports entailment, and keep failures in the denominator either way."
     },
     {
@@ -581,7 +599,7 @@
           "raw_prediction": "neutral",
           "contract_validity": "valid",
           "validator_error": "none",
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "p55-c1",
@@ -614,7 +632,7 @@
           "raw_prediction": "contradiction",
           "contract_validity": "rejected / invalid",
           "validator_error": "vote_unrecognised",
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "NOT_REACHED",
           "passages": [
             {
               "id": "e1",
@@ -645,9 +663,12 @@
         }
       },
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED (a passage appearing in the source does not prove it supports the claim).",
-      "semantic_sufficiency_status": "NOT ANNOTATED (no independent adjudication)",
-      "insufficiency_scope": "Retrieved top-5 does not establish the claim; whether it is absent from the whole named booklet is NOT VERIFIED (only the retrieved five were inspected). Top-5 absence never proves booklet-wide absence.",
-      "annotation_provenance": "Human-authored interpretation over source-recorded fields; reasoning strings are the model's own output (AI-ANNOTATED).",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (no independent evidence-adequacy review was performed)",
+      "insufficiency_scope": "Evidence-insufficiency audit status: (1) Gold label neutral is SOURCE-RECORDED (eval annotation). (2) Whether the retrieved Top-5 addresses the claim was AI-inspected during annotation (AI-GENERATED); not independently adjudicated. (3) Evidence sufficiency for the correct label is NOT ADJUDICATED (no independent evidence-adequacy review). (4) Full-booklet absence is NOT VERIFIED (no document-wide search was run). Top-5 absence never proves booklet-wide absence; gold-neutral does not establish 'no relevant evidence elsewhere'.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Separate 'not about this claim' (neutral) from 'denied by this claim' (contradiction) in a controlled prompt test."
     },
     {
@@ -662,7 +683,7 @@
         "A_original": {
           "prediction": "neutral",
           "matches_gold": false,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "p45-c2",
@@ -694,7 +715,7 @@
         "B_minimal": {
           "prediction": "contradiction",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1026-B-1",
@@ -714,7 +735,7 @@
         "C_minimal_plus_distractors": {
           "prediction": "contradiction",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1026-B-1",
@@ -742,7 +763,7 @@
         "D_reordered": {
           "prediction": "neutral",
           "matches_gold": false,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1026-X-1",
@@ -770,9 +791,12 @@
       },
       "cd_evidence_order_invariant": "C and D carry the identical passage multiset and token budget (position-only change) — see counterfactual_experiment.py.",
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED.",
-      "semantic_sufficiency_status": "NOT ANNOTATED (B is a curated upper bound, not a verified retrievable oracle)",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (B is a curated upper bound, not a verified retrievable oracle; no independent evidence-adequacy review was performed)",
       "insufficiency_scope": "Single-run A/B/C/D diagnostic; no document-wide search, so booklet-wide extent is NOT VERIFIED.",
-      "annotation_provenance": "Human-authored interpretation; reasoning strings are model output (AI-ANNOTATED). Single runs, not variance-controlled.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed. Single runs, not variance-controlled.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Whether a placement effect caused any flip is a HYPOTHESIS (see attribution-verification record §2.2/§4.1); needs counterbalanced runs."
     },
     {
@@ -787,7 +811,7 @@
         "A_original": {
           "prediction": "contradiction",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "p22-c1",
@@ -819,7 +843,7 @@
         "B_minimal": {
           "prediction": "contradiction",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1344-B-1",
@@ -835,7 +859,7 @@
         "C_minimal_plus_distractors": {
           "prediction": "contradiction",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1344-B-1",
@@ -859,7 +883,7 @@
         "D_reordered": {
           "prediction": "neutral",
           "matches_gold": false,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row1344-X-1",
@@ -883,9 +907,12 @@
       },
       "cd_evidence_order_invariant": "C and D carry the identical passage multiset and token budget (position-only change) — see counterfactual_experiment.py.",
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED.",
-      "semantic_sufficiency_status": "NOT ANNOTATED (B is a curated upper bound, not a verified retrievable oracle)",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (B is a curated upper bound, not a verified retrievable oracle; no independent evidence-adequacy review was performed)",
       "insufficiency_scope": "Single-run A/B/C/D diagnostic; no document-wide search, so booklet-wide extent is NOT VERIFIED.",
-      "annotation_provenance": "Human-authored interpretation; reasoning strings are model output (AI-ANNOTATED). Single runs, not variance-controlled.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed. Single runs, not variance-controlled.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Whether a placement effect caused any flip is a HYPOTHESIS (see attribution-verification record §2.2/§4.1); needs counterbalanced runs."
     },
     {
@@ -900,7 +927,7 @@
         "A_original": {
           "prediction": "contradiction",
           "matches_gold": false,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "p14-c1",
@@ -932,7 +959,7 @@
         "B_minimal": {
           "prediction": "entailment",
           "matches_gold": true,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "row189-B-1",
@@ -948,7 +975,7 @@
         "C_minimal_plus_distractors": {
           "prediction": "entailment",
           "matches_gold": true,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "row189-B-1",
@@ -972,7 +999,7 @@
         "D_reordered": {
           "prediction": "contradiction",
           "matches_gold": false,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "row189-X-1",
@@ -996,9 +1023,12 @@
       },
       "cd_evidence_order_invariant": "C and D carry the identical passage multiset and token budget (position-only change) — see counterfactual_experiment.py.",
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED.",
-      "semantic_sufficiency_status": "NOT ANNOTATED (B is a curated upper bound, not a verified retrievable oracle)",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (B is a curated upper bound, not a verified retrievable oracle; no independent evidence-adequacy review was performed)",
       "insufficiency_scope": "Single-run A/B/C/D diagnostic; no document-wide search, so booklet-wide extent is NOT VERIFIED.",
-      "annotation_provenance": "Human-authored interpretation; reasoning strings are model output (AI-ANNOTATED). Single runs, not variance-controlled.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed. Single runs, not variance-controlled.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Whether a placement effect caused any flip is a HYPOTHESIS (see attribution-verification record §2.2/§4.1); needs counterbalanced runs."
     },
     {
@@ -1013,7 +1043,7 @@
         "A_original": {
           "prediction": "neutral",
           "matches_gold": false,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "p19-c1",
@@ -1045,7 +1075,7 @@
         "B_minimal": {
           "prediction": "entailment",
           "matches_gold": true,
-          "citation_mechanical": "verified",
+          "citation_mechanical": "CITATION_OCCURS_SEMANTIC_UNVERIFIED",
           "passages": [
             {
               "id": "row195-B-1",
@@ -1065,7 +1095,7 @@
         "C_minimal_plus_distractors": {
           "prediction": "contradiction",
           "matches_gold": false,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "row195-B-1",
@@ -1093,7 +1123,7 @@
         "D_reordered": {
           "prediction": "contradiction",
           "matches_gold": false,
-          "citation_mechanical": "not run / no quotation",
+          "citation_mechanical": "CITATION_MECHANICAL_FAIL",
           "passages": [
             {
               "id": "row195-X-1",
@@ -1121,9 +1151,12 @@
       },
       "cd_evidence_order_invariant": "C and D carry the identical passage multiset and token budget (position-only change) — see counterfactual_experiment.py.",
       "citation_verification": "Mechanical occurrence check only; semantic support NOT ANNOTATED.",
-      "semantic_sufficiency_status": "NOT ANNOTATED (B is a curated upper bound, not a verified retrievable oracle)",
+      "semantic_sufficiency_status": "NOT ADJUDICATED (B is a curated upper bound, not a verified retrievable oracle; no independent evidence-adequacy review was performed)",
       "insufficiency_scope": "Single-run A/B/C/D diagnostic; no document-wide search, so booklet-wide extent is NOT VERIFIED.",
-      "annotation_provenance": "Human-authored interpretation; reasoning strings are model output (AI-ANNOTATED). Single runs, not variance-controlled.",
+      "annotation_provenance": "Qwen-based research-assistant workflow over source records (AI-GENERATED, NOT INDEPENDENTLY VERIFIED); no independent human fact-checking was performed. Single runs, not variance-controlled.",
+      "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+      "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+      "requires_human_review": true,
       "remaining_uncertainties": "Whether a placement effect caused any flip is a HYPOTHESIS (see attribution-verification record §2.2/§4.1); needs counterbalanced runs."
     }
   ]

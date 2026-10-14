@@ -717,6 +717,29 @@ comparison, retrieval audit and error analysis—are under
 report. Genuine local v1.5 MLX inference and one CSCS-backed Docker application
 smoke are recorded; the latter is one functional check, not a benchmark.
 
+### Who verifies the verifier?
+
+The provenance and audit layers in this report are themselves evidence subject
+to the same uncertainty discipline as the science. Two verification layers exist:
+
+**Pipeline-internal citation verification** checks whether a quoted string
+*appears* in the supplied evidence (a mechanical occurrence test, not a
+semantic-support judgment). It verifies that the model's citation was not
+fabricated — it does not establish that the quotation *proves* the answer.
+
+**Dataset-assembly verification** checks that the aggregate figures and case
+identifiers in the experience match the recorded data. It verifies record
+consistency — it does not constitute independent adjudication of evidence
+sufficiency or gold-label correctness.
+
+The **case-level interpretation layer** (titles, stories, error-class labels,
+evidence-insufficiency claims) was produced by a Qwen-based research-assistant
+workflow and has **not** been independently fact-checked. The
+`attribution-verification.md` file states this explicitly and gives per-case
+provenance, independent-review status and trust labels. No semantic review,
+independent evidence-adequacy review or human fact-check has been completed for
+any displayed case.
+
 ## 9. Future research and conclusion
 
 The next experiment should repeat the C/D comparison in counterbalanced order,

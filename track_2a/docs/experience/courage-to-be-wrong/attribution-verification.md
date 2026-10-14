@@ -20,6 +20,126 @@ untested), **NOT TESTED** (designed but not run).
 
 ---
 
+## Provenance and independent-verification status
+
+> **Required reading before using any conclusion below.**
+
+**Source-recorded facts** (label codes, `valid_output`, `citation_verified`,
+`passages`, recorded prompt/reply hashes) are copied from `predictions.jsonl`
+by the build-time verification script (`courage_data.py`). They are classified
+as **SOURCE-RECORDED**.
+
+**Aggregate figures** (counts, distributions, percentages) are recomputed from
+the same raw records by `courage_data.py`. They are **PROGRAMMATIC**.
+
+**Case descriptions, comparison wording, error classification, evidence-
+insufficiency claims, and research recommendations** were generated through a
+Qwen-based research-assistant workflow using user-supplied source records
+(MTPLX sessions, October 2026). This workflow produced the titles, story text,
+error-class labels, and interpretive narratives seen in the Gallery, Lab and
+Ledger panels.
+
+**They were NOT independently verified.** No reviewer or annotator inspected
+the original PDFs, independently checked the gold labels, verified the recorded
+citation occurrence against the actual source text, adjudicated evidence
+sufficiency, or approved the final text. The fact that the AI workflow produced
+a plausible interpretation consistent with the recorded fields does not
+establish its semantic correctness.
+
+**Independent-review status of every displayed conclusion:**
+
+| Field | Status |
+|---|---|
+| `semantic_review_status` | `NO INDEPENDENT SEMANTIC REVIEW` |
+| `annotation_trust_status` | `AI-GENERATED / NOT INDEPENDENTLY VERIFIED` |
+| `requires_human_review` | `true` |
+
+**Three distinct statuses that must not be confused:**
+
+1. **Source-recorded**: a value was *read* from a record.
+2. **Mechanically verified**: a quoted string was *found to occur* in supplied
+   evidence (the only verification that ran; see the Citation section below).
+3. **Semantically reviewed**: a human or independent process confirmed that a
+   quotation *establishes* the label. **This status is `NOT AVAILABLE` for
+   every case displayed here.**
+
+For the neutral-gold cases (rows 728, 964): the claim that the evidence is
+insufficient for entailment or contradiction is an **AI-annotated observation**
+produced by the same workflow, NOT an independently verified finding. The full
+4-state distinction is stated in each case's Evidence Passport.
+
+The project philosophy — that errors are shown when found — applies to this
+record. The AI-generated attribution layer is itself an error class that
+requires correction before it can be cited as research evidence.
+
+---
+
+## Citation verification: what `citation_verified` actually means
+
+### 0.1 Source-field semantics
+
+The experiment code computes `citation_verified` as follows:
+
+- **Paired (70B, CSCS)**: `citation_verified` = `bool(citations)`. The
+  experiment-runner then structurally verifies that citation entries point to
+  supplied passages whose text contains the quoted snippet. It is a
+  **source-selection** check (`citation_method="source-selection-v1"`). It
+  checks whether the quotation **appears**, not whether it **establishes** the
+  label. Semantic support is explicitly `model_judgement_only`.
+  *Where this is defined:* `booklet_app.py` line 526 and `experiment_runner.py`
+  line 647–651.
+
+- **Sensitivity (8B, MLX)**: `citation_verified` = result of
+  `citation_check(result, passages)`, which calls
+  `normalise_citation(snippet) in normalise_citation(passage_text)` on each
+  supplied passage. True when the **answer-level reference string**
+  (`evidence_snippet`) was found to occur in the supplied evidence; False
+  when it was not found (or no snippet was produced).
+  *Where this is defined:* `evidence_sensitivity_v2.py` line 365–370.
+
+Neither pathway resolves `reference_string` against the original booklet PDF.
+`reference_string` is the answer-level reference from the eval file, which is
+**NOT** the evidence shown to the model. It is always `None` in these records
+(verified: 0 records have it). The correct field for the model's evidence
+reference is `evidence_snippet` (sensitivity) or `citations[].text` (paired).
+
+### 0.2 Five-state status (replaces the old binary "verified / not run")
+
+| Code | Meaning |
+|---|---|
+| `NOT_REACHED` | Pipeline stopped before citation checking (identity gate rejected) |
+| `NO_CITATION` | No answer-level reference produced; check could not run |
+| `CITATION_UNVERIFIABLE` | Reference produced but source text unavailable |
+| `CITATION_MECHANICAL_FAIL` | Reference produced; text did NOT occur in supplied evidence |
+| `CITATION_OCCURS_SEMANTIC_UNVERIFIED` | Reference found to occur; semantic support NOT ADJUDICATED |
+
+`CITATION_UNVERIFIABLE` does not apply here (the source PDF is available for
+all cases but was never independently resolved).
+`MANUAL_SEMANTIC_PASS/FAIL` is `NOT_APPLICABLE` (no independent review exists).
+
+### 0.3 Five examples
+
+| # | Case | Status | Evidence |
+|---|---|---|---|
+| 1 | Paired, official-row-1115 vote-aware-v1 | `NOT_REACHED` | Pipeline rejected at identity gate (`vote_unrecognised`); citation check never ran |
+| 2 | Paired, official-row-1115 dense-v1 | `CITATION_OCCURS_SEMANTIC_UNVERIFIED` | Dense pipeline produced citation references found in supplied passages; `citation_verified=True`; semantic support not checked |
+| 3 | Sensitivity, row 1344 D_reordered | `CITATION_OCCURS_SEMANTIC_UNVERIFIED` | Snippet "specifies a 4% minimum requirement, not a 10%…" was found in supplied passage; `citation_verified=True` |
+| 4 | Sensitivity, row 189 B_minimal | `CITATION_MECHANICAL_FAIL` | Snippet produced ("The evidence explicitly states…") but normalised snippet did NOT occur in the supplied passage text; `citation_verified=False` |
+| 5 | Paired, official-row-584 dense-v1 | `CITATION_MECHANICAL_FAIL` | Output valid, but `citation_verified=False` with `evidence_snippet` present and `citations=[]`; the snippet was not matched to any supplied passage |
+
+### 0.4 Required display labels (old → new)
+
+Old label `verified` is ambiguous and must no longer be used without qualification.
+Replacements:
+- When citation verification did **not** semantically verify sufficiency:
+  → `citation_occurrence=verified; semantic_support=NOT_ANNOTATED`
+  (rendered as `CITATION_OCCURS_SEMANTIC_UNVERIFIED` in the passport)
+- When the pipeline never reached citation verification:
+  → `NOT_REACHED` (not "not run / no quotation" which conflates NO_CITATION
+  and NOT_REACHED)
+
+---
+
 ## 0. Source provenance (verify before trusting)
 
 | Artefact | SHA-256 | What it is | Read by |

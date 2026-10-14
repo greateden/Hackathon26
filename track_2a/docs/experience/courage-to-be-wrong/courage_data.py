@@ -21,10 +21,15 @@ Two invariants:
 
 Provenance discipline (see ``attribution-verification.md``): every displayed
 string is classed as one of SOURCE-RECORDED, PROGRAMMATIC (recomputed here),
-AI-ANNOTATED (a model's own reasoning text), HYPOTHESIS, or NOT TESTED. Model
-``reasoning`` strings are the *model's own output* copied verbatim from a
-record; they are AI-ANNOTATED, not independent ground truth, and they are not
-warranted to reproduce any booklet faithfully.
+MODEL-GENERATED (the predictor's own reasoning text, copied verbatim from a
+record), AI-GENERATED (interpretation drafted by a Qwen-based research-assistant
+workflow over source records), HYPOTHESISED, or NOT TESTED. The interpretation
+layer (titles, stories, error-class labels, insufficiency-scope descriptions) is
+AI-GENERATED and NOT INDEPENDENTLY VERIFIED — it was never fact-checked against
+the original PDFs or independently adjudicated by a human reviewer.
+Model ``reasoning`` strings are MODEL-GENERATED, not independent ground truth,
+and are not warranted to reproduce any booklet faithfully.
+Neither class constitutes a semantic-support review.
 
 Run (from ``track_2a/``):
 
@@ -538,6 +543,44 @@ def _langs(rec):
     return (cl or "NOT VERIFIED", bl or "NOT VERIFIED")
 
 
+def _citation_status_paired(res, valid_output):
+    """Five-state citation verification status for the paired experiment.
+
+    In the paired (70B CSCS) experiment the identity gate runs BEFORE citation
+    verification; when it rejects, the check is never reached.  When the output
+    is valid, citation_verified=True means the pipeline's mechanical occurrence
+    check found the quotation in the supplied evidence (source-selection-v1).
+    Semantic support is model_judgement_only and was never independently
+    reviewed.
+    """
+    if not valid_output:
+        return "NOT_REACHED"
+    if res.get("citation_verified"):
+        return "CITATION_OCCURS_SEMANTIC_UNVERIFIED"
+    # valid but no citation check passed
+    snippet = res.get("evidence_snippet")
+    if not snippet:
+        return "NO_CITATION"
+    return "CITATION_MECHANICAL_FAIL"
+
+
+def _citation_status_sensitivity(res):
+    """Five-state citation verification status for the sensitivity experiment.
+
+    In the sensitivity experiment, citation_check always runs on every model
+    response.  A True result means the snippet occurred in the supplied
+    evidence; False means the snippet was produced but did NOT match any
+    supplied passage text (CITATION_MECHANICAL_FAIL).  Semantic support is
+    never verified independently.
+    """
+    if res.get("citation_verified"):
+        return "CITATION_OCCURS_SEMANTIC_UNVERIFIED"
+    snippet = res.get("evidence_snippet")
+    if not snippet:
+        return "NO_CITATION"
+    return "CITATION_MECHANICAL_FAIL"
+
+
 def passport_from_paired(lines):
     """Evidence Passport for the three paired P0 gallery cases (both arms)."""
     by_case = {}
@@ -566,18 +609,25 @@ def passport_from_paired(lines):
                 "contract_validity": ("valid" if rec.get("valid_output")
                                        else "rejected / invalid"),
                 "validator_error": res.get("error") or "none",
-                "citation_mechanical": ("verified" if res.get("citation_verified")
-                                        else "not run / no quotation"),
+                "citation_mechanical": _citation_status_paired(
+                    res, rec.get("valid_output")),
                 "passages": _passage_refs(rec) or "NOT VERIFIED",
                 "source_identity": _source_identity(rec),
             }
-        # Neutral: top-5 insufficiency vs document-wide absence is a different
-        # claim; only retrieved-top-5 was examined, so booklet-wide is NOT VERIFIED.
+        # Neutral: distinguish four claims that must not be conflated.
         if gloss["gold"] == "neutral":
-            scope = ("Retrieved top-5 does not establish the claim; whether it is "
-                     "absent from the whole named booklet is NOT VERIFIED (only the "
-                     "retrieved five were inspected). Top-5 absence never proves "
-                     "booklet-wide absence.")
+            scope = (
+                "Evidence-insufficiency audit status: "
+                "(1) Gold label neutral is SOURCE-RECORDED (eval annotation). "
+                "(2) Whether the retrieved Top-5 addresses the claim was "
+                "AI-inspected during annotation (AI-GENERATED); "
+                "not independently adjudicated. "
+                "(3) Evidence sufficiency for the correct label is "
+                "NOT ADJUDICATED (no independent evidence-adequacy review). "
+                "(4) Full-booklet absence is NOT VERIFIED "
+                "(no document-wide search was run). "
+                "Top-5 absence never proves booklet-wide absence; "
+                "gold-neutral does not establish 'no relevant evidence elsewhere'.")
         else:
             scope = ("Evidence addresses the claim; no document-wide search was run, "
                      "so full-booklet extent is NOT VERIFIED.")
@@ -593,11 +643,16 @@ def passport_from_paired(lines):
             "citation_verification": "Mechanical occurrence check only; semantic "
                                      "support NOT ANNOTATED (a passage appearing in "
                                      "the source does not prove it supports the claim).",
-            "semantic_sufficiency_status": "NOT ANNOTATED (no independent adjudication)",
+            "semantic_sufficiency_status": "NOT ADJUDICATED (no independent "
+                                           "evidence-adequacy review was performed)",
             "insufficiency_scope": scope,
-            "annotation_provenance": "Human-authored interpretation over source-"
-                                     "recorded fields; reasoning strings are the "
-                                     "model's own output (AI-ANNOTATED).",
+            "annotation_provenance": (
+                "Qwen-based research-assistant workflow over source records "
+                "(AI-GENERATED, NOT INDEPENDENTLY VERIFIED); "
+                "no independent human fact-checking was performed."),
+            "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+            "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+            "requires_human_review": True,
             "remaining_uncertainties": gloss["next_step"],
         })
     return passports
@@ -630,8 +685,7 @@ def passport_from_sensitivity(lines):
             cond_passports[c] = {
                 "prediction": rec.get("pred"),
                 "matches_gold": bool(rec.get("correct")),
-                "citation_mechanical": ("verified" if res.get("citation_verified")
-                                        else "not run / no quotation"),
+                "citation_mechanical": _citation_status_sensitivity(res),
                 "passages": _passage_refs(rec) or "NOT VERIFIED",
                 "source_identity": _source_identity(rec),
             }
@@ -649,13 +703,20 @@ def passport_from_sensitivity(lines):
                 "(position-only change) — see counterfactual_experiment.py."),
             "citation_verification": "Mechanical occurrence check only; semantic "
                                      "support NOT ANNOTATED.",
-            "semantic_sufficiency_status": "NOT ANNOTATED (B is a curated upper "
-                                           "bound, not a verified retrievable oracle)",
+            "semantic_sufficiency_status": "NOT ADJUDICATED (B is a curated upper "
+                                           "bound, not a verified retrievable oracle; "
+                                           "no independent evidence-adequacy review "
+                                           "was performed)",
             "insufficiency_scope": "Single-run A/B/C/D diagnostic; no document-wide "
                                    "search, so booklet-wide extent is NOT VERIFIED.",
-            "annotation_provenance": "Human-authored interpretation; reasoning "
-                                     "strings are model output (AI-ANNOTATED). "
-                                     "Single runs, not variance-controlled.",
+            "annotation_provenance": (
+                "Qwen-based research-assistant workflow over source records "
+                "(AI-GENERATED, NOT INDEPENDENTLY VERIFIED); "
+                "no independent human fact-checking was performed. "
+                "Single runs, not variance-controlled."),
+            "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+            "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+            "requires_human_review": True,
             "remaining_uncertainties": "Whether a placement effect caused any flip "
                                        "is a HYPOTHESIS (see attribution-verification "
                                        "record §2.2/§4.1); needs counterbalanced runs.",
@@ -701,8 +762,13 @@ def gallery_from_records(paired):
             "evidence_class": gloss["evidence_class"],
             "status": gloss["status"],
             "next_step": gloss["next_step"],
-            "annotation_provenance": "Human-authored interpretation (AI-assisted); "
-                                     "source-recorded fields, not a model evaluation.",
+            "annotation_provenance": (
+                "Qwen-based research-assistant workflow over source records "
+                "(AI-GENERATED, NOT INDEPENDENTLY VERIFIED); "
+                "not a model evaluation, not independent human review."),
+            "semantic_review_status": "NO INDEPENDENT SEMANTIC REVIEW",
+            "annotation_trust_status": "AI-GENERATED / NOT INDEPENDENTLY VERIFIED",
+            "requires_human_review": True,
             "arms": arms,
         })
     return cards

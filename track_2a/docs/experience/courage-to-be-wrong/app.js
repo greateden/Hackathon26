@@ -156,6 +156,7 @@
       tb.appendChild(ppRow("semantic sufficiency", p.semantic_sufficiency_status));
       tb.appendChild(ppRow("insufficiency scope", p.insufficiency_scope));
       tb.appendChild(ppRow("annotation provenance", p.annotation_provenance));
+      if (p.annotation_trust_status) tb.appendChild(ppRow("annotation trust", p.annotation_trust_status));
       tb.appendChild(ppRow("remaining uncertainties", p.remaining_uncertainties));
       box.appendChild(tb);
       return box;

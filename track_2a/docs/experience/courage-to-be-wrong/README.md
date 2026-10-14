@@ -87,6 +87,16 @@ python3 docs/experience/courage-to-be-wrong/counterfactual_experiment.py --dry-r
 - **Rejection ≠ reliability.** A large rejection count is not proof of trust.
 - **Explanation ≠ decision.** Model reasoning shown here is not assumed to
   describe the model's internal process (Turpin et al., 2023).
+- **Provenance: the case interpretation layer is AI-generated.** Titles,
+  stories, error-class labels, evidence-insufficiency claims and research
+  recommendations were drafted by a Qwen-based research-assistant workflow over
+  the source records. They are marked **AI-GENERATED / NOT INDEPENDENTLY
+  VERIFIED** and are **not** the product of independent human fact-checking.
+  The `attribution-verification.md` file states this explicitly and records
+  per-case trust and review status.
+- **Citation verification ≠ semantic support.** `citation_verified` is a
+  mechanical occurrence check ("does the quoted text appear in the source?"),
+  not proof that the quotation establishes the label.
 - **`grouped81-p0-004/028/059` do not exist.** Real cases (`official-row-1115`,
   `-728`, `-964`, and rows `1026/1344/189/195`) are used instead.
 - The 18 "over-narrow / lost-neutral" pattern is **genuine** — but it is a
