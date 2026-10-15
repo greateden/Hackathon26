@@ -29,7 +29,7 @@ Compose entrypoint compatibility and adapted/new contract tests.
 | Final focused checks | VERIFIED submission 9, P0 17, output gates 18; exit 0; `git diff --check` passed |
 | Local image | `votelens:evaluation-20261015`, image ID `sha256:0cbcee56ba91d84dfce3f73adfa6c9328b7b5a220329995adc769cd4b7978c1a`; not a registry publication digest |
 | Live integrated CSCS / benchmark | NOT TESTED; zero new real requests; 54-case benchmark not repeated |
-| Notebook | NOT FOUND in checkout or Downloads; existing static demo preserved and linked from report |
+| Notebook | PRESENT at `docs/HackApertus-demo.ipynb`; `LIVE_RUN=False`; configuration/display execution is offline; saved outputs remain historical. Static research demo remains separate. |
 
 Reproduction: [evaluation commands and offline Docker contract test](RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration).
 The committed `tests/docker_evaluation_contract.py` runs the actual CLI as a subprocess
@@ -47,7 +47,14 @@ explicitly not published in this task. Qualifying Macro-F1 (A >= 0.60, B >= 0.75
 established for the integrated path; below either threshold the submission scores zero.
 
 Task A's 29/54 recorded rejections (15 invalid/null identity, 14 unrecognised) reproduce
-the implemented gate; no demonstrable implementation bug justified weakening it.
+the historical gate. The current implementation permits deterministic recovery only
+for schema-consistent Neutral responses without evidence citations, and only when the
+complete requested vote title occurs in a selected source passage. It does not accept
+partial, ambiguous, non-neutral or wrong-proposal matches and has no new live score.
+An offline trace of the hash-matched saved raw records found that 13 of the 15
+historical null-status Neutral responses satisfy this exact-title condition; the
+other two and all 14 non-neutral/unrecognised responses remain rejected. This is a
+post-hoc contract replay on exposed development records, not a new Macro-F1 result.
 All 18 gold-Neutral cases were rejected in that historical run (12 raw Neutral, six raw
 Contradiction); candidate Macro-F1 was 0.491. These remain historical development facts,
 not new results or Task B quality estimates. No item-level prediction improvements are
@@ -60,15 +67,16 @@ No model server was started and no live commands are needed to reproduce the moc
 
 ## Current candidate
 
-- Feature branch only: `feature/votelens-research-positioning`; preparation began
-  at `3d1f5c774eb6fc279377f772c72f6c194a5d0a4f`. Confirm final SHA with `git log -1`.
+- Release work is on `main`; confirm the final local and remote SHA with `git log -1`
+  after the verified release commit.
 - **VERIFIED** default: official `swiss-ai/Apertus-v1.5-70B`, external CSCS
   `https://api.inference.cscs.ch/v1`. Existing authorised key worked (file 0600);
   never distribute it. 70B selected for proven deployment, not inferred accuracy.
 - CSCS lists official 8B too; **NOT TESTED** here. Managed NVIDIA 8B remains
   explicit, unsuitable for this Apple Silicon host and unverified.
-- Task A remains `vote-aware-v1` with unchanged retrieval, prompt, identity and
-  citation policies. Task B now carries vote context and accepts optional citations.
+- Task A remains `vote-aware-v1` with unchanged dense retrieval and source/citation
+  requirements; the narrow exact-title identity recovery is described above. Task B
+  carries vote context and accepts optional citations.
   No automatic model fallback exists.
 
 ## Commands and external requirements

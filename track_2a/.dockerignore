@@ -9,5 +9,6 @@
 !docs/evidence/
 !docs/evidence/paired_grouped81_plan_20261011.json
 !docs/evidence/prompt_pilot27_plan_v1.json
+!docs/SENTENCE_SWISSBERT_NOTICE.md
 **/__pycache__
 **/*.py[cod]

@@ -23,11 +23,10 @@ booklets, model weights, datasets or third-party packages.
   tokenizer assets. This statement replaces an earlier, incorrect notice
   claiming that the weights were absent from the image. The Docker image
   does **not** include Apertus LLM weights; inference uses an authorised API.
-- **Development/tests:** the current Dockerfile also copies `tests/`,
-  potentially including development fixtures with gold labels. The production
-  release should separate or exclude these from the image after verifying
-  no runtime import depends on them. That is an evaluation-integrity concern,
-  independent of their upstream copyright terms.
+- **Development/tests:** the Dockerfile has a separate `test` stage containing
+  tests and development fixtures. The default final `production` stage copies
+  runtime source only; gold-labelled `tests/fixtures/paired_examples.json` is
+  not included in that production stage.
 
 ## Third-party components and upstream terms
 
@@ -42,13 +41,17 @@ booklets, model weights, datasets or third-party packages.
   Small source excerpts in recorded evidence or demos are attributed; the
   applicable source reuse terms require human review before public release.
 - **SentenceSwissBERT:** https://huggingface.co/jgrosjean-mathesis/sentence-swissbert
-  The model card identifies **CC-BY-NC-4.0**, not Apache-2.0. Its
-  redistribution, attribution, non-commercial scope, and accompanying notice
-  obligations must be reviewed **before publishing an image containing its
-  weights**. A research/hackathon setting does not automatically resolve
-  licence compatibility. Keep the model's own copyright/licence information;
-  seek clarification or an authorised alternative if necessary. The project
-  licence does not supersede these upstream rights.
+  At the pinned revision
+  `7a91fa8a01af56c1f06060f7af3698ef5619e41c`, the README identifies
+  **CC-BY-NC-4.0**, not Apache-2.0; the repository has no separate `LICENSE`
+  file. The image now retains that README and a notice with the model, creator,
+  revision and licence URLs. CC BY-NC permits reproduction and sharing only for
+  NonCommercial purposes and requires attribution/licence information when the
+  material is shared. Whether the intended public registry distribution and
+  hackathon use are NonCommercial is not established here and requires human
+  review **before publishing an image containing the weights**. A
+  research/hackathon setting does not automatically resolve that question. The
+  project licence does not supersede these upstream rights.
 - **Apertus v1.5 and CSCS:** model and provider terms apply separately.
   The project does not relicense model weights or confer access to the
   external inference service/API credentials.

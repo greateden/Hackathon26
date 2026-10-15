@@ -30,7 +30,10 @@ CANDIDATE_PIPELINE = "vote-aware-v1"
 VOTE_INSTRUCTIONS = (
     "Resolve the specified vote against the supplied evidence, including translated "
     "proposal names. Set vote_status to recognised only if it identifies one proposal "
-    "unambiguously; otherwise use ambiguous or unrecognised. Do not guess from the claim. "
+    "unambiguously; otherwise use ambiguous or unrecognised. Determine proposal identity "
+    "independently from claim support: an unrelated claim does not make an identified vote "
+    "unrecognised. If the complete specified vote title occurs in a supplied passage, mark it "
+    "recognised and cite that passage. Do not guess from the claim. "
     "Judge only that proposal. Keep the Federal Council, Parliament, proponents and "
     "opponents separate: disagreement between speakers does not contradict a claim "
     "about what one of them says. If the requested position is absent, use neutral."
@@ -532,10 +535,36 @@ def optional_reference_citations(result, selected):
         return []
 
 
+def exact_vote_reference(vote, selected):
+    """Return a source reference only for a complete, text-grounded vote title."""
+    if not isinstance(vote, str) or len(normalise_citation(vote)) < 12:
+        return None
+    needle = normalise_citation(vote)
+    for passage in selected:
+        text = passage.get("text")
+        if isinstance(text, str) and needle in normalise_citation(text):
+            return {"passage_id": passage["id"]}
+    return None
+
+
 def candidate_result(result, selected, vote=None):
     citations = []
     if not result.get("error"):
         try:
+            status = result.get("vote_status")
+            # Recover only schema-consistent Neutral abstentions. Non-neutral
+            # answers still require the model's explicit identity reference so
+            # this path cannot legitimise evidence from another proposal.
+            if (vote is not None and status in (None, "unrecognised")
+                    and result.get("label") == "neutral"
+                    and result.get("evidence_status") == "insufficient"
+                    and result.get("evidence_refs") == []):
+                recovered = exact_vote_reference(vote, selected)
+                if recovered is not None:
+                    result.update(model_vote_status=status,
+                                  model_vote_reference=result.get("vote_reference"),
+                                  vote_status="recognised", vote_reference=recovered,
+                                  vote_identity_recovery="exact_vote_text_in_selected_passage")
             if vote is not None and result.get("vote_status") != "recognised":
                 status = result.get("vote_status")
                 raise ValueError("vote_" + status if status in ("ambiguous", "unrecognised")

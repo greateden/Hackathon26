@@ -37,6 +37,32 @@ class Contracts(unittest.TestCase):
             bad=self.case();bad['booklet']={'path':'https://example.test/book.pdf'};p.write_text(json.dumps(bad))
             with self.assertRaises(ValueError):cli.read_cases(p,root)
 
+    def test_booklet_paths_cannot_escape_data_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);data=root/'data';data.mkdir();outside=root/'outside.pdf';outside.write_bytes(b'%PDF-fake')
+            source=data/'cases.jsonl'
+            for path in (str(outside), '../outside.pdf'):
+                case=self.case();case.pop('reference');case['booklet']={'path':path}
+                source.write_text(json.dumps(case))
+                with self.subTest(path=path),self.assertRaisesRegex(ValueError,'beneath data root'):
+                    cli.read_cases(source,data)
+            link=data/'linked.pdf'
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest('symlinks unavailable')
+            case=self.case();case.pop('reference');case['booklet']={'path':'linked.pdf'}
+            source.write_text(json.dumps(case))
+            with self.assertRaisesRegex(ValueError,'beneath data root'):
+                cli.read_cases(source,data)
+
+    def test_evaluation_output_must_remain_beneath_output_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);data=root/'data';output=root/'output';data.mkdir();output.mkdir()
+            source=data/'cases.jsonl';source.write_text(json.dumps(self.case()))
+            with self.assertRaisesRegex(ValueError,'beneath output root'):
+                cli.run(source,root/'escape.jsonl',data,lambda:object(),output_root=output)
+
     def test_failure_does_not_drop_later_case_or_guess_label(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);p=root/'cases.jsonl';p.write_text('\n'.join(json.dumps(self.case(x)) for x in ['bad','good']))

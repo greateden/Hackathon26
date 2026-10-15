@@ -10,7 +10,7 @@
 #   - Corpus/data are bind-mounted at run time (compose.yaml), never
 #     COPYied into the image.
 
-FROM python:3.11-slim
+FROM python:3.11-slim AS runtime-base
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir \
 
 # Freeze the encoder at build time; runtime inference never contacts Hugging Face.
 ARG ENCODER_REVISION=7a91fa8a01af56c1f06060f7af3698ef5619e41c
-RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('jgrosjean-mathesis/sentence-swissbert', revision='${ENCODER_REVISION}', local_dir='/opt/models/sentence-swissbert', allow_patterns=['*.json','*.model','*.safetensors'])"
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('jgrosjean-mathesis/sentence-swissbert', revision='${ENCODER_REVISION}', local_dir='/opt/models/sentence-swissbert', allow_patterns=['*.json','*.model','*.safetensors','README.md'])"
 ENV EMBEDDING_MODEL=/opt/models/sentence-swissbert \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
@@ -46,15 +46,28 @@ ENV EMBEDDING_MODEL=/opt/models/sentence-swissbert \
 # Verify both model and tokenizer can load without network before shipping.
 RUN python -c "from transformers import AutoTokenizer, AutoModel; p='/opt/models/sentence-swissbert'; AutoTokenizer.from_pretrained(p, local_files_only=True); AutoModel.from_pretrained(p, local_files_only=True)"
 
-COPY src ./src
-COPY tests ./tests
-COPY docs/evidence/paired_grouped81_plan_20261011.json \
-     docs/evidence/prompt_pilot27_plan_v1.json \
-     ./docs/evidence/
-
 RUN useradd -m -d /home/app app && \
     mkdir -p /home/app/.cache/huggingface && \
     chown -R app:app /app /home/app
+
+# Offline regression image. Gold-labelled fixtures and test-only evidence live
+# here, never in the default production stage.
+FROM runtime-base AS test
+COPY --chown=app:app src ./src
+COPY --chown=app:app tests ./tests
+COPY --chown=app:app docs/evidence/paired_grouped81_plan_20261011.json \
+     docs/evidence/prompt_pilot27_plan_v1.json \
+     ./docs/evidence/
+USER app
+WORKDIR /app
+ENTRYPOINT []
+CMD ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"]
+
+# Default release image: runtime source only. Keep this stage last so an
+# unqualified `docker build` cannot accidentally publish the test image.
+FROM runtime-base AS production
+COPY --chown=app:app src ./src
+COPY docs/SENTENCE_SWISSBERT_NOTICE.md /usr/share/doc/sentence-swissbert/NOTICE.md
 USER app
 WORKDIR /app/src
 ENTRYPOINT ["python3", "/app/src/submission_cli.py"]

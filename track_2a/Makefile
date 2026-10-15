@@ -72,8 +72,11 @@ smoke:
 
 # Isolate portable checks from host-only experiment records and MLX tokenisers.
 test-docker:
-	docker compose build app
-	docker run --rm --network none --tmpfs /app/data hackapertus:local bash -c "cd /app && python3 src/test_judge.py && PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' && python3 -m py_compile src/*.py"
+	docker build --target test -t hackapertus:test .
+	docker run --rm --network none --tmpfs /app/data \
+	  -e SUBMISSION_MODEL_REQUIRED=0 -e LLM_NAME=swiss-ai/Apertus-v1.5-8B \
+	  -e LLM_TOKEN_PREFLIGHT=required --entrypoint bash hackapertus:test -c \
+	  "cd /app && python3 src/test_judge.py && PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' && python3 -m py_compile src/*.py"
 
 test-docker-pipeline:
 	docker compose run --rm app python3 test_pipeline.py

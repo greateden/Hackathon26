@@ -10,7 +10,20 @@ from collections import OrderedDict
 import booklet_app as app
 
 
+def resolved_beneath(path, root, description, *, strict=True):
+    """Resolve a path and reject absolute, ``..`` or symlink escapes."""
+    root = Path(root).resolve(strict=True)
+    resolved = Path(path).resolve(strict=strict)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"{description} must remain beneath {root.name} root") from exc
+    return resolved
+
+
 def read_cases(path, data_root):
+    data_root = Path(data_root).resolve(strict=True)
+    path = resolved_beneath(path, data_root, "Input", strict=True)
     cases = []
     seen = set()
     with path.open(encoding="utf-8") as stream:
@@ -30,7 +43,8 @@ def read_cases(path, data_root):
                 pdf = pdf if pdf.is_absolute() else data_root / pdf
                 if not pdf.is_file():
                     raise ValueError(f"Line {number}: supplied PDF does not exist")
-                raw["booklet"]["path"] = str(pdf.resolve())
+                raw["booklet"]["path"] = str(
+                    resolved_beneath(pdf, data_root, "Supplied PDF", strict=True))
             request = app.validate_request(raw, data_root)
             request["pipeline_version"] = app.CANDIDATE_PIPELINE
             if request["id"] in seen:
@@ -40,12 +54,18 @@ def read_cases(path, data_root):
     return cases
 
 
-def run(input_path, output_path, data_root=None, judge_factory=None, retriever_factory=None):
+def run(input_path, output_path, data_root=None, judge_factory=None, retriever_factory=None,
+        output_root=None):
     input_path, output_path = Path(input_path), Path(output_path)
     if input_path.resolve() == output_path.resolve():
         raise ValueError("Input and output must differ")
     root = Path(data_root) if data_root is not None else (
         Path("/data") if Path("/data").is_dir() else input_path.parent)
+    root = root.resolve(strict=True)
+    if output_root is None and root == Path("/data").resolve(strict=False):
+        output_root = Path("/output")
+    if output_root is not None:
+        output_path = resolved_beneath(output_path, output_root, "Output", strict=False)
     cases = read_cases(input_path, root)
     if any(request.get("booklet") == str(output_path.resolve()) for request in cases):
         raise ValueError("Output must not overwrite a supplied PDF")
