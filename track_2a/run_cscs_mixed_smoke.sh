@@ -29,7 +29,9 @@ BASE_URL=https://api.inference.cscs.ch/v1
 API_KEY=$CSCS_INFERENCE_API_KEY
 export BASE_URL API_KEY
 
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/votelens-cscs.XXXXXX")
+share_root=${CSCS_SMOKE_TMPDIR:-"$PWD/.cscs-mixed-smoke"}
+mkdir -p "$share_root"
+work_dir=$(mktemp -d "$share_root/votelens-cscs.XXXXXX")
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 mkdir "$work_dir/data" "$work_dir/output"
 chmod 777 "$work_dir/output"
