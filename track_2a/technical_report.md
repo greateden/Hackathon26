@@ -3,37 +3,13 @@
 **Subtitle:** Evidence Traceability and Failure Anatomy in Multilingual Document-Grounded NLI over Swiss Voting Booklets
 
 - **Track:** Track 2A — OST: Multilingual Document-Grounded NLI over Swiss Official Voting Booklets
-- **Event:** HackApertus (online)
-- **Team:** *not finalised — placeholder pending team confirmation (three members; no member has confirmed a public team name or member list).*
-- **Demo:** [The Courage to Be Wrong — interactive research demo](docs/experience/courage-to-be-wrong/README.md), located at `docs/experience/courage-to-be-wrong/` (open `index.html` in a browser). This is a **recorded-results interactive research demonstration**, not a live Apertus inference service: no model, no server, no network. No public hosting URL exists.
-
-*All research results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
-
-**Evaluation integration (15 October 2026).** The authoritative submission is now
-the [mixed-task Docker JSONL CLI](docs/RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration),
-with a bundled offline encoder and injected endpoint credentials. Task B now retains
-vote context and treats citations as optional; its prompt has changed and has not
-been quality-benchmarked. Task A's identity/grounding gates and all historical
-results below remain unchanged. Explicit error rows are not official predictions;
-publication and failure-policy agreement remain outstanding. No separately supplied
-demo notebook was found in this checkout or Downloads; the existing Demo link above
-continues to identify the actual recorded-results artefact, not live inference.
+- **Event:** Online
+- **Team:** 2A-OST: VoteLens — Yitian Li, Mikal Ermias Tadesse, Aline Prandstätter
+- **Demo:** [VoteLens interactive pipeline demo (Jupyter Notebook)](/docs/report/HackApertus-demo.ipynb)
 
 ## 1. Summary
 
-The practical objective is valid three-way NLI, evaluated primarily by held-out **Macro-F1**. In the 54-case development comparison, errors included in the denominators, dense-v1 scored 0.652 Macro-F1 and vote-aware-v1 0.491. The unchanged vote-aware gate remains a scoring risk, especially for neutral; accepted-only accuracy is not the submission metric. The selected runtime is external official Apertus v1.5 70B on CSCS, requiring an authorised key. See [release validation](docs/RELEASE_CANDIDATE_20261014.md).
-
-**The problem and the approach.** Swiss direct democracy asks citizens to adjudicate complex referenda — often several questions on one voting day — from official booklets that are multilingual (DE/FR/IT), structurally repetitive, and place supporting and opposing arguments in the same document. Martin et al. (2024) identify this setting as a high-stakes domain for LLM-based retrieval-augmented generation and frame the civic risk as erosion of the shared epistemic ground on which democratic deliberation depends. VoteLens is a document-grounded NLI diagnostic built for that setting: given a booklet (or a supplied reference) and a claim, it retrieves up to five within-booklet passages, asks an Apertus v1.5 model to judge the claim as entailment, neutral or contradiction, and validates the model's JSON answer — vote identity, citation occurrence, output schema — before returning it.
-
-**Recorded research finding (headline subject to team review) — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
-
-This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, the selected official 70B submission model; these development results are not held-out scores.
-
-**Supporting findings (secondary, not equal in weight to the headline).**
-
-- **A · Evidence scope.** Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519 on 81 paired development cases) at 96.3% fewer input tokens.
-- **B · Retrieval ablation.** On a separate frozen 81-case development sample, higher Recall@5 did *not* imply higher downstream NLI accuracy: proposition reranking raised R@5 from 0.580 to 0.716 while accuracy fell from 0.827 to 0.790.
-- **C · Evidence placement.** A 15-case diagnostic found three label regressions when the same decisive evidence was moved behind distractors at identical input-token counts — an exploratory observation that suggests possible positional sensitivity, without causal proof.
+Swiss direct democracy asks citizens to adjudicate complex referenda — often several questions on one voting day — from official booklets that are multilingual (DE/FR/IT), structurally repetitive, and place supporting and opposing arguments in the same document. VoteLens is a document-grounded NLI diagnostic built for that setting: given a booklet (or a supplied reference) and a claim, it retrieves up to five within-booklet passages, asks an Apertus v1.5 model to judge the claim as entailment, neutral or contradiction, and validates the model's JSON answer — vote identity, citation occurrence, output schema — before returning it. Our main research finding; **stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
 
 ## 2. Architecture
 
@@ -58,9 +34,9 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 
 ## 3. Use of Apertus
 
-- **Official submission target:** `swiss-ai/Apertus-v1.5-70B` via CSCS, using `LLM_NAME` / `LLM_BASE_URL` / `LLM_API_KEY` (or `CSCS_INFERENCE_API_KEY`). Real Docker Beginner and Advanced smokes passed; credentials and network remain external requirements. Managed official 8B is an untested alternative.
-- **Third-party quantised 8B MLX diagnostics:** `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit` (revision `9a3c32df`, 6-bit affine quantisation, 81,920-token context), served locally by `mlx_lm.server` on Apple Silicon. Used for the full-booklet comparison, retrieval ablation and evidence-sensitivity diagnostic. Its quantisation and serving behaviour differ from the submission target; its numbers are diagnostics, not submission evidence.
-- **70B CSCS exploratory development:** `swiss-ai/Apertus-v1.5-70B` via the CSCS inference API. Used for the 54-case paired comparison (the headline result), the n=1 Advanced Docker smoke and the 27-example prompt-only pilot. Neither performance nor response patterns should be assumed to transfer to an untested official 8B deployment.
+- **Model:** Official submission target; `swiss-ai/Apertus-v1.5-70B` via CSCS, using `LLM_NAME` / `LLM_BASE_URL` / `LLM_API_KEY` (or `CSCS_INFERENCE_API_KEY`). Real Docker Beginner and Advanced smokes passed; credentials and network remain external requirements. Managed official 8B is an untested alternative.
+- **How it is used:** Third-party quantised 8B MLX diagnostics; `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit` (revision `9a3c32df`, 6-bit affine quantisation, 81,920-token context), served locally by `mlx_lm.server` on Apple Silicon. Used for the full-booklet comparison, retrieval ablation and evidence-sensitivity diagnostic. Its quantisation and serving behaviour differ from the submission target; its numbers are diagnostics, not submission evidence.
+- **Where it runs:** 70B CSCS exploratory development; `swiss-ai/Apertus-v1.5-70B` via the CSCS inference API. Used for the 54-case paired comparison (the headline result), the n=1 Advanced Docker smoke and the 27-example prompt-only pilot. Neither performance nor response patterns should be assumed to transfer to an untested official 8B deployment.
 
 **Decoding and prompts.** All experiments used temperature 0, a 512-token output allowance and strict JSON parsing; failed or invalid outputs remain in denominators. Managed and native arms pass seed 20261011; the CSCS path uses standard OpenAI-compatible fields and does not send the vLLM-specific thinking control or seed. The production prompt is `current_v1`; a 27-example prompt-only pilot on 70B found no accuracy gain from the refined prompt (23/27 both arms, 18.8% more input tokens), so no prompt change was promoted. Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser — format normalisation, not semantic interpretation; unparseable outputs remain errors.
 
@@ -75,6 +51,18 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 ## 5. Evaluation
 
 **Metrics and denominators.** Four distinct measures appear below: *raw-label accuracy* (the model's recognised label matches gold, whether or not the output contract would accept the response); *strict correctness* (correct label AND accepted official response); *valid-output coverage* (fraction of cases satisfying the full output contract; rejects and endpoint failures count against coverage); *citation verified* (mechanical source-string occurrence, not semantic support). Failed or unparseable outputs are recorded as errors (`pred = None`), never defaulted to neutral. The 15-case sensitivity panel contains only entailment and contradiction gold labels, so its macro-F1 averages over two classes and is not comparable with three-class figures elsewhere.
+
+**Recorded research finding  — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
+
+This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, the selected official 70B submission model; these development results are not held-out scores.
+
+**Supporting findings (secondary, not equal in weight to the headline).**
+
+- **A · Evidence scope.** Focusing on five within-booklet passages beat full-booklet prompting (accuracy 0.802 vs 0.519 on 81 paired development cases) at 96.3% fewer input tokens.
+- **B · Retrieval ablation.** On a separate frozen 81-case development sample, higher Recall@5 did *not* imply higher downstream NLI accuracy: proposition reranking raised R@5 from 0.580 to 0.716 while accuracy fell from 0.827 to 0.790.
+- **C · Evidence placement.** A 15-case diagnostic found three label regressions when the same decisive evidence was moved behind distractors at identical input-token counts — an exploratory observation that suggests possible positional sensitivity, without causal proof.
+
+*All research results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
 
 ### 5.1 Headline: the 54-case paired coverage result
 
@@ -169,7 +157,7 @@ Generative AI was used **substantially** in this project: Qwen-based coding agen
 
 ## License
 
-Report text: Creative Commons Attribution 4.0 (CC-BY-4.0), following the official HackApertus template ("All HackApertus projects are open-sourced"). Team-authored code is Apache-2.0 under the root LICENSE. External data and models retain separate terms; see [third-party notices](../THIRD_PARTY_NOTICES.md). Existing excerpt permissions still require human review.
+Report text: Creative Commons Attribution 4.0 (CC-BY-4.0), following the official HackApertus template ("All HackApertus projects are open-sourced"). Team-authored code is Apache-2.0 under the root LICENSE. External data and models retain separate terms; see [third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## References
 
