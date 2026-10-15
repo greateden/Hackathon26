@@ -59,7 +59,7 @@ run `make run-cscs`. This uses the external Docker application and the existing
 optional token-preflight contract because CSCS does not document `/tokenize`.
 See [RUNNING.md](docs/RUNNING.md) for the exact checks and limitations.
 
-The [editable notebook demo](docs/HackApertus-demo.ipynb) keeps `LIVE_RUN=False`
+The [editable notebook demo](docs/report/HackApertus-demo.ipynb) keeps `LIVE_RUN=False`
 by default and preserves its displayed outputs as historical observations. It is
 separate from both the production mixed-JSONL entrypoint and the static
 recorded-results research website.
@@ -165,7 +165,7 @@ documented in the technical report; both use exposed development data.
 - [Technical report PDF](docs/report/technical_report.pdf): current A4 render (7 pages as reported after recompilation); rebuild via `make pdf` from this directory.
 - [Long-form technical reference](docs/TECHNICAL_REPORT_LONG.md): full methodology, per-case analysis and counterfactual design.
 - [Interactive diagnostic](docs/experience/courage-to-be-wrong/README.md): failure-first presentation layer with data-verification guard (no model, no server, no network).
-- [Editable notebook demo](docs/HackApertus-demo.ipynb): opt-in one-request Docker walkthrough; saved outputs are historical and live API use is disabled by default.
+- [Editable notebook demo](docs/report/HackApertus-demo.ipynb): opt-in one-request Docker walkthrough; saved outputs are historical and live API use is disabled by default.
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
 - [Historical archive](docs/archive/README.md): original research measurements and integrity caveats.
 - `src/`: application, paired evaluation and preserved research scripts.
@@ -174,8 +174,8 @@ documented in the technical report; both use exposed development data.
   - `make test-integrity` — additionally runs experiment-integrity checks that require git-ignored raw records (`data/experiments/`, `data/eval/`). Skips cleanly in a clean checkout.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
-Report PDF is at `docs/report/technical_report.pdf` (currently 7 pages, A4; verify the challenge-specific page limit). Team metadata, demo and
-external-material licensing still need human review. Report licence: CC-BY-4.0, following the
+Report PDF is at `docs/report/technical_report.pdf` (currently 7 pages, A4; the supplied OST materials did not specify a six-page cap). Team and notebook details are populated;
+external-material licensing, final PDF regeneration and registry publication still need human review. Report licence: CC-BY-4.0, following the
 [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
 
 Release validation and remaining approval conditions: [14 October release record](docs/RELEASE_CANDIDATE_20261014.md). Team-authored source: Apache-2.0; documentation: CC-BY-4.0; external materials retain their own terms ([notices](../THIRD_PARTY_NOTICES.md)).

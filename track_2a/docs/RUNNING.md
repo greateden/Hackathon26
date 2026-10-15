@@ -101,7 +101,34 @@ not `tests/` or gold-labelled fixtures. `make test-docker` builds the separate
 `test` target and overrides its entrypoint for offline regression checks.
 
 The integration does not publish an image. Publish an approved linux/amd64 image,
-record its immutable registry digest and verify a clean pull before submission.
+record its immutable registry digest and verify an unauthenticated pull before submission.
+
+## Publishing to GitHub Container Registry (manual release)
+
+Before publishing, complete the required human review of the bundled
+SentenceSwissBERT CC BY-NC 4.0 model licence. Authenticate to GHCR using a
+GitHub personal access token (classic) with `write:packages`, supplied privately
+via standard input; never store the token in Git or a Dockerfile. From the
+repository root, after checking the desired commit:
+
+```sh
+cd track_2a
+# After securely setting GHCR_PAT, run:
+printf '%s' "$GHCR_PAT" | docker login ghcr.io -u greateden --password-stdin
+# Only run after approved token and licensing review:
+docker buildx build --platform linux/amd64 --target production \
+  -t ghcr.io/greateden/hackathon26:latest --push .
+docker buildx imagetools inspect ghcr.io/greateden/hackathon26:latest
+```
+
+The GHCR package is **private by default**; in GitHub Packages, open the
+published container package's settings and change visibility to **Public**.
+A public repository alone does not make the package public. Verify a fresh
+anonymous `docker pull` (e.g. from an empty temporary Docker config), and
+record the immutable `ghcr.io/greateden/hackathon26@sha256:...` digest from the
+registry. Supply the verified image reference in the organiser's submission
+portal. Building on Apple Silicon may be slow due to AMD64 emulation.
+
 Minimum qualifying Macro-F1 is A >= 0.60 and B >= 0.75; neither is demonstrated
 for this integrated path. See the [team checklist](SUBMISSION_TEAM_REVIEW_20261015.md).
 Earlier sections below describe development and historical validation.

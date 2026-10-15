@@ -1,6 +1,6 @@
 # Retrieval quality and multilingual NLI over Swiss voting booklets
 
-**Track:** 2A, OST · **Event:** Online · **Release reference:** 14 October 2026. Team names and hosted demo link await approval. This is the long-form reference; the six-page PDF is a separate artefact.
+**Track:** 2A, OST · **Event:** Online · **Updated:** 15 October 2026. Team and notebook demo are identified in [the submission report](../technical_report.md). This is the long-form research reference; the separately maintained PDF is built from `report/technical_report.tex`.
 
 ## TL;DR
 
@@ -8,6 +8,8 @@ We study document-grounded NLI over official Swiss voting booklets: given a
 booklet and a claim, return entailment/neutral/contradiction with page-grounded
 evidence. Three findings drive this report; all are single-run observations on
 *exposed development data*, not benchmark or held-out results.
+
+**Separate production-path checks (not the 54-case paired study).** On local 60-case CSCS Apertus v1.5 70B evaluations, Task A obtained three-class Macro-F1 0.6635 with 46/60 valid outputs; Task B obtained 0.8418 with 60/60 valid outputs. These exceed the stated development-target thresholds (0.60/0.75), but they are exposed development results, not official private-set qualification. The 54-case `vote-aware-v1` Macro-F1 of 0.491 is from a different cohort and protocol, not a revised score for the same run.
 
 **(1) Retrieval.** Focusing on five within-booklet passages beat full-booklet
 prompting (0.802 vs 0.519) at 96.3% fewer input tokens. But optimising a lexical

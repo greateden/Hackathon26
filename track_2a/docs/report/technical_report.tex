@@ -32,7 +32,7 @@
 {\LARGE\bfseries VoteLens: The Courage to Be Wrong}\\[6pt]
 {\large Evidence Traceability and Failure Anatomy in Multilingual\\
 Document-Grounded NLI over Swiss Voting Booklets}\\[10pt]
-{\small Track 2A, OST \textbullet\ 14 October 2026 \textbullet\ Exploratory development evidence}
+{\small Track 2A, OST \textbullet\ 15 October 2026 \textbullet\ Exploratory development evidence}
 \end{center}
 
 \section*{Abstract}
@@ -110,6 +110,9 @@ Failures are assigned to the earliest independently measurable stage:
 Two distinctions maintained throughout: \textbf{output-validation failure $\neq$ reasoning failure}, and \textbf{evidence supported $\neq$ evidence sufficient}.
 
 \section{Results}
+
+\paragraph{Separate production-path development checks (not the paired comparison).}
+On local, exposed 60-case CSCS Apertus v1.5 70B evaluations, Task A (\texttt{vote-aware-v1}) achieved three-class Macro-F1 \textbf{0.6635}, with \textbf{46/60} valid outputs (14 rejected), against the Task A qualification threshold of 0.60. Task B achieved Macro-F1 \textbf{0.8418}, with \textbf{60/60} valid outputs, against its 0.75 threshold. These are neither official nor held-out results and do not establish qualification. The 54-case comparison below uses a different development sample; its \texttt{vote-aware-v1} Macro-F1 of 0.491 must not be conflated with this run.
 
 \subsection{Headline: paired vote-aware comparison (the coverage result)}
 

@@ -1,6 +1,6 @@
-> **14 October release update:** the submission default is external CSCS official Apertus v1.5 70B. Four bounded Docker calls and remaining neutral/approval blockers are recorded in [the release record](RELEASE_CANDIDATE_20261014.md). Earlier 8B-target and runtime status entries below are historical.
+> **Current release status — 15 October 2026:** The OST evaluation entrypoint is the `linux/amd64` Docker image's mixed-JSONL CLI (`src/submission_cli.py`), with `BASE_URL` and `API_KEY` supplied at runtime; `make run` is a separate developer demo. The selected external model is official Apertus v1.5 70B. **A publicly pullable registry image and its immutable digest are not yet verified.** The tracked Markdown, LaTeX source and PDF are present, but PDF rebuild after source edits and final portal submission remain pending. A six-page limit could not be located in the supplied OST Track 2A slides or challenge brief. Earlier 8B-oriented statements below are dated historical notes, not the current release configuration.
 
-# Project status — 13 October 2026
+# Project status — historical 13 October record, refreshed 15 October 2026
 
 **P0 candidate update:** the submission CLI now uses `vote-aware-v1`, with
 vote-conditioned dense Top-5 retrieval and source-selected citations. The
@@ -31,18 +31,20 @@ and [repository README](https://github.com/HackApertus/project-template/blob/mai
 rechecked on 12 October 2026. They require keeping `track_2a/`, Docker through
 `make run`, standard LLM environment variables and at most 100 MB of submitted
 data. They mandate the Apertus family but do not state a Track 2A model version;
-v1.5 8B remains this project's conservative target. The six-page report limit
-and 16 October 12:00 CEST deadline are retained from the project brief. The
-current template and Devpost rules were rechecked: submission goes through
-the event website, and Devpost confirms the deadline. The online-hack page had
-no readable text; challenge-specific rules and portal details remain unconfirmed.
+the current external submission target is official `swiss-ai/Apertus-v1.5-70B`.
+The OST Q&A additionally specifies an AMD64 container published to a registry,
+readable by the organisers with runtime-injected `BASE_URL`/`API_KEY`, and the
+Task A/B qualification thresholds of 0.60/0.75 Macro-F1. The two OST slide decks
+and supplied challenge description do not specify a six-page PDF limit; do not
+assert one without confirmation from the organisers. Submission is through the
+HackApertus website, not Devpost; final portal details need verification.
 
 | Requirement | Status | Evidence / limitation |
 |---|---|---|
 | `track_2a/` with Makefile, src, data, docs, README and technical report | Passed | Required layout present; repository-root Makefile forwards into it |
 | Apertus family used | Passed for local development | Real loader records v1.5 8B text branch, 6-bit MLX; no inference fallback |
-| Exact submission v1.5 8B model identity | Passed statically; runtime unverified | Compose and the application require `swiss-ai/Apertus-v1.5-8B`; official weights were not loaded here |
-| Official model availability | Blocked locally | Colima is Linux arm64 with no NVIDIA runtime; access and weights were not tested or downloaded |
+| Selected official v1.5 model | Configured; earlier real smokes passed | External CSCS `swiss-ai/Apertus-v1.5-70B` is the selected model. Published evaluation-image pull and private scoring remain unverified |
+| Official model availability | Earlier real 70B endpoint smokes passed | Inference stays at the provided endpoint; the release container does not bundle 70B weights. Managed local 8B remains unverified |
 | Specified booklet + claim, label and citations | Passed in local MLX and external Docker smokes | Both returned entailment with verified physical-page citations; n=1 each, not quality benchmarks |
 | All nine DE/FR/IT combinations | Development evidence only | Candidate comparison has two rows per language-pair/label cell; exposed n=54, not independent quality evidence |
 | `make run` launches Docker from project root | Passed for external CSCS mode | Root forwarding, build and one real application inference passed on Apple Silicon; managed 8B inference remains blocked locally |
@@ -55,24 +57,33 @@ no readable text; challenge-specific rules and portal details remain unconfirmed
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
 | Technical report template | Passed for draft structure | Sections 1–8, licence, references and current development results are present |
-| Final report, team metadata, demo and licence review | Failed / incomplete | No final PDF produced; the public template does not name or locate one, and challenge-specific details need confirmation |
+| Final report, team metadata, demo and licence review | Present; final checks pending | Markdown, LaTeX and PDF files exist; team names and notebook link are populated. Rebuild PDF after LaTeX changes; external model licence and registry publication need human review |
 
 ## Submission configuration
 
-`make run` → base `compose.submission.yaml` → `src/booklet_app.py`, using the
-externally provisioned endpoint from the standard `LLM_*` variables with no
-local GPU dependency. `make run SUBMISSION_MODE=managed` adds
-`compose.managed.yaml` and its NVIDIA vLLM service.
-Target model: `swiss-ai/Apertus-v1.5-8B`; temperature 0; seed 20261011;
-512 output tokens; context default 32,768, which must match the server.
-Edit `data/request.json`; configure `LLM_NAME`, `LLM_BASE_URL` and
-`LLM_API_KEY` outside Git. Managed mode uses `http://apertus:8000` and requires
-a compatible NVIDIA GPU/runtime, `HF_TOKEN`, sufficient VRAM and large initial
-image/weight downloads; no quantised substitution is configured.
-The managed Docker path retains required `/tokenize` preflight. The new native
-MLX experiment wrapper also supplies exact token preflight. Optional preflight is
-now used by the opt-in CSCS backend: it relies on completion usage and finish
-reason and never silently falls back. See [RUNNING.md](RUNNING.md).
+**Current OST evaluation path (15 October):** build `track_2a/Dockerfile` for
+`linux/amd64` using its default `production` stage. The image starts
+`src/submission_cli.py` with `--input /data/cases.jsonl --output
+/output/predictions.jsonl`; input `/data` is read-only and output `/output`
+is writable. `BASE_URL` and `API_KEY` are injected by the organiser at run
+time; no Apertus model weights or API secrets are included in the image. The encoder is
+bundled at build time, subject to its CC BY-NC 4.0 distribution terms. Selected
+model: `swiss-ai/Apertus-v1.5-70B` via the externally provisioned endpoint,
+temperature 0 and up to 512 output tokens. This external path does not send the
+native/vLLM-specific seed or thinking control. See [RUNNING.md](RUNNING.md).
+
+**Separate developer path:** `make run` uses `compose.submission.yaml` and
+`src/booklet_app.py` for one-request demonstrations. The optional managed 8B
+vLLM path requires NVIDIA hardware and has not passed a real inference smoke;
+it is not the selected evaluation release path.
+
+**Local qualification-oriented development checks (not official scoring):**
+60-case exposed-development CSCS 70B runs recorded Task A three-class Macro-F1
+**0.6635** with **46/60** valid outputs (14 errors), and Task B **0.8418**
+with **60/60** valid outputs, versus OST thresholds **0.60** and **0.75**.
+These scores do not establish qualification on the private held-out benchmark.
+The historical 54-case paired experiment below used a distinct sample/protocol:
+its `vote-aware-v1` Macro-F1 was **0.491**; it is not the same 60-case run.
 
 | Configuration | Meaning | Evaluation state |
 |---|---|---|
@@ -150,18 +161,20 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
 
 ## Remaining work
 
-**P0 — judge entry point:** default `make run` now uses an externally
-provisioned v1.5 endpoint and does not require a container GPU. The managed
-server remains an explicit option and is unverified. A tracked-files-only copy
-built successfully, and the repository-root command passed against a
-deterministic endpoint without `/tokenize`; the earlier CSCS smoke is the only
-real external inference. These checks do not establish cold-build or
-cross-platform portability.
+**P0 — publish the official evaluation image:** GitHub source push is not enough:
+produce and publish a `linux/amd64` production image to GHCR or the GitLab
+Container Registry, set permission for organisers to pull it without credentials,
+record the immutable image digest and verify a clean pull. The image's default
+entrypoint is the mixed Task A/B CLI; `make run` is not that interface.
+Public registry publication remains unverified. Earlier mock and CSCS smokes
+do not establish a fully successful scored private batch.
 
-**P1 — submission evidence and deliverables:** validate Windows and Linux;
-review code/data licensing, supply team and demo metadata, then complete the
-report and requested PDF within the confirmed limit. A genuinely independent
-held-out prompt evaluation remains future work; do not promote the exposed pilot.
+**P1 — submission evidence and deliverables:** publish and anonymously pull-test
+the AMD64 registry image, record its digest, confirm licence compliance (especially
+the bundled CC BY-NC encoder), verify the organiser's evaluation/exit contract,
+and rebuild the PDF from the latest LaTeX. Team and notebook metadata are present.
+No six-page limit was verified in the supplied OST materials. Independent
+held-out scoring remains unavailable; do not promote the exposed prompt pilot.
 
 **P2 — reproducibility and research limitations:** the new native runner pins encoder/model revisions; production image and encoder
 pinning remain open. Resolve the recorded MLX tokenizer warning and fresh-native
