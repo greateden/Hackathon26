@@ -6,8 +6,19 @@ with runtime `BASE_URL`/`API_KEY`, read-only `/data`, and writable `/output`.
 Build for `linux/amd64`; SentenceSwissBERT is bundled at build time and runtime
 model downloads are disabled. The default remains Apertus v1.5 70B.
 See [exact commands and failure limitations](docs/RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration).
-`make run` remains the development demo. Publication, official failure-row policy
-and qualifying Macro-F1 remain release gates; this integration is not a readiness certificate.
+`make run` remains the development demo. The published `linux/amd64` image was
+successfully pulled anonymously from GHCR and its architecture inspected on
+15 October 2026. This verifies registry access and architecture, **not**
+private-set qualification or the organiser's failure-row policy.
+
+**Published OST evaluation image (immutable reference):**
+`ghcr.io/greateden/hackathon26@sha256:87605f3f1c7afad8358e8322bd738593359c4569e959b8d38a0a0d6f47ac07d0`
+
+**Verified default entrypoint:** `python3 /app/src/submission_cli.py`
+(`linux/amd64`; no authentication required to pull). The runtime takes
+`--input /data/cases.jsonl --output /output/predictions.jsonl` and receives
+`BASE_URL` / `API_KEY` from the evaluation environment. See [running instructions](docs/RUNNING.md)
+for the volume mounts, contract and known failure behaviour.
 
 
 **HackApertus Track 2A — OST: Multilingual Document-Grounded NLI over
