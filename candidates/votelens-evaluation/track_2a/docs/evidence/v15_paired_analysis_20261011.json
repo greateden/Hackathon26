@@ -1,0 +1,747 @@
+{
+  "analysis_type": "offline inspection of saved replies; no inference",
+  "original_file_sha256": {
+    "data/experiments/v15-paired/summary.json": "6158c5769e021a0d83037b89a34a495d39d9266d4276729d52e43dde7b485677",
+    "data/experiments/v15-paired/predictions.jsonl": "946888cb342512f2402f3a08fc5e737bf6d68e69950d44f216c2d15cebea906e",
+    "data/experiments/v15-paired/summary.md": "b7ad5926781abdd0f0108d0dacffee063e200ca309efacd473a72da872e31742",
+    "data/experiments/v15-paired/.runner.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "data/experiments/v15-paired/events.jsonl": "723c509b9cb6224b810cc5185a01a99720f98085b4a7ec6518e80f15de28e27e",
+    "data/experiments/v15-paired/manifest.json": "a6b8f2fe575c971b4726044583b62e3d73c651ae52a6fd5ac25172c13d7006ba",
+    "data/experiments/v15-paired/preflight.json": "3684749ee1feec35f62fc343b0cc3c0344f8a5f28b39f4a7f8a531517ddac71a",
+    "data/experiments/v15-paired-80k/summary.json": "2b50f0b56c202e086db98c36a9fe6a0f4ab67b19ef2a40feda7d72f2876329c9",
+    "data/experiments/v15-paired-80k/predictions.jsonl": "6b6e00d73fb2e8779625feee0e0f92f589c0e10dd01faa4f3cf1ebf8a999078c",
+    "data/experiments/v15-paired-80k/summary.md": "1031d62689ef6c00b5e4ec038ccacc9d9d87294dae83010cfff6eb457db78a7d",
+    "data/experiments/v15-paired-80k/.runner.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "data/experiments/v15-paired-80k/events.jsonl": "55c5db1edc0435ce9d2742a1c6360b1aa2250b8b666734ba8d5a5ae630a38e15",
+    "data/experiments/v15-paired-80k/manifest.json": "c567b4a9960e68dfb0ea49836378762d9e42d9d936879a1af7523b5a9014adf4",
+    "data/experiments/v15-paired-80k/preflight.json": "9065cad507c0e6e5c34b0197cd48a57bd01001342bd319786bb38c049463d147"
+  },
+  "source_check_before_edits": "All source hashes in both manifests matched the working files before these fixes.",
+  "runs": {
+    "v15-paired": {
+      "context_tokens": 32768,
+      "completed": 13,
+      "failures": [
+        {
+          "row_index": 192,
+          "method": "full",
+          "error": "context_limit",
+          "preflight_input_tokens": 69998
+        },
+        {
+          "row_index": 171,
+          "method": "full",
+          "error": "context_limit",
+          "preflight_input_tokens": 32445
+        },
+        {
+          "row_index": 533,
+          "method": "full",
+          "error": "context_limit",
+          "preflight_input_tokens": 33825
+        },
+        {
+          "row_index": 187,
+          "method": "full",
+          "error": "context_limit",
+          "preflight_input_tokens": 36388
+        },
+        {
+          "row_index": 555,
+          "method": "full",
+          "error": "context_limit",
+          "preflight_input_tokens": 33001
+        }
+      ],
+      "checks": "All 18 message reconstructions, prompt hashes, settings and source-passage checks passed; full-page hashes match manifests; completed raw labels/counts/stop reasons agree.",
+      "methods_telemetry_corrected_offline": {
+        "full": {
+          "n": 9,
+          "errors": 5,
+          "error_kinds": {
+            "judge_error": 5
+          },
+          "accuracy": 0.111,
+          "macro_f1": 0.095,
+          "per_class": {
+            "entailment": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 0.25,
+              "recall": 0.333,
+              "f1": 0.286,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 0,
+              "ERROR": 3
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 1,
+              "contradiction": 0,
+              "ERROR": 2
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 13.78,
+          "median_latency_s": 13.68,
+          "mean_latency_s_all": 6.23,
+          "median_latency_s_all": 0.3,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 0.0,
+          "prompt_tokens_total": 81368,
+          "completion_tokens_total": 494,
+          "prompt_tokens": {
+            "measured_total": 81368,
+            "measured_rows": 4,
+            "missing_rows": 5
+          },
+          "completion_tokens": {
+            "measured_total": 494,
+            "measured_rows": 4,
+            "missing_rows": 5
+          },
+          "citation_verified_original": 0,
+          "inference_s_reported_sum": 54.55652412600466,
+          "wall_s_all_attempts": 56.0414904190111
+        },
+        "retrieved": {
+          "n": 9,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.889,
+          "macro_f1": 0.886,
+          "per_class": {
+            "entailment": {
+              "precision": 1.0,
+              "recall": 0.667,
+              "f1": 0.8,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.75,
+              "recall": 1.0,
+              "f1": 0.857,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 2,
+              "neutral": 0,
+              "contradiction": 1,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 3,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 3.64,
+          "median_latency_s": 3.57,
+          "mean_latency_s_all": 3.64,
+          "median_latency_s_all": 3.57,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 1.107,
+          "prompt_tokens_total": 9899,
+          "completion_tokens_total": 1189,
+          "prompt_tokens": {
+            "measured_total": 9899,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 1189,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "citation_verified_original": 3,
+          "inference_s_reported_sum": 22.66910358396126,
+          "wall_s_all_attempts": 32.765981209959136
+        }
+      },
+      "paired_success_only_telemetry_corrected_offline": {
+        "full": {
+          "n": 4,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.25,
+          "macro_f1": 0.2,
+          "per_class": {
+            "entailment": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "neutral": {
+              "precision": 0.25,
+              "recall": 1.0,
+              "f1": 0.4,
+              "support": 1
+            },
+            "contradiction": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 1,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 13.78,
+          "median_latency_s": 13.68,
+          "mean_latency_s_all": 13.78,
+          "median_latency_s_all": 13.68,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 0.0,
+          "prompt_tokens_total": 81368,
+          "completion_tokens_total": 494,
+          "prompt_tokens": {
+            "measured_total": 81368,
+            "measured_rows": 4,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 494,
+            "measured_rows": 4,
+            "missing_rows": 0
+          }
+        },
+        "retrieved": {
+          "n": 4,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "per_class": {
+            "entailment": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 1
+            },
+            "contradiction": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 1,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 3,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 3.49,
+          "median_latency_s": 3.27,
+          "mean_latency_s_all": 3.49,
+          "median_latency_s_all": 3.27,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 0.855,
+          "prompt_tokens_total": 4171,
+          "completion_tokens_total": 548,
+          "prompt_tokens": {
+            "measured_total": 4171,
+            "measured_rows": 4,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 548,
+            "measured_rows": 4,
+            "missing_rows": 0
+          }
+        }
+      },
+      "prediction_changes_original": [
+        {
+          "row_index": 1095,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        },
+        {
+          "row_index": 1328,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        },
+        {
+          "row_index": 1365,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        }
+      ]
+    },
+    "v15-paired-80k": {
+      "context_tokens": 81920,
+      "completed": 18,
+      "failures": [],
+      "checks": "All 18 message reconstructions, prompt hashes, settings and source-passage checks passed; full-page hashes match manifests; completed raw labels/counts/stop reasons agree.",
+      "methods_telemetry_corrected_offline": {
+        "full": {
+          "n": 9,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.333,
+          "macro_f1": 0.167,
+          "per_class": {
+            "entailment": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 0.333,
+              "recall": 1.0,
+              "f1": 0.5,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 25.88,
+          "median_latency_s": 21.62,
+          "mean_latency_s_all": 25.88,
+          "median_latency_s_all": 21.62,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 0.0,
+          "prompt_tokens_total": 287025,
+          "completion_tokens_total": 1216,
+          "prompt_tokens": {
+            "measured_total": 287025,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 1216,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "citation_verified_original": 3,
+          "inference_s_reported_sum": 231.48572866796167,
+          "wall_s_all_attempts": 232.9384624599479
+        },
+        "retrieved": {
+          "n": 9,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.889,
+          "macro_f1": 0.886,
+          "per_class": {
+            "entailment": {
+              "precision": 1.0,
+              "recall": 0.667,
+              "f1": 0.8,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.75,
+              "recall": 1.0,
+              "f1": 0.857,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 2,
+              "neutral": 0,
+              "contradiction": 1,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 3,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 3.74,
+          "median_latency_s": 3.81,
+          "mean_latency_s_all": 3.74,
+          "median_latency_s_all": 3.81,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 1.05,
+          "prompt_tokens_total": 9899,
+          "completion_tokens_total": 1189,
+          "prompt_tokens": {
+            "measured_total": 9899,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 1189,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "citation_verified_original": 3,
+          "inference_s_reported_sum": 24.029797458060784,
+          "wall_s_all_attempts": 33.62214599899016
+        }
+      },
+      "paired_success_only_telemetry_corrected_offline": {
+        "full": {
+          "n": 9,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.333,
+          "macro_f1": 0.167,
+          "per_class": {
+            "entailment": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 0.333,
+              "recall": 1.0,
+              "f1": 0.5,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 25.88,
+          "median_latency_s": 21.62,
+          "mean_latency_s_all": 25.88,
+          "median_latency_s_all": 21.62,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 0.0,
+          "prompt_tokens_total": 287025,
+          "completion_tokens_total": 1216,
+          "prompt_tokens": {
+            "measured_total": 287025,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 1216,
+            "measured_rows": 9,
+            "missing_rows": 0
+          }
+        },
+        "retrieved": {
+          "n": 9,
+          "errors": 0,
+          "error_kinds": {},
+          "accuracy": 0.889,
+          "macro_f1": 0.886,
+          "per_class": {
+            "entailment": {
+              "precision": 1.0,
+              "recall": 0.667,
+              "f1": 0.8,
+              "support": 3
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 3
+            },
+            "contradiction": {
+              "precision": 0.75,
+              "recall": 1.0,
+              "f1": 0.857,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "entailment": {
+              "entailment": 2,
+              "neutral": 0,
+              "contradiction": 1,
+              "ERROR": 0
+            },
+            "neutral": {
+              "entailment": 0,
+              "neutral": 3,
+              "contradiction": 0,
+              "ERROR": 0
+            },
+            "contradiction": {
+              "entailment": 0,
+              "neutral": 0,
+              "contradiction": 3,
+              "ERROR": 0
+            }
+          },
+          "mean_latency_s": 3.74,
+          "median_latency_s": 3.81,
+          "mean_latency_s_all": 3.74,
+          "median_latency_s_all": 3.81,
+          "latency_basis": "mean/median_latency_s exclude error items; the _all keys cover every item, so a run whose errors were slow (timeouts) stays visible",
+          "mean_retrieval_s": 1.05,
+          "prompt_tokens_total": 9899,
+          "completion_tokens_total": 1189,
+          "prompt_tokens": {
+            "measured_total": 9899,
+            "measured_rows": 9,
+            "missing_rows": 0
+          },
+          "completion_tokens": {
+            "measured_total": 1189,
+            "measured_rows": 9,
+            "missing_rows": 0
+          }
+        }
+      },
+      "prediction_changes_original": [
+        {
+          "row_index": 1095,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        },
+        {
+          "row_index": 192,
+          "gold": "entailment",
+          "full": "neutral",
+          "retrieved": "entailment",
+          "change": "improved"
+        },
+        {
+          "row_index": 1328,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        },
+        {
+          "row_index": 171,
+          "gold": "entailment",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "both_wrong"
+        },
+        {
+          "row_index": 187,
+          "gold": "entailment",
+          "full": "neutral",
+          "retrieved": "entailment",
+          "change": "improved"
+        },
+        {
+          "row_index": 1365,
+          "gold": "contradiction",
+          "full": "neutral",
+          "retrieved": "contradiction",
+          "change": "improved"
+        }
+      ]
+    }
+  },
+  "cross_run_checks": {
+    "identical_prompts": 18,
+    "identical_replies_on_32k_successes": 13,
+    "configuration_difference": "context_tokens only: 32768 versus 81920"
+  },
+  "citation_failures_80k": [
+    {
+      "row_index": 1095,
+      "method": "full",
+      "cause": "Formatting false negative only: page 15 has abita + U+00AD + newline + zioni; the generated quotation is otherwise contiguous. Narrow soft-hyphen correction verifies the saved quote."
+    },
+    {
+      "row_index": 192,
+      "method": "full",
+      "cause": "Ellipses and reordered/merged page text; not a contiguous verbatim quotation."
+    },
+    {
+      "row_index": 979,
+      "method": "full",
+      "cause": "English explanation in place of a French source quotation."
+    },
+    {
+      "row_index": 1328,
+      "method": "full",
+      "cause": "English explanation in place of a German source quotation; falsely denies palm-oil evidence present on page 47."
+    },
+    {
+      "row_index": 187,
+      "method": "full",
+      "cause": "Paraphrase: un’infrastruttura moderna ed efficiente becomes infrastrutture moderne ed efficienti; tuttavia is omitted."
+    },
+    {
+      "row_index": 1365,
+      "method": "full",
+      "cause": "Omits , LIdE from law title and changes apostrophes. Punctuation folding alone cannot validate it."
+    },
+    {
+      "row_index": 192,
+      "method": "retrieved",
+      "cause": "Splices page 144 recommendations with page 43 referendum-committee text, inserts ellipses; reasoning attributes the committee’s Covid No to government despite its Yes. Gold label agreement does not validate rationale."
+    },
+    {
+      "row_index": 979,
+      "method": "retrieved",
+      "cause": "Reorders passage text and changes les assurés to the assurés. Repeated carriage returns already normalise as whitespace."
+    },
+    {
+      "row_index": 1328,
+      "method": "retrieved",
+      "cause": "Drops footnote 3, parenthesis and heading between sentences; also repairs extracted tie feren. Not merely whitespace."
+    },
+    {
+      "row_index": 533,
+      "method": "retrieved",
+      "cause": "Spans three selected chunks across pages 18–19 and replaces extracted d’échap / pement vont également augmenter with d’échappement et de CO2 augmentent avec le trafic routier. Joining chunks would not make the whole quotation verbatim."
+    },
+    {
+      "row_index": 555,
+      "method": "retrieved",
+      "cause": "English explanation in place of a German source quotation."
+    },
+    {
+      "row_index": 1365,
+      "method": "retrieved",
+      "cause": "Adds Per tutte queste ragioni where selected p31-c2 begins este ragioni. Full sentence exists on page 31 but its beginning is outside supplied retrieval evidence."
+    }
+  ],
+  "interpretation": {
+    "neutral_collapse": "Raw model behaviour, not parser fallback. Long-input evidence use and stance/conditional interpretation are candidate causes, not causally isolated.",
+    "row_171": "Gold entailment; full neutral, retrieved contradiction. Retrieved p33-c2 states rejection terminates the amendment and its measures. The model wrongly treats that conditional as contradicting continuation on approval. Quote verified; no gold change.",
+    "token_bug": "Historical scorer reads top-level telemetry while paired logs nest it under result. Corrected only paired adapter; original classification and citation scores unchanged.",
+    "citation_fix": "Whitespace normalisation plus discretionary U+00AD within-word soft hyphens only; no fuzzy matching, punctuation folding, chunk joining or unsupplied-page search."
+  }
+}

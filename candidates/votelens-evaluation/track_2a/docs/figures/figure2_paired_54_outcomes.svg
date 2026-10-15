@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="320" viewBox="0 0 680 320" role="img" aria-labelledby="title desc">
+  <title id="title">Paired strict-correctness outcomes: dense-v1 versus vote-aware-v1</title>
+  <desc id="desc">Four-cell paired comparison for 54 cases: both correct 14, dense-only correct 18, vote-aware-only correct 9, both incorrect 13.</desc>
+  <rect width="680" height="320" fill="#ffffff"/>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17212b; }
+    .cell { font-size: 14px; font-weight: 600; text-anchor: middle; }
+    .lbl { font-size: 13px; text-anchor: middle; }
+    .ax { font-size: 12px; text-anchor: middle; fill: #4a5568; }
+  </style>
+  <text x="340" y="24" text-anchor="middle" font-size="16" font-weight="600">Paired strict-correctness outcomes (n = 54)</text>
+  <text x="340" y="44" text-anchor="middle" font-size="12" fill="#666">Apertus v1.5 70B; 4 cells sum to 54; exact McNemar p = 0.122</text>
+
+  <!-- 2x2 grid -->
+  <!-- Column headers -->
+  <text x="400" y="80" class="ax">Vote-aware correct</text>
+  <text x="570" y="80" class="ax">Vote-aware incorrect</text>
+  <!-- Row headers -->
+  <text x="115" y="140" class="ax" text-anchor="end">Dense correct</text>
+  <text x="115" y="225" class="ax" text-anchor="end">Dense incorrect</text>
+
+  <!-- Both correct: 14 -->
+  <rect x="310" y="100" width="180" height="60" fill="#3c8d5a" opacity="0.18" rx="4"/>
+  <text x="400" y="137" class="cell" fill="#3c8d5a">14</text>
+  <text x="400" y="152" class="lbl">Both correct</text>
+
+  <!-- Dense-only correct: 18 -->
+  <rect x="500" y="100" width="150" height="60" fill="#c9534f" opacity="0.18" rx="4"/>
+  <text x="575" y="137" class="cell" fill="#c9534f">18</text>
+  <text x="575" y="152" class="lbl">Dense-only correct</text>
+
+  <!-- Vote-aware-only correct: 9 -->
+  <rect x="310" y="185" width="180" height="60" fill="#5b8dd9" opacity="0.18" rx="4"/>
+  <text x="400" y="222" class="cell" fill="#5b8dd9">9</text>
+  <text x="400" y="237" class="lbl">Vote-aware-only correct</text>
+
+  <!-- Both incorrect: 13 -->
+  <rect x="500" y="185" width="150" height="60" fill="#c8d0d8" opacity="0.30" rx="4"/>
+  <text x="575" y="222" class="cell" fill="#666">13</text>
+  <text x="575" y="237" class="lbl">Both incorrect</text>
+
+  <!-- Discordant pair annotation -->
+  <text x="340" y="278" text-anchor="middle" font-size="11" fill="#4a5568">Discordant pairs: 18 + 9 = 27 (18 losses, 9 wins for vote-aware)</text>
+  <text x="340" y="298" text-anchor="middle" font-size="11" fill="#4a5568">Denominator = 54; strict correctness 32/54 (dense) vs 23/54 (vote-aware)</text>
+</svg>

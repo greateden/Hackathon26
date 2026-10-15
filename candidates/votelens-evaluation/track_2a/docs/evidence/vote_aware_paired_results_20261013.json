@@ -1,0 +1,142 @@
+{
+  "schema": "hackapertus-vote-aware-paired-audit-v1",
+  "evaluation_date": "2026-10-13",
+  "experiment_version": "vote-aware-paired-v2",
+  "status": "COMPLETE_WITH_ERRORS",
+  "scope": "paired exploratory development evaluation, not independent held-out testing",
+  "raw_records": {
+    "repository_path": "data/experiments/vote-aware-paired-v2/",
+    "remote_availability": "ignored; not published",
+    "sha256": {
+      "plan.json": "068f5973865044c92c0bcf54e18194c6e9eef0f1f210060f27b62f824dd265e3",
+      "manifest.json": "322ce7617a654037c4f65cb8e8b8c998554a13802510c2e0980609ce02f15e95",
+      "predictions.jsonl": "1d7553e0f85498b8c83316e35b34836f1db3fdba508623745509c00d4c34d1fe",
+      "summary.json": "14912084c89302117077076e6c9aa0118a6618062eb1f0cd5116627d49920f6a",
+      "analysis.md": "4b7f9522accb22c64dfaad0caa76b67e6f1196d83ae5842392e47b168b2a41f1"
+    }
+  },
+  "provenance": {
+    "dataset": "data/eval/mnli_swiss_v1.1.jsonl",
+    "dataset_sha256": "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd",
+    "source_plan": "docs/evidence/paired_grouped81_plan_20261011.json",
+    "source_plan_sha256": "84dc9c7117c2aab4a1b85d9c91f5ab9296165720fc71153236980395915d07c1",
+    "selection_seed": 20261013,
+    "selection": "first two rows per claim-language x booklet-language x gold-label cell in the frozen grouped 81-case plan",
+    "cases": 54,
+    "distinct_votes": 49,
+    "distinct_pdfs": 36,
+    "language_pairs": 9,
+    "gold_labels": 3,
+    "examples_per_cell": 2,
+    "planned_calls": 108,
+    "accounted_calls": 108
+  },
+  "configuration": {
+    "model": "swiss-ai/Apertus-v1.5-70B",
+    "encoder": "jgrosjean-mathesis/sentence-swissbert",
+    "encoder_revision": "7a91fa8a01af56c1f06060f7af3698ef5619e41c",
+    "top_k": 5,
+    "temperature": 0,
+    "seed": null,
+    "max_tokens": 512,
+    "call_order": "alternating AB/BA"
+  },
+  "definitions": {
+    "raw_label_accuracy": "gold-matching recognised raw NLI label, regardless of later submission-contract acceptance",
+    "strict_accuracy": "gold-matching label after successful official submission-output rendering; failures remain in the denominator",
+    "valid_output_rate": "successful official submission-output rendering after identity, evidence and citation checks",
+    "native_json_rate": "parseable JSON with a recognised raw label and no deterministic syntax recovery; not full contract validity",
+    "citation_verification": "mechanical supplied-source provenance, not independently annotated semantic sufficiency"
+  },
+  "arms": {
+    "dense-v1": {
+      "description": "original claim-only dense Top-5, original prompt and generated-snippet citation handling",
+      "n": 54,
+      "raw_label_accuracy": 0.7407,
+      "strict_accuracy": 0.5926,
+      "macro_f1": 0.652,
+      "valid_output_rate": 0.7963,
+      "errors": 11,
+      "input_tokens_total": 69023,
+      "input_tokens_mean": 1278.203704,
+      "inference_s_mean_all": 1.743171,
+      "native_json_rate": 1.0
+    },
+    "vote-aware-v1": {
+      "description": "vote-plus-claim dense Top-5, vote-attribution instructions, source IDs and strict identity/evidence validation",
+      "n": 54,
+      "raw_label_accuracy": 0.7593,
+      "strict_accuracy": 0.4259,
+      "macro_f1": 0.491,
+      "valid_output_rate": 0.463,
+      "errors": 29,
+      "input_tokens_total": 89243,
+      "input_tokens_mean": 1652.648148,
+      "inference_s_mean_all": 1.622942,
+      "native_json_rate": 0.9074,
+      "syntax_recovery_rate": 0.0926,
+      "error_kinds": {
+        "vote_unrecognised": 14,
+        "invalid_vote_status": 15
+      }
+    }
+  },
+  "paired_strict_accuracy": {
+    "dense_only_correct": 18,
+    "vote_aware_only_correct": 9,
+    "both_correct": 14,
+    "both_incorrect": 13,
+    "vote_aware_minus_dense": -0.1667,
+    "mcnemar_exact_two_sided_p": 0.122078
+  },
+  "candidate_failure_audit": {
+    "rejected_outputs": 29,
+    "raw_label_present": 29,
+    "raw_label_correct": 18,
+    "raw_label_incorrect": 11,
+    "gold_neutral": {
+      "n": 18,
+      "accepted_correct": 0,
+      "rejected": 18,
+      "raw_neutral": 12,
+      "raw_contradiction": 6
+    },
+    "strict_correct_by_gold": {
+      "entailment": 15,
+      "neutral": 0,
+      "contradiction": 8
+    },
+    "accepted_source_reference_verification": "25/25",
+    "interpretation": "Identity validation is the immediate rejection gate, but wrong labels and wrong-scope retrieval mean rejected answers cannot be assumed otherwise valid."
+  },
+  "representative_cases": [
+    {
+      "case_id": "official-row-1115",
+      "gold": "contradiction",
+      "raw_label": "contradiction",
+      "final_error": "vote_unrecognised",
+      "observation": "Selected pages explicitly name the requested premium-relief initiative; the identity rejection blocks final citation acceptance despite a gold-matching raw label."
+    },
+    {
+      "case_id": "official-row-728",
+      "gold": "neutral",
+      "raw_label": "neutral",
+      "final_error": "invalid_vote_status",
+      "observation": "All five selected passages concern the Climate and Innovation Act rather than the requested COVID-19 amendment, showing a retrieval-scope failure alongside missing identity fields."
+    },
+    {
+      "case_id": "official-row-964",
+      "gold": "neutral",
+      "raw_label": "contradiction",
+      "final_error": "vote_unrecognised",
+      "observation": "Several selected passages explicitly identify the cash initiative, but the response rejects the identity and gives an incorrect raw label for an unrelated tax claim."
+    }
+  ],
+  "limitations": [
+    "small exploratory sample with correlated examples and shared PDFs",
+    "previously exposed development data",
+    "retrieval query, prompt, response schema, identity gate and citation mechanism changed together",
+    "no independent citation-sufficiency annotations",
+    "single remote call per case and arm; latency does not establish computational efficiency"
+  ]
+}

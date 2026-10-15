@@ -1,0 +1,34 @@
+{
+  "schema": "hackapertus-evidence-sensitivity-v2",
+  "status": "PASS",
+  "validated_utc": "2026-10-12T19:31:11.056629+00:00",
+  "reviewed_cases": 17,
+  "excluded_rows": [
+    455,
+    550
+  ],
+  "cases": 15,
+  "conditions": [
+    "A_original",
+    "B_minimal",
+    "C_minimal_plus_distractors",
+    "D_reordered"
+  ],
+  "planned_calls": 60,
+  "approval": {
+    "approved": false,
+    "overall_status": "pending_independent_chatgpt_review",
+    "decisions": {
+      "pending_review": 17
+    },
+    "reviewer": null,
+    "reviewed_utc": null,
+    "review_kind": "AI-assisted independent evidence adjudication",
+    "human_verification": false
+  },
+  "C_D_only_order": true,
+  "source_quotations_and_offsets_verified": true,
+  "complete_B_block_rotation_verified": true,
+  "offline_token_counts_verified": true,
+  "inference_calls": 0
+}

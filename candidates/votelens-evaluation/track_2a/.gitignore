@@ -1,0 +1,32 @@
+# External data and generated files remain local; never delete them for packaging.
+/repos/
+/data/*
+!/data/README.md
+!/data/request.json
+!/data/examples/
+!/data/example_claims.json
+# Scratch probes are retained locally; existing tracked probes are preserved explicitly.
+/tmp/*
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store
+.env
+.env.*
+!.env.example
+!/tmp/diag_before.txt
+!/tmp/probe4.py
+!/tmp/probe5.py
+!/tmp/probe6.py
+!/tmp/probe7.py
+!/tmp/probe_parse.py
+!/tmp/probe_parse2.py
+!/tmp/probe_parse3.py
+!/tmp/probe_parser.py
+!/tmp/tmp_probe_v3.py
+!/tmp/tmp_probe_v3_control.py

@@ -1,0 +1,25 @@
+{
+  "schema": "hackapertus-evidence-sensitivity-v1",
+  "status": "PASS",
+  "validated_utc": "2026-10-12T19:02:22.261710+00:00",
+  "cases": 17,
+  "conditions": [
+    "A_original",
+    "B_minimal",
+    "C_minimal_plus_distractors",
+    "D_reordered"
+  ],
+  "planned_calls": 68,
+  "approval": {
+    "approved": false,
+    "overall_status": "pending_review",
+    "decisions": {
+      "pending_review": 17
+    },
+    "reviewer": null,
+    "reviewed_utc": null
+  },
+  "C_D_only_order": true,
+  "source_quotations_and_offsets_verified": true,
+  "inference_calls": 0
+}

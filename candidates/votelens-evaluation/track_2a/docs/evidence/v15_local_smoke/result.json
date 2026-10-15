@@ -1,0 +1,92 @@
+{
+  "label": "entailment",
+  "label_code": 0,
+  "model": "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit",
+  "parser_version": "label-parse-v3-strict",
+  "temperature": 0,
+  "seed": 20261011,
+  "max_tokens": 512,
+  "context_tokens": 32768,
+  "token_preflight": "optional",
+  "prompt_sha256": "b142350c2eb0186de2e72041af4910f2e6078fb5a16c658d4117e698b2e75217",
+  "inference_s": 1.3836015420092735,
+  "raw_response": "{\"label\": \"entailment\", \"reasoning\": \"The evidence explicitly states that the Bundesrat and Parlament recommend rejecting the Volksinitiative, which directly supports the claim that they reject the initiative.\", \"evidence_snippet\": \"Parlament, die Volksinitiative «Mehr bezahlbare Wohnungen» abzulehnen.\"}",
+  "usage": {
+    "prompt_tokens": 1007,
+    "completion_tokens": 71,
+    "total_tokens": 1078,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "finish_reason": "stop",
+  "input_tokens": 1007,
+  "reasoning": "The evidence explicitly states that the Bundesrat and Parlament recommend rejecting the Volksinitiative, which directly supports the claim that they reject the initiative.",
+  "evidence_snippet": "Parlament, die Volksinitiative «Mehr bezahlbare Wohnungen» abzulehnen.",
+  "elapsed_s": 1.3836267500009853,
+  "evidence_mode": "retrieved",
+  "booklet": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+  "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+  "claim_language": "de",
+  "booklet_language": "de",
+  "passages": [
+    {
+      "id": "p15-c2",
+      "page": 15,
+      "text": "at und\nParlament, die Volksinitiative «Mehr bezahlbare Wohnungen»\nabzulehnen.\n\nNein\nadmin.ch/bezahlbare­wohnungen",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.941939115524292
+    },
+    {
+      "id": "p8-c1",
+      "page": 8,
+      "text": "8\n\nErste Vorlage: «Mehr bezahlbare Wohnungen»\n\nIm Detail\n\nVolksinitiative\n«Mehr bezahlbare Wohnungen»\n\nArgumente Initiativkomitee\nArgumente Bundesrat\nAbstimmungstext\n\n12\n14\n16",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.9191687703132629
+    },
+    {
+      "id": "p5-c1",
+      "page": 5,
+      "text": "5\n\nAbstimmungsfrage\n\nEmpfehlung\nvon Bundesrat\nund Parlament\n\nWollen Sie die Volksinitiative\n«Mehr bezahlbare Wohnungen»\nannehmen?\n\nNein\n­\n\nadmin.ch/bezahlbare­wohnungen\nEmpfehlung des\nInitiativkomitees\n\nJa\nLaut dem Initiativkomitee gibt es in der Schweiz zu wenig\nbezahlbare Wohnungen. Grund für steigende Mieten sei, dass\ndie Immobilieneigentümerinnen und ­eigentümer immer höhe ­\nre Renditen anstrebten. Die Initiative fordert mehr Wohnungen\nim Eigentum gemeinnütziger Wohnbauträger, da diese nicht\ngewinnorientiert arbeiten.\nbezahlbare­wohnungen.ch\nmieterverband.ch\n\nAbstimmung\nim Nationalrat\n\n56 Ja\n140 Nein\n0 Enthaltungen\n\nAbstimmung\nim Ständerat\n\n13 Ja\n30 Nein\n1 Enthaltung",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.9024368524551392
+    },
+    {
+      "id": "p4-c2",
+      "page": 4,
+      "text": " Initiative verhindern, dass Subventionen\nfür energetische Sanierungen zu Luxuslösungen führen und\nsich die Wohnungen übermässig verteuern. Bundesrat und\nParlament lehnen die Initiative ab. Das Parlament hat jedoch\nzusätzliche Mittel für den bestehenden Fonds zugunsten des\ngemeinnützigen Wohnungsbaus beschlossen. Dieser soge ­\nnannte «Fonds de Roulement», aus dem Darlehen gewährt\nwerden, wird aber nur aufgestockt, wenn die Volksinitiative\nabgelehnt wird.\n\nVorlage im Detail\nArgumente\nAbstimmungstext\n\n8\n12\n16",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.8544197082519531
+    },
+    {
+      "id": "p16-c1",
+      "page": 16,
+      "text": "Erste Vorlage: «Mehr bezahlbare Wohnungen»\n\n16\n\n§\n\nAbstimmungstext\nAbstimmungstext\nAbstimmungstext\n\nBundesbeschluss\nBundesbeschluss\nüber\n«Mehr\nbezahlbare\nWohnungen»\nBundesbeschluss\ndie Volksinitiative\nüber die\ndie Volksinitiative\nVolksinitiative\n«Mehrüber\nbezahlbare\nWohnungen»\n«Mehr bezahlbare Wohnungen»\nvom 22. März 2019\nvom 22. März 2019\nvom 22. März 2019\n\nDie Bundesversammlung der Schweizerischen Eidgenossenschaft,\nDie Bundesversammlung der Schweizerischen Eidgenossenschaft,\ngestützt auf Artikel 139 Absatz 5 der Bundesverfassung11,\ngestützt auf Artikel 139 Absatz 5 der Bundesverfassung ,\nnach Prüfung der am 18. Oktober 201622 eingereichten Volksinitiative\nnach Prüfung der am 18. Oktober 2016 eingereichten Volksinitiative\n«Mehr bezahlbare Wohnungen»,\n«Mehr bezahlbare Wohnungen»,\nnach Einsicht in die Botschaft des Bundesrates vom 21. März 201833,\nnach Einsicht in die Botschaft des Bunde",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.8491372466087341
+    }
+  ],
+  "citations": [
+    {
+      "id": "p15-c2",
+      "page": 15,
+      "text": "at und\nParlament, die Volksinitiative «Mehr bezahlbare Wohnungen»\nabzulehnen.\n\nNein\nadmin.ch/bezahlbare­wohnungen",
+      "lang": "de",
+      "source": "<original-checkout>/data/booklets/pdf/2020-02-09_erlaeuterungen_des_bundesrates_de.pdf",
+      "pdf_sha256": "9df0813f2728c9de6dd29b132acf11d3e13bf7a011b7e6475a4c8b5155c889c8",
+      "score": 0.941939115524292
+    }
+  ],
+  "citation_verified": true,
+  "retrieval_s": 2.373687624989543
+}

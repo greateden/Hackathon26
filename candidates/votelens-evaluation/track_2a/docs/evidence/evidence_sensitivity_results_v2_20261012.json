@@ -1,0 +1,2285 @@
+{
+  "schema": "hackapertus-evidence-sensitivity-results-v2",
+  "purpose": "Post-hoc diagnostic; not independent generalisation or deployable retrieval evidence.",
+  "raw_experiment": "data/experiments/evidence-sensitivity-v2",
+  "plan": "docs/evidence/evidence_sensitivity_plan_v2_20261012.json",
+  "annotations": "docs/evidence/evidence_sensitivity_annotations_v2_20261012.json",
+  "source_sha256": {
+    "data/experiments/evidence-sensitivity-v2/summary.json": "101e2dab995f10b84f606d27a4a05e62218ebb0de578f1fc29d00b0642dfd78e",
+    "data/experiments/evidence-sensitivity-v2/predictions.jsonl": "805550d07f9a7c69fea05269d6c2f2b055d43db635a8383d32a1b6497533dc85",
+    "data/experiments/evidence-sensitivity-v2/summary.md": "4c91449914cf9066d863e5d53b2afd1217adaf9fcdd982befa3859ddfaa98aa0",
+    "data/experiments/evidence-sensitivity-v2/.runner.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "data/experiments/evidence-sensitivity-v2/events.jsonl": "365367211de82dfdd57dbd9f7416590fc327bf02299ec8e92233bcb20b86f43a",
+    "data/experiments/evidence-sensitivity-v2/manifest.json": "3d0db770f713e5e947cf9a50eb8b8e1de7ec1b7746726a0893d722e55494806a",
+    "docs/evidence/evidence_sensitivity_plan_v2_20261012.json": "dca98265f1b05a556cce33942e4c375625a3048d3810cb0a107bb00773f16f98",
+    "docs/evidence/evidence_sensitivity_annotations_v2_20261012.json": "0d1980b5aae43b21bef089056458ba764c45208fc28b1b048e8ebf3c5a9b18fc",
+    "data/experiments/retrieval-ablation-v1/predictions.jsonl": "37a744a5a1464ea11f0e68bb8358553991928a1dbd3924aac39fe48789bcb3c2"
+  },
+  "inference_contract": {
+    "model": "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit",
+    "revision": "9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e",
+    "temperature": 0,
+    "seed": 20261011,
+    "max_tokens": 512,
+    "context_tokens": 81920,
+    "parser_version": "label-parse-v3.1-strict",
+    "system_prompt_sha256": "3f0d60fd29674df4ef4a376e1f202372b159d2da27b56637fc47baf7a75e2996",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "only_intended_variable": "evidence payload"
+  },
+  "approval": {
+    "approved": true,
+    "overall_status": "confirmed_by_independent_chatgpt",
+    "decisions": {
+      "approved": 15,
+      "excluded": 2
+    },
+    "reviewer": "Independent ChatGPT review; completion and approval reported by user",
+    "reviewed_utc": "2026-10-12T20:22:56.897546+00:00",
+    "review_kind": "AI-assisted independent evidence adjudication",
+    "human_verification": false
+  },
+  "sessions": [
+    {
+      "started_utc": "2026-10-12T20:25:27.861223+00:00",
+      "server_instance": "e6773567445a42e9bc8466e44090b414",
+      "runner_sha256": null,
+      "model": "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit",
+      "revision": "9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e",
+      "config_sha256": "b594e971cc156e2b3f4fe9d5f3d0b6ae5634207d9915b63949f193ebdb2a0d01"
+    },
+    {
+      "started_utc": "2026-10-12T20:34:43.971098+00:00",
+      "server_instance": "e6773567445a42e9bc8466e44090b414",
+      "runner_sha256": "af66c90a956ba18240a3eab5e622e05260b97e764e70e08afcd105b3cf7f4ed6",
+      "model": "m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit",
+      "revision": "9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e",
+      "config_sha256": "b594e971cc156e2b3f4fe9d5f3d0b6ae5634207d9915b63949f193ebdb2a0d01"
+    }
+  ],
+  "execution": {
+    "status": "COMPLETE",
+    "planned": 60,
+    "attempts": 60,
+    "completed": 60,
+    "failed": 0,
+    "missing": 0,
+    "retries": 0,
+    "preserved_call_before_operational_repair": "29:A_original",
+    "resumed_calls": 59
+  },
+  "selection": {
+    "n_reviewed": 17,
+    "n": 15,
+    "retained": [
+      29,
+      119,
+      297,
+      432,
+      442,
+      1026,
+      1178,
+      1344,
+      1401,
+      1475,
+      1,
+      1035,
+      189,
+      195,
+      1058
+    ],
+    "excluded": [
+      455,
+      550
+    ],
+    "policy": "All 11 A/C discordant rows, plus the lowest row index among both-correct cases for each gold label (1, 550, 1035), the lowest both-failed row for each available gold label (189, 1058), and the next-lowest remaining both-failed row (195)."
+  },
+  "gold_counts": {
+    "entailment": 8,
+    "contradiction": 7
+  },
+  "language_pairs": {
+    "de->fr": 5,
+    "fr->fr": 3,
+    "it->it": 2,
+    "it->de": 1,
+    "de->it": 1,
+    "it->fr": 2,
+    "fr->it": 1
+  },
+  "metric_definition": "Macro-F1 averages full-precision per-class F1 over gold-supported classes only (entailment and contradiction); neutral predictions are misclassifications.",
+  "condition_definitions": {
+    "A_original": "Unchanged original recorded SwissBERT Top-5.",
+    "B_minimal": "Reviewed minimal decisive evidence with necessary identity, attribution and conditions.",
+    "C_minimal_plus_distractors": "B followed by two reviewed non-decisive distractors; length-confounded contrast with B.",
+    "D_reordered": "Identical C with the complete B block after distractors; both internal orders preserved."
+  },
+  "metrics": {
+    "A_original": {
+      "n": 15,
+      "errors": 0,
+      "accuracy": 0.533,
+      "macro_f1": 0.593,
+      "per_class": {
+        "entailment": {
+          "precision": 0.667,
+          "recall": 0.5,
+          "f1": 0.571,
+          "support": 8
+        },
+        "neutral": {
+          "precision": 0.0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0
+        },
+        "contradiction": {
+          "precision": 0.667,
+          "recall": 0.571,
+          "f1": 0.615,
+          "support": 7
+        }
+      },
+      "confusion": {
+        "entailment": {
+          "entailment": 4,
+          "neutral": 2,
+          "contradiction": 2,
+          "ERROR": 0
+        },
+        "neutral": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 0,
+          "ERROR": 0
+        },
+        "contradiction": {
+          "entailment": 2,
+          "neutral": 1,
+          "contradiction": 4,
+          "ERROR": 0
+        }
+      },
+      "mean_latency_s": 2.32,
+      "median_latency_s": 2.21,
+      "mean_latency_s_all": 2.32,
+      "median_latency_s_all": 2.21,
+      "correct": 8,
+      "prompt_tokens_total": 18837,
+      "completion_tokens_total": 1723,
+      "mean_prompt_tokens": 1255.8,
+      "mean_completion_tokens": 114.86666666666666,
+      "citation_verified": 10
+    },
+    "B_minimal": {
+      "n": 15,
+      "errors": 0,
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "per_class": {
+        "entailment": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 8
+        },
+        "neutral": {
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0
+        },
+        "contradiction": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 7
+        }
+      },
+      "confusion": {
+        "entailment": {
+          "entailment": 8,
+          "neutral": 0,
+          "contradiction": 0,
+          "ERROR": 0
+        },
+        "neutral": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 0,
+          "ERROR": 0
+        },
+        "contradiction": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 7,
+          "ERROR": 0
+        }
+      },
+      "mean_latency_s": 1.67,
+      "median_latency_s": 1.56,
+      "mean_latency_s_all": 1.67,
+      "median_latency_s_all": 1.56,
+      "correct": 15,
+      "prompt_tokens_total": 5784,
+      "completion_tokens_total": 1539,
+      "mean_prompt_tokens": 385.6,
+      "mean_completion_tokens": 102.6,
+      "citation_verified": 11
+    },
+    "C_minimal_plus_distractors": {
+      "n": 15,
+      "errors": 0,
+      "accuracy": 0.933,
+      "macro_f1": 0.933,
+      "per_class": {
+        "entailment": {
+          "precision": 1.0,
+          "recall": 0.875,
+          "f1": 0.933,
+          "support": 8
+        },
+        "neutral": {
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0
+        },
+        "contradiction": {
+          "precision": 0.875,
+          "recall": 1.0,
+          "f1": 0.933,
+          "support": 7
+        }
+      },
+      "confusion": {
+        "entailment": {
+          "entailment": 7,
+          "neutral": 0,
+          "contradiction": 1,
+          "ERROR": 0
+        },
+        "neutral": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 0,
+          "ERROR": 0
+        },
+        "contradiction": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 7,
+          "ERROR": 0
+        }
+      },
+      "mean_latency_s": 1.75,
+      "median_latency_s": 1.62,
+      "mean_latency_s_all": 1.75,
+      "median_latency_s_all": 1.62,
+      "correct": 14,
+      "prompt_tokens_total": 9570,
+      "completion_tokens_total": 1534,
+      "mean_prompt_tokens": 638,
+      "mean_completion_tokens": 102.26666666666667,
+      "citation_verified": 10
+    },
+    "D_reordered": {
+      "n": 15,
+      "errors": 0,
+      "accuracy": 0.733,
+      "macro_f1": 0.786,
+      "per_class": {
+        "entailment": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.857,
+          "support": 8
+        },
+        "neutral": {
+          "precision": 0.0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0
+        },
+        "contradiction": {
+          "precision": 0.714,
+          "recall": 0.714,
+          "f1": 0.714,
+          "support": 7
+        }
+      },
+      "confusion": {
+        "entailment": {
+          "entailment": 6,
+          "neutral": 0,
+          "contradiction": 2,
+          "ERROR": 0
+        },
+        "neutral": {
+          "entailment": 0,
+          "neutral": 0,
+          "contradiction": 0,
+          "ERROR": 0
+        },
+        "contradiction": {
+          "entailment": 0,
+          "neutral": 2,
+          "contradiction": 5,
+          "ERROR": 0
+        }
+      },
+      "mean_latency_s": 1.89,
+      "median_latency_s": 1.68,
+      "mean_latency_s_all": 1.89,
+      "median_latency_s_all": 1.68,
+      "correct": 11,
+      "prompt_tokens_total": 9570,
+      "completion_tokens_total": 1606,
+      "mean_prompt_tokens": 638,
+      "mean_completion_tokens": 107.06666666666666,
+      "citation_verified": 11
+    }
+  },
+  "paired_changes": {
+    "minimal_vs_original": {
+      "counts": {
+        "same_prediction": 8,
+        "right_improved": 7
+      },
+      "changes": [
+        {
+          "row_index": 119,
+          "gold": "entailment",
+          "left": "neutral",
+          "right": "entailment"
+        },
+        {
+          "row_index": 432,
+          "gold": "entailment",
+          "left": "contradiction",
+          "right": "entailment"
+        },
+        {
+          "row_index": 1026,
+          "gold": "contradiction",
+          "left": "neutral",
+          "right": "contradiction"
+        },
+        {
+          "row_index": 1178,
+          "gold": "contradiction",
+          "left": "entailment",
+          "right": "contradiction"
+        },
+        {
+          "row_index": 189,
+          "gold": "entailment",
+          "left": "contradiction",
+          "right": "entailment"
+        },
+        {
+          "row_index": 195,
+          "gold": "entailment",
+          "left": "neutral",
+          "right": "entailment"
+        },
+        {
+          "row_index": 1058,
+          "gold": "contradiction",
+          "left": "entailment",
+          "right": "contradiction"
+        }
+      ]
+    },
+    "added_evidence_length_confounded": {
+      "counts": {
+        "same_prediction": 14,
+        "right_worsened": 1
+      },
+      "changes": [
+        {
+          "row_index": 195,
+          "gold": "entailment",
+          "left": "entailment",
+          "right": "contradiction"
+        }
+      ]
+    },
+    "order_sensitivity": {
+      "counts": {
+        "same_prediction": 12,
+        "right_worsened": 3
+      },
+      "changes": [
+        {
+          "row_index": 1026,
+          "gold": "contradiction",
+          "left": "contradiction",
+          "right": "neutral"
+        },
+        {
+          "row_index": 1344,
+          "gold": "contradiction",
+          "left": "contradiction",
+          "right": "neutral"
+        },
+        {
+          "row_index": 189,
+          "gold": "entailment",
+          "left": "entailment",
+          "right": "contradiction"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "event_prediction_pairs": 60,
+    "unique_attempts": 60,
+    "rendered_requests_match_frozen_plan": 60,
+    "exact_A_requests_match_original_experiment": 15,
+    "A_predictions_match_original_experiment": 15,
+    "C_D_block_rotations_verified": 15,
+    "C_D_prompt_token_counts_equal": 15,
+    "reported_prompt_tokens_match_frozen_counts": 60,
+    "parsed_labels_match_raw_JSON": 60,
+    "completed_finish_reason_stop": 60,
+    "review_binding_and_frozen_source_hashes_verified": true
+  },
+  "summary_reporting_caveat": "Saved flat prompt_tokens_total/completion_tokens_total fields are incorrectly zero because usage is nested under result. Metrics here sum raw result.usage; saved token_latency totals agree. Original summaries and evaluation code were not changed.",
+  "case_index": [
+    {
+      "row_index": 29,
+      "claim": "Der Bundesrat spricht sich dafür aus, die Reform der beruflichen Vorsorge anzunehmen.",
+      "claim_language": "de",
+      "booklet_language": "fr",
+      "pair": "de->fr",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/iWYLyEPfLvhn/2024-09-22_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "e6717534db788bf85e15bc505c5ab6f839cd61396be0f84a5aa035c767de8578"
+    },
+    {
+      "row_index": 119,
+      "claim": "Der Zusammenfassung zufolge importiert die Schweiz rund 75 % ihrer Energie.",
+      "claim_language": "de",
+      "booklet_language": "fr",
+      "pair": "de->fr",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/Lv5UWt6X1iUj/2023-06-18_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "925a6f553a6f67059cebacccfa7d4efcffc3a31d5441d9c978a57546b6b8bdd6"
+    },
+    {
+      "row_index": 297,
+      "claim": "Le comité estime que les PME ne disposent pas des ressources financières et organisationnelles nécessaires pour instaurer un congé de paternité de deux semaines, les remplacements de courte durée étant coûteux et complexes.",
+      "claim_language": "fr",
+      "booklet_language": "fr",
+      "pair": "fr->fr",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/XuiMCko39BzI/2020-09-27_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "8e3c67fd515a7438d1ec687be65001c01a0ece56eb952fdd23f9ca23c8393355"
+    },
+    {
+      "row_index": 432,
+      "claim": "Il comitato afferma che la donazione di sperma alle coppie lesbiche viola l’articolo 119 della Costituzione federale, perché trasforma la procreazione assistita da eccezione medica in norma di legge, sacrificando il diritto del bambino a conoscere ed essere accudito da entrambi i genitori biologici.",
+      "claim_language": "it",
+      "booklet_language": "it",
+      "pair": "it->it",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/it/sd-web/NJXQlhZXHqDA/2021-09-26_spiegazioni_del_consigliofederale.pdf",
+      "pdf_sha256": "d01075b2fabc1609d8c7e2b5ede595286c504d35ea4947b1fa0709fddbb63538"
+    },
+    {
+      "row_index": 442,
+      "claim": "Il riassunto dichiara che l’uso della E-ID è facoltativo e non comporta costi.",
+      "claim_language": "it",
+      "booklet_language": "de",
+      "pair": "it->de",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/de/sd-web/6DaWglL-N7NM/2025-09-28_erlaeuterungen_des_bundesrates.pdf",
+      "pdf_sha256": "39c020145299913685e4d0b6899fa23bb1f94938652a417e0c1da08d316ade8a"
+    },
+    {
+      "row_index": 1026,
+      "claim": "Laut der Zusammenfassung wurden die finanziellen Hilfen auf Personen begrenzt, die bereits genügend Unterstützung erhalten hatten.",
+      "claim_language": "de",
+      "booklet_language": "it",
+      "pair": "de->it",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/it/sd-web/TbPPMZBkuvPm/2021-11-28_spiegazioni_del_consigliofederale.pdf",
+      "pdf_sha256": "72bc2e78fd62f8452a8fe9aebd31c5740e77d30e298ed940dcbf788b4ab8cba2"
+    },
+    {
+      "row_index": 1178,
+      "claim": "Le Conseil fédéral recommande d’accepter l’initiative populaire en faveur d’une eau potable propre et d’une alimentation saine.",
+      "claim_language": "fr",
+      "booklet_language": "fr",
+      "pair": "fr->fr",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/UxUxfYD5ma0h/2021-06-13_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "65c54df2537b8ab9d6e155c0e602d6bc2379e47741004bc66565064d0aee4ab4"
+    },
+    {
+      "row_index": 1344,
+      "claim": "Secondo il testo di voto, le imprese che propongono film in Svizzera devono destinare ogni anno almeno il 10% delle loro entrate lorde alla produzione cinematografica indipendente svizzera, oppure versare una tassa sostitutiva equivalente.",
+      "claim_language": "it",
+      "booklet_language": "fr",
+      "pair": "it->fr",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/PCWaDg8-GOcJ/2022-05-15_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "f9c5d7830a90b9af3b0c8fde853e036a14ca1b111958342bb39ad98576adc308"
+    },
+    {
+      "row_index": 1401,
+      "claim": "Secondo il testo di voto, l'Assemblea federale raccomanda al Popolo e ai Cantoni di approvare l'iniziativa.",
+      "claim_language": "it",
+      "booklet_language": "it",
+      "pair": "it->it",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/it/sd-web/TbPPMZBkuvPm/2021-11-28_spiegazioni_del_consigliofederale.pdf",
+      "pdf_sha256": "72bc2e78fd62f8452a8fe9aebd31c5740e77d30e298ed940dcbf788b4ab8cba2"
+    },
+    {
+      "row_index": 1475,
+      "claim": "Secondo il testo sottoposto a votazione, l’Assemblea federale raccomanda al popolo e ai cantoni di approvare l’iniziativa.",
+      "claim_language": "it",
+      "booklet_language": "fr",
+      "pair": "it->fr",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/ywovGJwC1GeO/2020-11-29_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "62870b79f34f5d9af48ca53709090140403133edc23ef393bf7b17bcdd35c48f"
+    },
+    {
+      "row_index": 1,
+      "claim": "Bei Annahme der Abstimmung wird das Rentenalter ab 2033 automatisch an die Lebenserwartung gebunden und bei einem Anstieg der Lebenserwartung um 80 % der zusätzlichen Lebenszeit angehoben.",
+      "claim_language": "de",
+      "booklet_language": "fr",
+      "pair": "de->fr",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/In9i5Kp4p64r/2024-03-03_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "b28e64fbbdb39c3e9499056e433cbcb763c154799fff775262d0becd86d77cd9"
+    },
+    {
+      "row_index": 1035,
+      "claim": "Der Bundesrat rät zur Ablehnung der Vorlage, weil die vorhandenen Strassen genügen und keine weiteren Projekte erforderlich sind.",
+      "claim_language": "de",
+      "booklet_language": "fr",
+      "pair": "de->fr",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/wHXT9BH3VlYQ/2024-11-24_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "39d395833d051d950d37c75003b4ecbea917e221db17eed55e3cb5ffdcd364b1"
+    },
+    {
+      "row_index": 189,
+      "claim": "Le Conseil fédéral préconise de rejeter l’initiative populaire « Pour une immigration modérée (Initiative de limitation) ».",
+      "claim_language": "fr",
+      "booklet_language": "it",
+      "pair": "fr->it",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/it/sd-web/XuiMCko39BzI/2020-09-27_spiegazioni_del_consigliofederale.pdf",
+      "pdf_sha256": "76acc2e7d58639dccae9d52d7cdeba73418f57aec9928fa0898017f7be2e5111"
+    },
+    {
+      "row_index": 195,
+      "claim": "Le comité estime que les dispositions actuelles du code pénal suffisent déjà à punir les insultes et l’humiliation publique d’une personne, de sorte qu’une nouvelle loi contre la discrimination n’est pas nécessaire.",
+      "claim_language": "fr",
+      "booklet_language": "fr",
+      "pair": "fr->fr",
+      "gold": "entailment",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/aSmZ7rOvZDrG/2020-02-09_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "e57074725ce371592bfb0760665c3d90d99b972ca48dfcb0577022276da9a54e"
+    },
+    {
+      "row_index": 1058,
+      "claim": "Laut der Zusammenfassung gilt die Abschaffung der Vermietungswertbesteuerung nur für Zweitwohnungen, nicht für Hauptwohnungen.",
+      "claim_language": "de",
+      "booklet_language": "fr",
+      "pair": "de->fr",
+      "gold": "contradiction",
+      "booklet_url": "https://www.bk.admin.ch/dam/fr/sd-web/6DaWglL-N7NM/2025-09-28_explications_du_conseil_federal.pdf",
+      "pdf_sha256": "f426e4637a10ecdb7a14296c6455918d47e90b4347a953156be1c00cf1bbfd67"
+    }
+  ],
+  "predictions": [
+    {
+      "row_index": 29,
+      "condition": "A_original",
+      "key": "29:A_original",
+      "attempt_id": "e519a13d16a0422990fc6bb3bf1a988d",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1035,
+        "completion_tokens": 69,
+        "total_tokens": 1104,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend accepting the reform of the occupational pension system, directly supporting the claim.",
+        "evidence_snippet": "le Conseil fédéral et le Parlement vous recommandent d’accepter la réforme de la prévoyance professionnelle."
+      },
+      "raw_response_sha256": "aaf8834194d57a51433627ec725aff96197e26773a79634de8989138767eeb0e",
+      "prompt_sha256": "0058e548700f9e7f8b81a7a78f9bb1f96b58d69d53ffdf07dfe3f494cd0e0a54",
+      "evidence_sha256": "a7f11d0b6f62cd1a69c1e1144464b0a4829ff31e296d0e4d265ff89ebfb26e65",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 29,
+      "condition": "B_minimal",
+      "key": "29:B_minimal",
+      "attempt_id": "475754a67ce34753802a1f7142a9072d",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 268,
+        "completion_tokens": 86,
+        "total_tokens": 354,
+        "prompt_tokens_details": {
+          "cached_tokens": 208
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence states that the Federal Council and Parliament recommend accepting the reform of professional pension provision, which aligns with the claim that the Bundesrat (Federal Council) supports accepting the reform.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent d’accepter la réforme de la prévoyance professionnelle."
+      },
+      "raw_response_sha256": "4755eb6574d6f78b91350deaddf0ff46382e83e1c5b08bbcedd243b557a2a4ac",
+      "prompt_sha256": "7bcf4c2e0b7f2c2aa5dc867375552851a771d1a15fdec4c2600471be3062d455",
+      "evidence_sha256": "896e408537314a81954cd740fa3f099b50ff8d7644ef398a23ea72f1d10861d3",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 29,
+      "condition": "C_minimal_plus_distractors",
+      "key": "29:C_minimal_plus_distractors",
+      "attempt_id": "52df205e08424ad89ec480c1953d5db0",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 705,
+        "completion_tokens": 73,
+        "total_tokens": 778,
+        "prompt_tokens_details": {
+          "cached_tokens": 239
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Federal Council (Conseil fédéral) and Parliament recommend accepting the reform of professional pension provision.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent d’accepter la réforme de la prévoyance professionnelle."
+      },
+      "raw_response_sha256": "ffc1b82582723928b0ffe61998128c725f93da85a7933e92778b6da42ecf263a",
+      "prompt_sha256": "0402c3bfc669e2dc3ca8f789d5e9e07cde49471703e9e319428519fa97b3a796",
+      "evidence_sha256": "51c4c4c5b2107f6a087c119e523b6882abcfb8fa5b50dffb6c2fc6ea9f99b158",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 29,
+      "condition": "D_reordered",
+      "key": "29:D_reordered",
+      "attempt_id": "93a4ef273981496c954386a944d2c965",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 705,
+        "completion_tokens": 73,
+        "total_tokens": 778,
+        "prompt_tokens_details": {
+          "cached_tokens": 206
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend accepting the reform of professional pension provisions, directly supporting the claim.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent d’accepter la réforme de la prévoyance professionnelle."
+      },
+      "raw_response_sha256": "3984008db21694305ba261a9c5eca5d6ec9706ad84ca2926185b0d586120f4d7",
+      "prompt_sha256": "f076ea71ad592ee3001864c5d1f369ec1447ddbec12fb50c667216bd35b1777a",
+      "evidence_sha256": "1640b673e9bcac38e0f8403a072e407839f2294672b61cd2c4b9df2c768d0470",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 119,
+      "condition": "A_original",
+      "key": "119:A_original",
+      "attempt_id": "0c39f348fc1949e0b339954dd3c0f157",
+      "gold": "entailment",
+      "pred": "neutral",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1370,
+        "completion_tokens": 75,
+        "total_tokens": 1445,
+        "prompt_tokens_details": {
+          "cached_tokens": 175
+        }
+      },
+      "response": {
+        "label": "neutral",
+        "reasoning": "The evidence states that Switzerland imports about 75% of its energy, but does not provide any information to confirm or refute the specific claim that it imports 'around 75%' of its energy.",
+        "evidence_snippet": "La Suisse importe environ 75 % de son énergie."
+      },
+      "raw_response_sha256": "31fe9cfea1b76ac0acc81db7e0bb356e047a9e2b49d4c9da0c6ab25804abf89d",
+      "prompt_sha256": "03ea924ccff86133581f372a3c9db0d10b4bf1f66742e5f18bd4e99209f87664",
+      "evidence_sha256": "d2e9ebc1b9fc24bbbd69f94ec713db7891b7f20fd21204621a277b0908fabeaa",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 119,
+      "condition": "B_minimal",
+      "key": "119:B_minimal",
+      "attempt_id": "cb20a42541414c0189dd1bdbb7795e8e",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 337,
+        "completion_tokens": 58,
+        "total_tokens": 395,
+        "prompt_tokens_details": {
+          "cached_tokens": 202
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Switzerland imports about 75% of its energy, which directly supports the claim.",
+        "evidence_snippet": "La Suisse importe environ 75 % de son énergie."
+      },
+      "raw_response_sha256": "ec1de7f5ca08afed82b9ccf1f438bb03f755a268c290a439d48b0c1ee1a2c77c",
+      "prompt_sha256": "3952a57a9743be6bde6145ed7c43e5e15c99a2138ade8d9c46befdf13241e2ed",
+      "evidence_sha256": "c089f92e3fb7b4df0a42be971ea2e4a18606691cd1b45f5e8292dcca9f8a2ad5",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 119,
+      "condition": "C_minimal_plus_distractors",
+      "key": "119:C_minimal_plus_distractors",
+      "attempt_id": "eb7188b6394a4badb9b073c4085307bb",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 655,
+        "completion_tokens": 52,
+        "total_tokens": 707,
+        "prompt_tokens_details": {
+          "cached_tokens": 308
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Switzerland imports about 75% of its energy.",
+        "evidence_snippet": "La Suisse importe environ 75 % de son énergie."
+      },
+      "raw_response_sha256": "f49287d96ff03fb7bed859b170c7307dd23e394ca4ff6e2441620a49f8b236ce",
+      "prompt_sha256": "3576af97b7ccc7597740b294986d822b3a01253b2a6c44807990f01a9a699ae6",
+      "evidence_sha256": "b9eccdf910b499775b3a81873fab90482170704a46474923cf506e5d635b9ffe",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 119,
+      "condition": "D_reordered",
+      "key": "119:D_reordered",
+      "attempt_id": "7b0d90ce34d84fe5ac72f976ead2c21a",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 655,
+        "completion_tokens": 70,
+        "total_tokens": 725,
+        "prompt_tokens_details": {
+          "cached_tokens": 202
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Switzerland imports about 75% of its energy.",
+        "evidence_snippet": "La Suisse importe environ 75 % de son énergie. Le pétrole et le gaz naturel consommés en Suisse proviennent exclusivement de l’étranger."
+      },
+      "raw_response_sha256": "41d8bd6956233fe13717e5c203483f0cf9f2b52d6a45b2678f36d2d488d2fb18",
+      "prompt_sha256": "94ad287f4c29394282e4ed13ba345b2c2536b7538ab8d98a4d5c6b39841be09f",
+      "evidence_sha256": "740eac6380ece760b290285b60180c1c0cce0e43aeaf2ed4c228bcc1d706272c",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 297,
+      "condition": "A_original",
+      "key": "297:A_original",
+      "attempt_id": "c4df87c8f1fc4d5d96abad1b14323454",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1254,
+        "completion_tokens": 105,
+        "total_tokens": 1359,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the committee estimates PMEs lack the financial and organizational resources to implement a two-week paternity leave due to the high cost and complexity of short-term replacements.",
+        "evidence_snippet": "Les PME n’ont les moyens ni ﬁnanciers ni organisationnels de mettre en place un congé de paternité de deux semaines, car les remplacements de courte durée sont chers et compliqués."
+      },
+      "raw_response_sha256": "bc7138fabc0059b87f69282c0dfab9b91f89eecce65ff6713c84f163ae9d459f",
+      "prompt_sha256": "254bdbe4f301230184db7cec62dcf6d7781857828fdf822526e13371f74bb148",
+      "evidence_sha256": "68669040306b21fe63d39d9c428983185acd8a00f44e6daa15528704e73e07f4",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 297,
+      "condition": "B_minimal",
+      "key": "297:B_minimal",
+      "attempt_id": "0374155d894a40f4ada20688ec5c389c",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 333,
+        "completion_tokens": 106,
+        "total_tokens": 439,
+        "prompt_tokens_details": {
+          "cached_tokens": 230
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence directly states that PME lack the financial and organizational means to implement a two-week paternity leave due to the high cost and complexity of short-term replacements, which matches the claim.",
+        "evidence_snippet": "Les PME n’ont les moyens ni ﬁnanciers ni organisationnels de mettre en place un congé de paternité de deux semaines, car les remplacements de courte durée sont chers et compliqués."
+      },
+      "raw_response_sha256": "f910b93c9991fb9eedffb599765d1910de321fd881e4f2ad0bfc2a15789433b9",
+      "prompt_sha256": "355a36792138da81e74842b7a08befde5420a1609a6bad82c580725dd4431b83",
+      "evidence_sha256": "e6974473c862ff5db5651d80b395a24724bcdd3d67f2dc29582f09db4334c589",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 297,
+      "condition": "C_minimal_plus_distractors",
+      "key": "297:C_minimal_plus_distractors",
+      "attempt_id": "9bb351ed165d4201b46a921b86364c52",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 446,
+        "completion_tokens": 106,
+        "total_tokens": 552,
+        "prompt_tokens_details": {
+          "cached_tokens": 304
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that PME lack the financial and organizational means to implement a two-week paternity leave due to the high cost and complexity of short-term replacements, which matches the claim.",
+        "evidence_snippet": "Les PME n’ont les moyens ni ﬁnanciers ni organisationnels de mettre en place un congé de paternité de deux semaines, car les remplacements de courte durée sont chers et compliqués."
+      },
+      "raw_response_sha256": "fa06eb6e915296800e17fc8adebf2267acfce383b51f012c7c08295eb3bbf808",
+      "prompt_sha256": "4221bff24fd947aa368b37229ec14c34c10b4eba1541323f70e2ff63b7b5dc2c",
+      "evidence_sha256": "518f96933ff8b3180e7f373763d5ee024eef8b4a52a84916a6587e5ffa1a7057",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 297,
+      "condition": "D_reordered",
+      "key": "297:D_reordered",
+      "attempt_id": "bd50fdb6466348b1a19e4dd399e168e9",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 446,
+        "completion_tokens": 110,
+        "total_tokens": 556,
+        "prompt_tokens_details": {
+          "cached_tokens": 231
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the committee argues PME lack the financial and organizational resources to implement a two-week paternity leave due to the high cost and complexity of short-term replacements, which directly supports the claim.",
+        "evidence_snippet": "Les PME n’ont les moyens ni ﬁnanciers ni organisationnels de mettre en place un congé de paternité de deux semaines, car les remplacements de courte durée sont chers et compliqués."
+      },
+      "raw_response_sha256": "aa4237070096db002b752e0c247735be94dd7c8a367d9b9f64f64e8374867709",
+      "prompt_sha256": "35fa820be0b6a53703dbf84d8100d82355cebfb8c96195f83f6da15bf2091c01",
+      "evidence_sha256": "3b23457d158e30b08248a793169edceabf2c7091b335c1df501a02e812111794",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 432,
+      "condition": "A_original",
+      "key": "432:A_original",
+      "attempt_id": "97cc185f2d56482f8d6a1599b4992e2e",
+      "gold": "entailment",
+      "pred": "contradiction",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1401,
+        "completion_tokens": 289,
+        "total_tokens": 1690,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence argues that donating sperm to lesbian couples should remain an exception and that the right to know one's biological parents is safeguarded, which directly contradicts the claim that such donation violates Article 119 of the Constitution by transforming assisted procreation from a medical exception to a legal norm.",
+        "evidence_snippet": "La donazione di sperma deve restare un’eccezione. I bambini hanno bisogno di modelli di ruolo rappresentati dai due sessi; la donazione di sperma a favore delle coppie lesbiche, invece, li priva per legge della figura paterna. La Costituzione stabilisce che ogni persona ha il diritto di conoscere i propri dati genetici. Poiché in Svizzera la legge permette la donazione di sperma solo in favore delle coppie sposate, alcune coppie di donne oggi scelgono di recarsi all’estero per usufruire di tale possibilità. Al di fuori della Svizzera, tuttavia, non vi è sempre la garanzia che il bambino possa venire a conoscenza dell’identità del padre biologico. Con l’apertura del matrimonio e l’accesso a una donazione di sperma severamente regolamentata in Svizzera, il diritto di conoscere la propria discendenza è salvaguardato."
+      },
+      "raw_response_sha256": "f26e239c999ef5a2d8f510edf4b50c31865567e5da5db407a8d9691c32326162",
+      "prompt_sha256": "cd696079ac3e6e3225d0194465076e108b82b5fb125397d8a47eaeaa897131a5",
+      "evidence_sha256": "32ff484a1d4226eeeea3f7aafc05273894b7a50d40ebd93ff13ebc8ee071eced",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 432,
+      "condition": "B_minimal",
+      "key": "432:B_minimal",
+      "attempt_id": "648b1556f5a7484d9bf6af0bdc0a705f",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 619,
+        "completion_tokens": 183,
+        "total_tokens": 802,
+        "prompt_tokens_details": {
+          "cached_tokens": 261
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that classifying lesbian couples as infertile contradicts existing definitions and that sperm donation transforms an exception into a legal rule, thereby negating the child's right to know and be cared for by both biological parents.",
+        "evidence_snippet": "Contrariamente all’intenzione originaria del Consiglio federale, la presente legge prevede anche la donazione di sperma a favore delle coppie lesbiche. Il «Matrimonio civile per tutti» viola quindi l’articolo 119 Cost., che anche per le coppie eterosessuali consente la procreazione assistita soltanto in caso di infecondità o per sventare il pericolo di una malattia grave. Classificare le coppie lesbiche come inferconde contraddice tutte le definizioni vigenti."
+      },
+      "raw_response_sha256": "dc43e57503f2f0ee9347eb233bd75288f25d87ea3fd6a34c5413b1dc8d35bd3a",
+      "prompt_sha256": "039c8a5462fe2ca6737e9cd449bde8603ef1e5bbd781a8b246400251d9243adc",
+      "evidence_sha256": "e1266537a592c7aba02799b5437798a6f761d7e04ed92a28c3e13a54ece39f10",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 432,
+      "condition": "C_minimal_plus_distractors",
+      "key": "432:C_minimal_plus_distractors",
+      "attempt_id": "841737d919db413c9f550bb0d2479307",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 895,
+        "completion_tokens": 196,
+        "total_tokens": 1091,
+        "prompt_tokens_details": {
+          "cached_tokens": 590
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the law as proposed allows sperm donation to lesbian couples, which the claim argues violates Article 119 by transforming assisted procreation from a medical exception to a legal norm, thereby denying the child's right to know and be cared for by both biological parents.",
+        "evidence_snippet": "Contrariamente all’intenzione originaria del Consiglio federale, la presente legge prevede anche la donazione di sperma a favore delle coppie lesbiche. Il «Matrimonio civile per tutti» viola quindi l’articolo 119 Cost., che anche per le coppie eterosessuali consente la procreazione assistita soltanto in caso di infecondità o per sventare il pericolo di una malattia grave. Classificare le coppie lesbiche come infeconde contraddice tutte le definizioni vigenti."
+      },
+      "raw_response_sha256": "5e81c9b3078d3e39a2cb0b567d10f9e6286f1b316b43fa6b6e51c4f1fcd71b7f",
+      "prompt_sha256": "ce33956d350d0e6857e06d2e8c8a24464fb76fd7ea40c6a79afd92af08422194",
+      "evidence_sha256": "9fa94a5ab8721ac208ae24ed7deb2691b5351dca7ee9fdd5ede0cccfd12818bc",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 432,
+      "condition": "D_reordered",
+      "key": "432:D_reordered",
+      "attempt_id": "c779928c9f38462f8adee3dfe0631c5a",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 895,
+        "completion_tokens": 167,
+        "total_tokens": 1062,
+        "prompt_tokens_details": {
+          "cached_tokens": 261
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the proposed law includes sperm donation for lesbian couples, which the claim argues violates Article 119 by transforming assisted procreation from a medical exception to a legal norm, thereby denying the child's right to know and be cared for by both biological parents.",
+        "evidence_snippet": "Contrariamente all’intenzione originaria del Consiglio federale, la presente legge prevede anche la donazione di sperma a favore delle coppie lesbiche. Classificare le coppie lesbiche come infeconde contraddice tutte le definizioni vigenti. Da eccezione medica la donazione di sperma diventa regola prevista dalla legge, senza considerare le conseguenze per il bambino."
+      },
+      "raw_response_sha256": "bb27aadf55441c90a640ac3b92e6ad3c66cc2c54a03cd2e68852f8e6877dac3a",
+      "prompt_sha256": "8d42c25756232b4561d845647f9c420ac8c5c7fd6e053eb7fb8ef41c335f27ad",
+      "evidence_sha256": "8885abd26c41cd1afc1695192659bc9ebb8a53e84ab20ca8b6e810f690304d53",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 442,
+      "condition": "A_original",
+      "key": "442:A_original",
+      "attempt_id": "b78a1ab356d040e9845a24a7f8bb7b2e",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1321,
+        "completion_tokens": 58,
+        "total_tokens": 1379,
+        "prompt_tokens_details": {
+          "cached_tokens": 175
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the use of E-ID is voluntary and free of charge.",
+        "evidence_snippet": "Nutzung ist freiwillig und kostenlos Die Nutzung der E-ID ist kostenlos."
+      },
+      "raw_response_sha256": "a0ee45336c480e75db4da8c3973d20562dacaa3fd79a4839d8ce20f6058e4d1d",
+      "prompt_sha256": "582b51adb601f3b026b12b060ea91d62dcedce95ff7d9a68edf6359b91fb2817",
+      "evidence_sha256": "f0963d618fb2cd424c3ba25250f0b7fe69917f87d487e137a55e01991fc42200",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 442,
+      "condition": "B_minimal",
+      "key": "442:B_minimal",
+      "attempt_id": "6d49e67e14224250ae4748ac3a0c399f",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 433,
+        "completion_tokens": 79,
+        "total_tokens": 512,
+        "prompt_tokens_details": {
+          "cached_tokens": 214
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the E-ID can be requested for free online and that its use is costless.",
+        "evidence_snippet": "Die E-ID ist Teil des Service public und nicht gewinnorientiert. Sie kann online gratis beantragt werden. Die Nutzung der E-ID ist kostenlos."
+      },
+      "raw_response_sha256": "a31d46f8c718cbb0f54306f32d907e0492d64eeff65454c2c8de9e6b5c59a826",
+      "prompt_sha256": "66731c36fae6a727929f1f0fc638132fb7de17d96fab2c956f4a8ba588688036",
+      "evidence_sha256": "717f8809d63e46f21fbfd3737fd686d82b85edcd07235ba7921e5bd5022f05a7",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 442,
+      "condition": "C_minimal_plus_distractors",
+      "key": "442:C_minimal_plus_distractors",
+      "attempt_id": "acbd26d9708142df8005169d1a8fb687",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 695,
+        "completion_tokens": 80,
+        "total_tokens": 775,
+        "prompt_tokens_details": {
+          "cached_tokens": 404
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the E-ID can be applied for online gratis and that its use is costless.",
+        "evidence_snippet": "Die E-ID ist Teil des Service public und nicht gewinnorientiert. Sie kann online gratis beantragt werden. Die Nutzung der E-ID ist kostenlos."
+      },
+      "raw_response_sha256": "2e935c91e032234b4749b905af9c72b092996ef17e51bb974837165da714fde3",
+      "prompt_sha256": "03af95abc7cd4d19b6c677bbb93ca107827a8d144f5f5b6860b6bcaf7db44f2c",
+      "evidence_sha256": "a74722ee08ba85538f6b0359b004301dee034c4149d3b71ce974af1b779e21dd",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 442,
+      "condition": "D_reordered",
+      "key": "442:D_reordered",
+      "attempt_id": "ee59dd81cf1e45f1baafdeb74ed6f0d7",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 695,
+        "completion_tokens": 52,
+        "total_tokens": 747,
+        "prompt_tokens_details": {
+          "cached_tokens": 212
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the E-ID is not mandatory and that its use is free of charge.",
+        "evidence_snippet": "Die Nutzung der E-ID ist kostenlos."
+      },
+      "raw_response_sha256": "6fc37ed3aac1fc993568e5d949156c77ba0a0c3615f6a995009394862fc401a0",
+      "prompt_sha256": "6898c90a5c8f4ebb738f699bbcf6bc5052b56e09e76cb2122a83696e9fa8a723",
+      "evidence_sha256": "a89f7505ee7c3d15cd8092671c9069e2ad71a877196e0910489836aabd6aa7c9",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1026,
+      "condition": "A_original",
+      "key": "1026:A_original",
+      "attempt_id": "2e29a5b4ebd649fcb05ba00e5979d0d3",
+      "gold": "contradiction",
+      "pred": "neutral",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1488,
+        "completion_tokens": 116,
+        "total_tokens": 1604,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "neutral",
+        "reasoning": "The evidence describes various financial aid measures and extensions but does not explicitly state whether financial assistance was limited to individuals who already received sufficient support.",
+        "evidence_snippet": "Gli aiuti finanziari coprono il 33 per cento degli indennizzi corrisposti dai Cantoni al fine di compensare il mancato versamento delle rette, ma al massimo per il periodo compreso tra il 17 marzo 2020 e il 17 giugno 2020."
+      },
+      "raw_response_sha256": "e0cb31fc177ea7fc58d4700fb0458788808064e4c9bc1f490fde94e7103bfd16",
+      "prompt_sha256": "fd818c7d97f61405a7a20af877d51170bcf21053c39e895e2f3b37eaf83b2dfa",
+      "evidence_sha256": "b7f008c943fd970e88ad1f31e633256345ed61d22c38a501571928ab52c50533",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1026,
+      "condition": "B_minimal",
+      "key": "1026:B_minimal",
+      "attempt_id": "b964789d6610449ba2c78cf2fcdb607a",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 320,
+        "completion_tokens": 133,
+        "total_tokens": 453,
+        "prompt_tokens_details": {
+          "cached_tokens": 211
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "Die Begründung im Wahlheft besagt, dass die finanziellen Hilfen erweitert wurden, um Personen zu unterstützen, die zu wenig oder gar keine Unterstützung erhalten hatten, was dem Anspruch widerspricht, dass die Hilfen auf Personen beschränkt wurden, die bereits genügend Unterstützung erhalten hatten.",
+        "evidence_snippet": "Con la modiﬁca legislativa del marzo 2021, il Parlamento ha esteso gli aiuti ﬁnanziari a chi aveva ricevuto un sostegno troppo limitato o non ne aveva ricevuto nessuno."
+      },
+      "raw_response_sha256": "3f5599caae6a3a07393c82ebc092352371cb8eb0ff72006eed9101f92189a003",
+      "prompt_sha256": "fe200c2e67517dd32fb3ea385d6deabe5b316c33c4dcd64e7df402dfcdaef8b8",
+      "evidence_sha256": "aa3af89f919dda310ed4177d1725fb96732a4dbb96b2dbe2822ce254b0a55de1",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1026,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1026:C_minimal_plus_distractors",
+      "attempt_id": "5d00352fa7f2406797c53e648979e879",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 533,
+        "completion_tokens": 111,
+        "total_tokens": 644,
+        "prompt_tokens_details": {
+          "cached_tokens": 291
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states that financial aid was extended to those who received insufficient support or none at all, which directly contradicts the claim that financial help was limited to those who already had sufficient support.",
+        "evidence_snippet": "Con la modiﬁca legislativa del marzo 2021, il Parlamento ha esteso gli aiuti ﬁnanziari a chi aveva ricevuto un sostegno troppo limitato o non ne aveva ricevuto nessuno."
+      },
+      "raw_response_sha256": "5d4106fb0e59bd8b20d3109a4d30a1c7eeca3fdc5b264a458707dfdfd3b2829b",
+      "prompt_sha256": "459cf7f655f41bfac798e33b9fd4314c191028664eb07009e3e8d2918a66ed14",
+      "evidence_sha256": "9612ed3175970f231c3760dbf4800d38fa13738dd52dd3bd42924090a93b92c5",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1026,
+      "condition": "D_reordered",
+      "key": "1026:D_reordered",
+      "attempt_id": "df39f1d245364a559ad152098bbd8f50",
+      "gold": "contradiction",
+      "pred": "neutral",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 533,
+        "completion_tokens": 104,
+        "total_tokens": 637,
+        "prompt_tokens_details": {
+          "cached_tokens": 211
+        }
+      },
+      "response": {
+        "label": "neutral",
+        "reasoning": "The evidence describes procedures for COVID-19 financial aid and referendum deadlines, but does not address whether financial assistance was limited to individuals who already received sufficient support.",
+        "evidence_snippet": "Con la modiﬁca legislativa del marzo 2021, il Parlamento ha esteso gli aiuti ﬁnanziari a chi aveva ricevuto un sostegno troppo limitato o non ne aveva ricevuto nessuno."
+      },
+      "raw_response_sha256": "b4132919e92eb57693a0cf6891a0406bb7c064496d7d9cf4fc10f6d529694ca5",
+      "prompt_sha256": "d5e51755f02739bfa0638388d9e33ee62dfa97c59ffdd047c17260c2661cb0c7",
+      "evidence_sha256": "2c3e4dc837b31d783a44025819d8170c534388e76f2851a5aaffbfd1a837f748",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1178,
+      "condition": "A_original",
+      "key": "1178:A_original",
+      "attempt_id": "80c04b9c1ca54adf9b82f0916121bb20",
+      "gold": "contradiction",
+      "pred": "entailment",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1104,
+        "completion_tokens": 83,
+        "total_tokens": 1187,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Conseil fédéral recommends rejecting the initiative, which directly supports the claim that the Conseil fédéral recommends accepting the initiative.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent de rejeter l’initiative populaire pour une eau potable propre et une alimentation saine."
+      },
+      "raw_response_sha256": "f67da84ea1c01b77663fe08de80d4cc967d6792e208096f53f655baa1a07a508",
+      "prompt_sha256": "f03e542399aa3e8e7b7e0738c23630c0c28b4a1ca61ed954e909cd94507c1287",
+      "evidence_sha256": "6e0744d987f10bfd319b58d84372326c1755bf469ca0fd7d24ff0a68e43668e5",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1178,
+      "condition": "B_minimal",
+      "key": "1178:B_minimal",
+      "attempt_id": "ccd251f2336b4bf58a69fac187f7e664",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 282,
+        "completion_tokens": 88,
+        "total_tokens": 370,
+        "prompt_tokens_details": {
+          "cached_tokens": 213
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "Le Conseil fédéral recommande de rejeter l'initiative, ce qui contredit la revendication du claim selon laquelle il recommande d'accepter l'initiative.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent de rejeter l'initiative populaire pour une eau potable propre et une alimentation saine."
+      },
+      "raw_response_sha256": "3d3b7ea387dd5da1057bbb5f6ebe33e5741aa69efa687a603bdc7a203c37535e",
+      "prompt_sha256": "28506a0d6d8d65346b65e32bef9831c57ec23ce5a65f629fcd69a9a967f3b89c",
+      "evidence_sha256": "3b74ce869ed8adb4871ca0f0d343f9778df552df018e944005d589eddf59255a",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1178,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1178:C_minimal_plus_distractors",
+      "attempt_id": "9299d3cd101c4ef1b13435c0cb50559f",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 654,
+        "completion_tokens": 88,
+        "total_tokens": 742,
+        "prompt_tokens_details": {
+          "cached_tokens": 253
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend REJECTING the initiative, which directly contradicts the claim that they recommend ACCEPTING it.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent de rejeter l’initiative populaire pour une eau potable propre et une alimentation saine."
+      },
+      "raw_response_sha256": "436252d10311f433b2613f398c6b2017fb235e73de9c2b47158f5b58ecf9f2bb",
+      "prompt_sha256": "c39221b3c1353fc47758235bafd5276c997babdd8669b515e8298874513c8d45",
+      "evidence_sha256": "3b4ac67e3b01c696e458d6556e30b0f984d9a7e54860e6ec7112a13951ac7aa1",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1178,
+      "condition": "D_reordered",
+      "key": "1178:D_reordered",
+      "attempt_id": "e25db7bd9737443fb0170b109c9d9135",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 654,
+        "completion_tokens": 87,
+        "total_tokens": 741,
+        "prompt_tokens_details": {
+          "cached_tokens": 214
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The voting booklet explicitly states that the Federal Council and Parliament recommend REJECTING the initiative, which directly contradicts the claim that they recommend accepting it.",
+        "evidence_snippet": "Pour toutes ces raisons, le Conseil fédéral et le Parlement vous recommandent de rejeter l’initiative populaire pour une eau potable propre et une alimentation saine."
+      },
+      "raw_response_sha256": "f0d10af814798c785ce85edb8d4f080b79b88359c8cf39ffdcab62ecccb16f75",
+      "prompt_sha256": "82abbc84ce04b913872a1a39a45b9c380807627574a3d6cce50cf784c0ee9d45",
+      "evidence_sha256": "185276177d670c5b6f32b2972a88ac0b632438ef2d58476b15e4a30034b63ea8",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1344,
+      "condition": "A_original",
+      "key": "1344:A_original",
+      "attempt_id": "35974727f1d04173b104624aa3442059",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1422,
+        "completion_tokens": 113,
+        "total_tokens": 1535,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The claim states a 10% requirement, while the evidence specifies a 4% requirement for investment or a replacement tax.",
+        "evidence_snippet": "Les entreprises qui, en Suisse, proposent des films dans leur programmation ou par le biais de services électroniques à la demande ou par abonnement doivent affecter annuellement 4 % au moins de leurs recettes brutes à la création cinématographique suisse indépendante ou payer une taxe de remplacement correspondante."
+      },
+      "raw_response_sha256": "467d693c7984300773fbe6a5ca1a9853d852269837f7712ba9708cb778af65fa",
+      "prompt_sha256": "9b9c784efbb30ec0bc3ea8c4e09f0b7a7897b9a772fd323b830ed0c3fca58f54",
+      "evidence_sha256": "074af36a3b5c72048ff32f5661fc386f391974adbd2ae6a0389a633653b3f7bc",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1344,
+      "condition": "B_minimal",
+      "key": "1344:B_minimal",
+      "attempt_id": "49fd2a3c9bbc42cd936723edb0e5bf34",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 469,
+        "completion_tokens": 111,
+        "total_tokens": 580,
+        "prompt_tokens_details": {
+          "cached_tokens": 246
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states that enterprises must allocate at least 4% of gross revenue, while the claim states 10%",
+        "evidence_snippet": "Les entreprises qui, en Suisse, proposent des films dans leur programmation ou par le biais de services électroniques à la demande ou par abonnement doivent affecter annuellement 4 % au moins de leurs recettes brutes à la création cinématographique suisse indépendante ou payer une taxe de remplacement correspondante."
+      },
+      "raw_response_sha256": "a197bcd1b0abf30efc2efa94fcee9bb281ea52cd0bf8fa0cdd5a5fae042570b3",
+      "prompt_sha256": "8037dd90199226ac6ee4d6f70e3ebcfab71ac1105e0d71b5761e1ca823ee9961",
+      "evidence_sha256": "c960ca6f00c435060f28ae29236f17edb1d9514885315a99c1e556955d148637",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1344,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1344:C_minimal_plus_distractors",
+      "attempt_id": "afd05f1d54fa493792dc552b746e4f02",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 701,
+        "completion_tokens": 115,
+        "total_tokens": 816,
+        "prompt_tokens_details": {
+          "cached_tokens": 440
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The claim states a 10% requirement, while the evidence specifies a 4% requirement for annual allocation to Swiss independent cinema production.",
+        "evidence_snippet": "Les entreprises qui, en Suisse, proposent des films dans leur programmation ou par le biais de services électroniques à la demande ou par abonnement doivent affecter annuellement 4 % au moins de leurs recettes brutes à la création cinématographique suisse indépendante ou payer une taxe de remplacement correspondante."
+      },
+      "raw_response_sha256": "6f60405ebbacbb659eee75d565ef1d51d27fe68c6ea392c81507b0a5e1a8e786",
+      "prompt_sha256": "2e302c09155569f164fc01d4f22324ff115070ec81747e11439b4958c3884157",
+      "evidence_sha256": "8305fabde4b84ab851bf11f654e9b385a0901672060a5701bbcdf019e78a0e04",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1344,
+      "condition": "D_reordered",
+      "key": "1344:D_reordered",
+      "attempt_id": "e629611093594b4fbf118a5cc59beaa3",
+      "gold": "contradiction",
+      "pred": "neutral",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 701,
+        "completion_tokens": 108,
+        "total_tokens": 809,
+        "prompt_tokens_details": {
+          "cached_tokens": 243
+        }
+      },
+      "response": {
+        "label": "neutral",
+        "reasoning": "The evidence specifies a 4% minimum requirement, not a 10% requirement as stated in the claim.",
+        "evidence_snippet": "Les entreprises qui, en Suisse, proposent des films dans leur programmation ou par le biais de services électroniques à la demande ou par abonnement doivent affecter annuellement 4 % au moins de leurs recettes brutes à la création cinématographique suisse indépendante ou payer une taxe de remplacement correspondante."
+      },
+      "raw_response_sha256": "050ecb7f2350a05a4484b2f7f86d654de453ba652becacf4c3fa1488b75c92df",
+      "prompt_sha256": "0e7977e1a48867566cb4669eab720ef6403bb03f49717b963f9b3e460225d1fc",
+      "evidence_sha256": "abe6ae7dc5188da29b005284c05b52a145ef50b3ec3ce38f263ba9d4301d5261",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1401,
+      "condition": "A_original",
+      "key": "1401:A_original",
+      "attempt_id": "5d518a8403cb44e29b3048f646e7295b",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1082,
+        "completion_tokens": 88,
+        "total_tokens": 1170,
+        "prompt_tokens_details": {
+          "cached_tokens": 180
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "Il testo in votazione indica che l'Assemblea federale raccomanda di respingere l'iniziativa, mentre la claim afferma che raccomanda di approvarla.",
+        "evidence_snippet": "L’Assemblea federale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa."
+      },
+      "raw_response_sha256": "5cb498df9f3d7aea1549a80ff6ef7c5cbf1961672d682fab1933c670bb3e4064",
+      "prompt_sha256": "0d9010387db78c0175912eb4c63bd25f631576d60e90a3e7ba475b7a1310ca27",
+      "evidence_sha256": "592c482fd2cae3a71b1775ae1d201078140a7bbd648d88bd2b7032575de2f0c6",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1401,
+      "condition": "B_minimal",
+      "key": "1401:B_minimal",
+      "attempt_id": "be1b148b8f59405cab9c815cdb380cc9",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 336,
+        "completion_tokens": 81,
+        "total_tokens": 417,
+        "prompt_tokens_details": {
+          "cached_tokens": 216
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "L'Assemblea federale raccomanda di respingere l'iniziativa, mentre il claim afferma che raccomanda di approvarla.",
+        "evidence_snippet": "L’Assemblea federale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa."
+      },
+      "raw_response_sha256": "5b330dfb272e5a1bd23cc275f02fed99e665e0762d9b098d2c5a24f9f28aa6eb",
+      "prompt_sha256": "996225ef7c900c9fa7b5f40a7d63cd7073a1163ad39aeb315655acfa078c03a7",
+      "evidence_sha256": "9abf3f34dcf3c5dc34d2f02d3ae3b303f99a9919ec7dcf5ca1aa210f4a39a736",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1401,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1401:C_minimal_plus_distractors",
+      "attempt_id": "b0e44a5c9a984f2ca090ebbeb422d86a",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 701,
+        "completion_tokens": 80,
+        "total_tokens": 781,
+        "prompt_tokens_details": {
+          "cached_tokens": 307
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence explicitly states that the Federal Assembly recommends rejecting the initiative, which directly contradicts the claim that it recommends approving the initiative.",
+        "evidence_snippet": "Art. 2 L’Assemblea federale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa."
+      },
+      "raw_response_sha256": "ab0fe9d93d276495d3ad553978c1f0f1264a1de4e7d631df20ebbbb2b44a1fab",
+      "prompt_sha256": "d63592ce34cd74b0ecff7feba97ac3c34e11852de102f73684c205f3c7d2d5a3",
+      "evidence_sha256": "367180bbb7dae3e4e75b9e1b62b48f09193ceece0ce81214434c5e24ee54a1d9",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1401,
+      "condition": "D_reordered",
+      "key": "1401:D_reordered",
+      "attempt_id": "490adf161dde4f49bc582f39f7dcb11c",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 701,
+        "completion_tokens": 82,
+        "total_tokens": 783,
+        "prompt_tokens_details": {
+          "cached_tokens": 216
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The voting booklet explicitly states that the Federal Assembly recommends rejecting the initiative, which directly contradicts the claim that it recommends approving the initiative.",
+        "evidence_snippet": "Art. 2 L’Assemblea federale raccomanda al Popolo e ai Cantoni di respingere l’iniziativa."
+      },
+      "raw_response_sha256": "0c7b153587c09fbaa934408d8c21f233b48fed44cf7a7dd7ff7bb8d1071b03ee",
+      "prompt_sha256": "ad9daa2b8277fe34657e6b3d2d93ff6cd20124e555d2e507c9842520bcf0ff1c",
+      "evidence_sha256": "94d56f67379e8544e023a04b90304e6d6e1a0dd1df44c3553ad89e5a73aa9e52",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1475,
+      "condition": "A_original",
+      "key": "1475:A_original",
+      "attempt_id": "bf95d0e3376c47b3b024f17ca4d503f3",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 916,
+        "completion_tokens": 74,
+        "total_tokens": 990,
+        "prompt_tokens_details": {
+          "cached_tokens": 177
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "L'Assemblea federale raccomanda di approvare l'iniziativa, mentre l'evidenza mostra che raccomanda di respingerla.",
+        "evidence_snippet": "L’Assemble fédérale recommande au peuple et aux cantons de rejeter l’initiative."
+      },
+      "raw_response_sha256": "6fc17e6feada68f959a17a5fc58a9722e30779ba46251916faf90cb66bc21da8",
+      "prompt_sha256": "43f6d0b98c7cef6fadcafc2df72dc05c3ae3ea93bacad1b3630b6cddb905dfe9",
+      "evidence_sha256": "c540f1e21b8bfc385bfa3dd6c2a3721467ed7a880bd28a6a017a4d442af45e65",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1475,
+      "condition": "B_minimal",
+      "key": "1475:B_minimal",
+      "attempt_id": "b8ebdb934f5645d3a07865b316f8e4d1",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 324,
+        "completion_tokens": 75,
+        "total_tokens": 399,
+        "prompt_tokens_details": {
+          "cached_tokens": 221
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "L'Assemblea federale raccomanda di approvare l'iniziativa nel claim, mentre nel testo della votazione raccomanda di respingerla.",
+        "evidence_snippet": "L’Assemblée fédérale recommande au peuple et aux cantons de rejeter l’initiative."
+      },
+      "raw_response_sha256": "f89db77e6b5ea1b9a175b092e44a00e17cb510b943eedf0683a9ff0dbe2d898c",
+      "prompt_sha256": "26203fd9174f1ee6c91b63c88aa52918681ffb0b2c425e0ae9abbd0df3dc6889",
+      "evidence_sha256": "48d07b8b6eeed1d8690efadcf33f24a4348e137be1a564b7f7f25416c1e3133c",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1475,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1475:C_minimal_plus_distractors",
+      "attempt_id": "42a35f028484469ab891d1d93372d289",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 631,
+        "completion_tokens": 80,
+        "total_tokens": 711,
+        "prompt_tokens_details": {
+          "cached_tokens": 295
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "L'Assemblee federale raccomanda di REJETTER l'iniziativa, mentre il claim afferma che raccomanda di APPROVARE.",
+        "evidence_snippet": "Art. 2 L’Assemble fédérale recommande au peuple et aux cantons de rejeter l’initiative."
+      },
+      "raw_response_sha256": "5286ea1b772af7325cc3a8cdbd026b8d5c2f0777e21112cf027b16d0ff5b58f0",
+      "prompt_sha256": "d7629e0e63e572377fcaa4e55bb4d1292a51a9ee63ffb863a8104dc989dbf5a5",
+      "evidence_sha256": "c3a706e98ac548a7d61f1309f77aa4c7276c1141954c3deae4a10b6e003af61e",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1475,
+      "condition": "D_reordered",
+      "key": "1475:D_reordered",
+      "attempt_id": "80e2dff7ba55429aa9fd5aece02fa902",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 631,
+        "completion_tokens": 86,
+        "total_tokens": 717,
+        "prompt_tokens_details": {
+          "cached_tokens": 220
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "L'Assemblea federale raccomanda di approvare l'iniziativa, mentre il testo ufficiale indica di raccomandare il rifiuto dell'iniziativa.",
+        "evidence_snippet": "Art. 2 L’Assemble federale raccomanda al popolo e ai cantoni di rejettare l’iniziativa."
+      },
+      "raw_response_sha256": "cb308901538a819aa28944dbd92b831494d23a6a5c4de2a170a5ee5a73421988",
+      "prompt_sha256": "85c2813fcb144ab830eeb5e7bdd5acb060fe5a181c9709648b53eed93a5a91cf",
+      "evidence_sha256": "35dbce2bf7cd916f98578ee87e4204863cfde79b50983bc2b2bef455b3b9a2bc",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1,
+      "condition": "A_original",
+      "key": "1:A_original",
+      "attempt_id": "51f36c7b920f4d0ab03c104c4c7d9115",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1464,
+        "completion_tokens": 120,
+        "total_tokens": 1584,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that after 2033, the retirement age will automatically increase in line with life expectancy at a rate of 80% of the additional life expectancy, matching the claim.",
+        "evidence_snippet": "Après 2033, l’âge de la retraite augmentera automatiquement en même temps que l’espérance de vie moyenne. Cependant, il n’augmentera pas à l’identique, mais à raison de 80 % de la durée de vie supplémentaire."
+      },
+      "raw_response_sha256": "202074e7489d542614e493eb4837f34e6b403ad06fae395ab95f1a98ec707143",
+      "prompt_sha256": "dcca28fd643c539c2d07a790326e70f4342c1a3a4c49431ca5ecb17e28d33002",
+      "evidence_sha256": "0bd1ab79a9dc39b66a6fc8c09bbc130f0eccf46d0ed85767ceabb2ea3145265a",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1,
+      "condition": "B_minimal",
+      "key": "1:B_minimal",
+      "attempt_id": "e6ca2b8356ee478d90bbf777db3035f7",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 518,
+        "completion_tokens": 114,
+        "total_tokens": 632,
+        "prompt_tokens_details": {
+          "cached_tokens": 236
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence states that after 2033, the retirement age will automatically increase with life expectancy at 80% of the additional life span, matching the claim.",
+        "evidence_snippet": "Après 2033, l’âge de la retraite augmentera automatiquement en même temps que l’espérance de vie moyenne. Cependant, il n’augmentera pas à l’identique, mais à raison de 80 % de la durée de vie supplémentaire."
+      },
+      "raw_response_sha256": "26ecddfadc6f00dd4c9a054d2ff574baf33a854e9814596de26ddaf6542a5372",
+      "prompt_sha256": "869b09db637668d92e5d122f8df972c9c8ca3bbd8649fce6e766949188cc68c3",
+      "evidence_sha256": "be3051f85d0e10adc929476acecc366d5952d9a51d6f1e396e95af76658287d7",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1:C_minimal_plus_distractors",
+      "attempt_id": "49471299dc9f46078cfe2670089a18f5",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 671,
+        "completion_tokens": 118,
+        "total_tokens": 789,
+        "prompt_tokens_details": {
+          "cached_tokens": 489
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence states that after 2033, the retirement age will automatically increase with life expectancy at a rate of 80% of the additional life span, which matches the claim.",
+        "evidence_snippet": "Après 2033, l’âge de la retraite augmentera automatiquement en même temps que l’espérance de vie moyenne. Cependant, il n’augmentera pas à l’identique, mais à raison de 80 % de la durée de vie supplémentaire."
+      },
+      "raw_response_sha256": "6991410521dc3953df3c329d36957f3a118157cecb414ab9b0d29a3bc6d6d94d",
+      "prompt_sha256": "e1d862493baf70ed43e595395e547b5788b857bef8ea94d6e9a227f25f7f36e1",
+      "evidence_sha256": "3c24c437fe3b50d626754f27f49cc76cba2babab55e8e915f0f3d058a38fd56b",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1,
+      "condition": "D_reordered",
+      "key": "1:D_reordered",
+      "attempt_id": "8756c6efc869474197ca78a45a181c09",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 671,
+        "completion_tokens": 122,
+        "total_tokens": 793,
+        "prompt_tokens_details": {
+          "cached_tokens": 237
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that after 2033, the retirement age will automatically increase in line with life expectancy, at a rate of 80% of the additional life expectancy, which matches the claim.",
+        "evidence_snippet": "Après 2033, l’âge de la retraite augmentera automatiquement en même temps que l’espérance de vie moyenne. Cependant, il n’augmentera pas à l’identique, mais à raison de 80 % de la durée de vie supplémentaire."
+      },
+      "raw_response_sha256": "151666628937e73a3a73af69135f1e2dac588cb4b4b4206f8d64309478a314bf",
+      "prompt_sha256": "8a81ee8f27987b259949f0398c17eb87ee909f2c3d7aaa739fdf5ce289d661db",
+      "evidence_sha256": "11158ba5b60d1d4fd0b34d71e5688e8d5949552ae2ce12ac5c32ae6347bc1fad",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1035,
+      "condition": "A_original",
+      "key": "1035:A_original",
+      "attempt_id": "54748560fabc4806af87593c9557ed25",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1126,
+        "completion_tokens": 153,
+        "total_tokens": 1279,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The claim states the Bundesrat recommends rejection because existing roads are sufficient, while the evidence shows the Council Federal argues for projects to eliminate bottlenecks due to overloaded roads and increasing traffic.",
+        "evidence_snippet": "Les routes nationales sont surchargées en divers endroits et le trafic continue d’augmenter, ce qui se traduit par des embouteillages et des coûts élevés pour la population et l’économie. Le Conseil fédéral et le Parlement veulent éliminer les goulets d’étranglement grâce à six projets ciblés, afin que les camions et les voitures ne se rabattent pas sur les villages et les quartiers d’habitation."
+      },
+      "raw_response_sha256": "d2a40f0db6e39c1b2dd1e32164d8d35f7d5720600b047731400dc4e4b510db56",
+      "prompt_sha256": "367afd7c75ad3b4642dfb110af65b0903eece6ea7001905da92e3fed82a2f5bb",
+      "evidence_sha256": "52dc966c6d565f9b4a48a1b745cbf1c24a715f21ea3cc8dc508e0361f89a24df",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1035,
+      "condition": "B_minimal",
+      "key": "1035:B_minimal",
+      "attempt_id": "44c46f8bb1db4a43a34013f6a4b64910",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 392,
+        "completion_tokens": 151,
+        "total_tokens": 543,
+        "prompt_tokens_details": {
+          "cached_tokens": 214
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states that national roads are overloaded and traffic is increasing, necessitating new projects, while the claim asserts that existing roads are sufficient and no further projects are needed.",
+        "evidence_snippet": "Les routes nationales sont surchargées en divers endroits et le trafic continue d’augmenter, ce qui se traduit par des embouteillages et des coûts élevés pour la population et l’économie. Le Conseil fédéral et le Parlement veulent éliminer les goulets d’étranglement grâce à six projets ciblés, afin que les camions et les voitures ne se rabattent pas sur les villages et les quartiers d’habitation."
+      },
+      "raw_response_sha256": "06e5dcb77163a520327be694fa42934b485c4b28b2ad950c9fb7659e999f68e0",
+      "prompt_sha256": "274a211190c4cea2e3e4afa0d85a7e6afc550b45cd713cce57a76c3ba3f465f6",
+      "evidence_sha256": "903bed375ec4af39a670ee8ed739b19dd0cc2d7ec8b74b905da7ff3036e8242c",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1035,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1035:C_minimal_plus_distractors",
+      "attempt_id": "1ee3be9811984a29a21ecd8b7202afa5",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 637,
+        "completion_tokens": 130,
+        "total_tokens": 767,
+        "prompt_tokens_details": {
+          "cached_tokens": 363
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states that roads are overloaded and traffic is increasing, requiring new projects to eliminate bottlenecks, which directly contradicts the claim that existing roads are sufficient and no further projects are needed.",
+        "evidence_snippet": "Les routes nationales sont surchargées en divers endroits et le trafic continue d’augmenter, ce qui se traduit par des embouteillages et des coûts élevés pour la population et l’économie. Le Conseil fédéral et le Parlement veulent éliminer les goulets d’étranglement grâce à six projets ciblés"
+      },
+      "raw_response_sha256": "d6985247fa45f44db6fce21260893c3107f7db4dca86b5e8c6b45a176ad54ca9",
+      "prompt_sha256": "30baa33a0d7d019568741934e42c108cb22777865ed3b96f1cd400adb55ee87c",
+      "evidence_sha256": "ccd76275b0ec125c7a14e9b9d7ac268572c2a353147cea07ded23bb1dfe5c422",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1035,
+      "condition": "D_reordered",
+      "key": "1035:D_reordered",
+      "attempt_id": "2431e49547074b7e96245241ebf09e4c",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 637,
+        "completion_tokens": 153,
+        "total_tokens": 790,
+        "prompt_tokens_details": {
+          "cached_tokens": 214
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The claim states the Bundesrat advises rejection because existing roads are sufficient, while the evidence shows the Council Federal recommends acceptance due to overloaded national roads and increasing traffic requiring targeted projects.",
+        "evidence_snippet": "Les routes nationales sont surchargées en divers endroits et le trafic continue d’augmenter, ce qui se traduit par des embouteillages et des coûts élevés pour la population et l’économie. Le Conseil fédéral et le Parlement veulent éliminer les goulets d’étranglement grâce à six projets ciblés, afin que les camions et les voitures ne se rabattent pas sur les villages et les quartiers d’habitation."
+      },
+      "raw_response_sha256": "0506c14f81a960a77b1da956fae9aba379d39b13d9d737ae3133859c4f0d42d5",
+      "prompt_sha256": "baebcc8986278264c3b6527d7e5bf64a5259d92b2f403d2203fd91b583fdb0dd",
+      "evidence_sha256": "83873e60c75e5cdb2c5ed53a4cb7faab25040816dd270b0db414429d136ad0d6",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 189,
+      "condition": "A_original",
+      "key": "189:A_original",
+      "attempt_id": "64c602787abe42be8c33ca9b6a2c6603",
+      "gold": "entailment",
+      "pred": "contradiction",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1212,
+        "completion_tokens": 86,
+        "total_tokens": 1298,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend rejecting the initiative, which directly contradicts the claim that the Federal Council advocates for its rejection.",
+        "evidence_snippet": "Il Consiglio federale e il Parlamento respingono l'iniziativa popolare «Per un'immigrazione moderata (Iniziativa per la limitazione)»."
+      },
+      "raw_response_sha256": "f41ab56c7f5bc745406b86f36508f33b617b45f097000ecdaf7bb7eb20adafab",
+      "prompt_sha256": "6c29b22404b56edf817aae2e8f1a492f0a1db73e54d19026e549f211359fb1e0",
+      "evidence_sha256": "f126c05a140801f37daed10dfe2a5d4190771d233d18d25289f95e281e6106ab",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 189,
+      "condition": "B_minimal",
+      "key": "189:B_minimal",
+      "attempt_id": "e168c75ae9a1434fa1ac135fb2f0501c",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 379,
+        "completion_tokens": 89,
+        "total_tokens": 468,
+        "prompt_tokens_details": {
+          "cached_tokens": 213
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend rejecting the initiative, which directly supports the claim that the Conseil fédéral preconises to reject the initiative.",
+        "evidence_snippet": "Il Consiglio federale e il Parlamento respingono l'iniziativa popolare «Per un'immigrazione moderata (Iniziativa per la limitazione)»? No"
+      },
+      "raw_response_sha256": "5d493d5d30c1877342f20625001647b921a38203f7513a738d6e1fb65c777715",
+      "prompt_sha256": "5e09054c8fcd24e2f58d0570c02b04e488370fb8d1b66e4000c60ecff6571d3d",
+      "evidence_sha256": "6ce1ca77458439bd65ed432522d8441b781ece925307f8dd64cfd5278cc0397c",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 189,
+      "condition": "C_minimal_plus_distractors",
+      "key": "189:C_minimal_plus_distractors",
+      "attempt_id": "f3c8e7c86a334db89cc25b2398a121f8",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 543,
+        "completion_tokens": 88,
+        "total_tokens": 631,
+        "prompt_tokens_details": {
+          "cached_tokens": 350
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the Federal Council and Parliament recommend rejecting the initiative, which directly supports the claim that the Conseil fédéral preconises to reject the initiative.",
+        "evidence_snippet": "Il Consiglio federale e il Parlamento respingono l'iniziativa popolare «Per un'immigrazione moderata (Iniziativa per la limitazione)»."
+      },
+      "raw_response_sha256": "9d3b2aee11c82dcdc0f99674f3609fe52b42d36ba67ebe0e4b903341bf182d2a",
+      "prompt_sha256": "96bf95b032fafa777e78e2f84f23725cc576a5a23d033a5472d3938ac22c7e10",
+      "evidence_sha256": "c6543342b0b0a1d1dfccfbf77e838fd1ee9b1ab69bbde31d9aaaac7f05130fc9",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 189,
+      "condition": "D_reordered",
+      "key": "189:D_reordered",
+      "attempt_id": "b18571c34dc243f6aad5814a15a0a4e3",
+      "gold": "entailment",
+      "pred": "contradiction",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 543,
+        "completion_tokens": 116,
+        "total_tokens": 659,
+        "prompt_tokens_details": {
+          "cached_tokens": 213
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "Le Conseil fédéral recommande de rejeter l'initiative, alors que le comite d'initiative recommande de voter \"Oui\"",
+        "evidence_snippet": "Raccomandazione del Consiglio federale e del Parlamento: No Il Consiglio federale e il Parlamento respingono l'iniziativa popolare «Per un'immigrazione moderata (Iniziativa per la limitazione)».\nRaccomandazione del comitato d'iniziativa: Sì"
+      },
+      "raw_response_sha256": "72897a74a6102a7854ffbc99ecfa4f28a3f344d95530949916fe37526ada9765",
+      "prompt_sha256": "6180baa52551473bc5975c91f1b5a2ba9d199a9e446f0fef634d3f6332ef9c09",
+      "evidence_sha256": "350b66ad3f08653e5260cb1a18a62c9013ef7d987b4f461e3ea929420f6b92db",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 195,
+      "condition": "A_original",
+      "key": "195:A_original",
+      "attempt_id": "fdd2c28bc0bd4023b7d72353b6cb5711",
+      "gold": "entailment",
+      "pred": "neutral",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1265,
+        "completion_tokens": 178,
+        "total_tokens": 1443,
+        "prompt_tokens_details": {
+          "cached_tokens": 175
+        }
+      },
+      "response": {
+        "label": "neutral",
+        "reasoning": "The evidence describes the current legal framework and proposed changes regarding discrimination, but does not explicitly confirm or deny whether the existing penal code provisions are sufficient to punish insults and public humiliation without a new law.",
+        "evidence_snippet": "Le code pénal et le code pénal militaire contiennent actuellement une disposition qui protège contre la discrimination et l'incitation à la haine fondées sur l'appartenance raciale, ethnique ou religieuse 1. Quiconque viole cette disposition est passible d'une peine privative de liberté pouvant aller jusqu'à trois ans ou d'une peine pécuniaire. Cette norme antiracisme a été acceptée par le peuple lors de la votation organisée suite à un référendum 2 ; elle est en vigueur depuis le 1er janvier 1995."
+      },
+      "raw_response_sha256": "4ea63643da4190364b785c499687d4503ca88ca8d933aa3b94512c13dea0df42",
+      "prompt_sha256": "c7f32489d8d93eaaec40b23607be30a12e5d869955fe786445c39a9b318c2165",
+      "evidence_sha256": "1034d909a0db9609294fcf9c747757a4fbd782719858a8b1eb28a7fa5369530a",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 195,
+      "condition": "B_minimal",
+      "key": "195:B_minimal",
+      "attempt_id": "4c560518324342bf92ba8bd605cca586",
+      "gold": "entailment",
+      "pred": "entailment",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 435,
+        "completion_tokens": 125,
+        "total_tokens": 560,
+        "prompt_tokens_details": {
+          "cached_tokens": 229
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that existing penal code provisions already address insults and humiliation, making a new anti-discrimination law unnecessary.",
+        "evidence_snippet": "Le code pénal (art. 173 ss CP) contient des bases légales solides qui permettent déjà de se défendre en cas d’atteinte à l’honneur, d’injure, de menace, de diffamation ou de calomnie. Il est parfaitement inutile et contre-productif de faire une nouvelle loi anti-discrimination qui ne protège qu’en apparence."
+      },
+      "raw_response_sha256": "6b7803428cad93c7aa63621785cd99845bdd4fdd053bcf6cf6dc36e89b2479ed",
+      "prompt_sha256": "3c639bf834b039e94fa65ffef3bf205a46a870ba888e7dfbfeb91f68078c271b",
+      "evidence_sha256": "8b98a53869286a624abf905d7485834ad0731a6f7f9caa3410532b43f1051350",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 195,
+      "condition": "C_minimal_plus_distractors",
+      "key": "195:C_minimal_plus_distractors",
+      "attempt_id": "f60f423cfcba4b62bdf12619b90fce28",
+      "gold": "entailment",
+      "pred": "contradiction",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 603,
+        "completion_tokens": 120,
+        "total_tokens": 723,
+        "prompt_tokens_details": {
+          "cached_tokens": 406
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The committee argues that existing penal code provisions already punish insults and humiliation, making a new anti-discrimination law unnecessary, while the federal council and parliament argue that the current code is insufficient for protection against discrimination based on sexual orientation.",
+        "evidence_snippet": "Selon le comité, quiconque insulte ou rabaisse publiquement une personne est en effet déjà sanctionné pénalement aujourd’hui. Il est parfaitement inutile et contre-productif de faire une nouvelle loi anti-discrimination qui ne protège qu’en apparence."
+      },
+      "raw_response_sha256": "7a58791d72466778a84da15b86450b5f52dacfb2904a3447b4c99977d31af34f",
+      "prompt_sha256": "e755d6cb4f8ec5350c7ee1825f949761093b49f0ad3b95ff67af68c18ead54fb",
+      "evidence_sha256": "6131ef6d5e68047f2cebd0dd582f9794a40fe6396875d0f439bfe5c2c2926845",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 195,
+      "condition": "D_reordered",
+      "key": "195:D_reordered",
+      "attempt_id": "3316f621f8ce47a0937ef5d5f98d51ab",
+      "gold": "entailment",
+      "pred": "contradiction",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 603,
+        "completion_tokens": 183,
+        "total_tokens": 786,
+        "prompt_tokens_details": {
+          "cached_tokens": 229
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The committee argues that existing penal code provisions already punish insults and humiliation, while the evidence shows the council and parliament believe the code is insufficient and a new law is needed to protect against discrimination based on sexual orientation.",
+        "evidence_snippet": "Un comportement discriminatoire n’est punissable que s’il y a intention, c’est-à-dire si l’auteur agit délibérément ou même précisément dans le dessein de blesser une personne. Le code pénal (art. 173 ss CP) contient des bases légales solides qui permettent déjà de se défendre en cas d’atteinte à l’honneur, d’injure, de menace, de diffamation ou de calomnie. Il est parfaitement inutile et contre-productif de faire une nouvelle loi anti-discrimination qui ne protège qu’en apparence."
+      },
+      "raw_response_sha256": "b67d1ef8b125c8c8673f5a4bdd083442de464e186f53e391f3a1e86ac8f02d45",
+      "prompt_sha256": "ba20c9f6fd657fa75c92571c972ee5ab9de92dba85a688ef98696c93e98b6616",
+      "evidence_sha256": "9fa30c065e8b75ab12920a672a4df92bcddea2e31ec585e1f6b13f63142453c1",
+      "citation_verified": false,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1058,
+      "condition": "A_original",
+      "key": "1058:A_original",
+      "attempt_id": "269cd8039c1f45e9ad26dd34ce4174e1",
+      "gold": "contradiction",
+      "pred": "entailment",
+      "correct": false,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 1377,
+        "completion_tokens": 116,
+        "total_tokens": 1493,
+        "prompt_tokens_details": {
+          "cached_tokens": 174
+        }
+      },
+      "response": {
+        "label": "entailment",
+        "reasoning": "The evidence explicitly states that the reform abolishes the taxation of the rental value for both primary and secondary residences, and introduces a special property tax on secondary residences used primarily for personal use, confirming the claim that the abolition applies only to secondary residences.",
+        "evidence_snippet": "La modification vaut pour les résidences tant principales que secondaires. Il a aussi décidé de modifier la Constitution pour que les cantons puissent percevoir un impôt immobilier spécial sur les résidences secondaires essentiellement à usage personnel."
+      },
+      "raw_response_sha256": "33c773c939d5dbfc7088b86f55c029c44aa037aa85e8f558f3cdc2b39cbc4ae1",
+      "prompt_sha256": "37787de1c82a1cc3bc60b2e0292c7eed2800a136c1ff5148ffe93cd51d16ae1e",
+      "evidence_sha256": "f0615682bb7a29bc393f3b6e4749296007b7cee3e9a56f9b0682bb3078ddcf04",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1058,
+      "condition": "B_minimal",
+      "key": "1058:B_minimal",
+      "attempt_id": "8039a35bc41e42cd91774d187c70a150",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 339,
+        "completion_tokens": 60,
+        "total_tokens": 399,
+        "prompt_tokens_details": {
+          "cached_tokens": 219
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states the modification applies to both principal and secondary residences, while the claim asserts it only applies to secondary residences.",
+        "evidence_snippet": "La modification vaut pour les résidences tant principales que secondaires."
+      },
+      "raw_response_sha256": "52dceb5a6bc422f3b1b2aa3bd2b2e89be7f964c3ab135e4c4f5a3a9832805e13",
+      "prompt_sha256": "6309955b481f42fbdfc61a44ffa9e2f66c77a849663ef6d85e40ae7b6feddfd4",
+      "evidence_sha256": "ed58f7c559d74ddacb0dd91d73fd67b6ff849bfb6e2795cbb0831ee9e77456cf",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1058,
+      "condition": "C_minimal_plus_distractors",
+      "key": "1058:C_minimal_plus_distractors",
+      "attempt_id": "7c075b55fe3e40f7973590aa2ca15ff3",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 500,
+        "completion_tokens": 97,
+        "total_tokens": 597,
+        "prompt_tokens_details": {
+          "cached_tokens": 310
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states the reform abolishes the imposition of the value locative for both principal and secondary residences, while the claim asserts it only applies to secondary residences.",
+        "evidence_snippet": "Le Parlement a décidé de modifier la loi pour abolir l’imposition de la valeur locative et limiter les déductions fiscales. La modification vaut pour les résidences tant principales que secondaires."
+      },
+      "raw_response_sha256": "c9f137cadf10c37e06f8041173828e047f8237f9d6fae7acd7dc3e8f06fa0786",
+      "prompt_sha256": "0b21c51875a87449e8942dc96bcfcf4926f657f2e8e23453d27e5adaec7ec2a2",
+      "evidence_sha256": "f076c7006f77a2313e2de09f376faa786f3a0617bee9ce3fc06e1c10b4fea680",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    },
+    {
+      "row_index": 1058,
+      "condition": "D_reordered",
+      "key": "1058:D_reordered",
+      "attempt_id": "2aa1cdf22b134d60ab44c43efdfe19f3",
+      "gold": "contradiction",
+      "pred": "contradiction",
+      "correct": true,
+      "status": "completed",
+      "usage": {
+        "prompt_tokens": 500,
+        "completion_tokens": 93,
+        "total_tokens": 593,
+        "prompt_tokens_details": {
+          "cached_tokens": 217
+        }
+      },
+      "response": {
+        "label": "contradiction",
+        "reasoning": "The evidence states the reform abolishes the valuation-based tax for both primary and secondary residences, while the claim asserts it only applies to secondary residences.",
+        "evidence_snippet": "Le Parlement a décidé de modifier la loi pour abolir l’imposition de la valeur locative et limiter les déductions fiscales. La modification vaut pour les résidences tant principales que secondaires."
+      },
+      "raw_response_sha256": "580c86540ca2025bf6d87be341f234860be3ea7fdca0e68721eab81bf1512dcd",
+      "prompt_sha256": "8e1ca3e50ae58f377962aed022f1ac07e5891f37e6d7c5fb2ca95d105610b860",
+      "evidence_sha256": "d9444efa45be34f9ef39c1a886a13d676442c1ead9247ac72788506a91a65478",
+      "citation_verified": true,
+      "finish_reason": "stop"
+    }
+  ]
+}

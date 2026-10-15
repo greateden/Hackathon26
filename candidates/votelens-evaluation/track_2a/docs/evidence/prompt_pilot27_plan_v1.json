@@ -1,0 +1,52 @@
+{
+  "schema": "hackapertus-prompt-pilot-plan-v1",
+  "status": "frozen-before-inference",
+  "phase": "pilot",
+  "expected_rows": 27,
+  "max_inference_calls": 54,
+  "dataset_sha256": "87ee4afd9c0ee8861106c50f05884481402ca668aecf927df68fc52d915b02fd",
+  "source_plan": "docs/evidence/paired_grouped81_plan_20261011.json",
+  "source_plan_sha256": "84dc9c7117c2aab4a1b85d9c91f5ab9296165720fc71153236980395915d07c1",
+  "selection": "For each lexicographically sorted claim-language, evidence-language and numeric gold-label cell, select the first row occurring in the frozen grouped-81 row order.",
+  "row_indices": [
+    21,
+    562,
+    1060,
+    31,
+    584,
+    1136,
+    106,
+    558,
+    1115,
+    292,
+    728,
+    1284,
+    200,
+    661,
+    1247,
+    169,
+    785,
+    1248,
+    443,
+    964,
+    1383,
+    444,
+    912,
+    1373,
+    435,
+    977,
+    1450
+  ],
+  "checks": {
+    "unique_rows": 27,
+    "language_pairs": 9,
+    "gold_labels": 3,
+    "one_row_per_cell": true,
+    "planned_calls": 54
+  },
+  "limitations": [
+    "Development pilot only: the underlying dataset has already informed earlier experiments.",
+    "The grouped-81 plan is content-group-disjoint from the historical dev seed under its recorded normalisation, but it is not vote-, topic- or time-disjoint.",
+    "No predictions were used to select these rows."
+  ]
+}

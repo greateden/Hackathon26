@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 372" width="660" height="372" role="img" aria-label="Accuracy versus a coverage-style rate for five non-comparable development points. Points are deliberately not joined into one frontier or Pareto line because they use different models, cohorts and coverage definitions (completion coverage, citation-verification rate, valid-output coverage).">
+  <title>Accuracy vs coverage — NOT one frontier (mixed denominators and metrics)</title>
+  <desc>y axis accuracy, x axis a coverage-style rate whose definition differs per point. Blue = grouped 8B, grey = ablation 8B, amber/red = paired 70B. In the grouped pair dense sits ABOVE and slightly LEFT of full-booklet: higher accuracy (65/81) but lower completion coverage (80/81 vs 81/81). Only the two paired-70B points share a denominator, so they are the comparable pair; this figure is not a Pareto frontier and not a tradeoff line.</desc>
+  <rect width="660" height="372" fill="#10151b"/>
+  <text x="16" y="26" fill="#e8edf2" font-family="sans-serif" font-size="15" font-weight="700">Coverage vs accuracy — NOT one frontier (mixed denominators)</text>
+  <text x="16" y="44" fill="#9fabb8" font-family="monospace" font-size="10">single-run exposed development data · 70B points are not the 8B submission target</text>
+  <!-- plot frame -->
+  <line x1="90" y1="310" x2="580" y2="310" stroke="#2b343f" stroke-width="1"/>
+  <line x1="90" y1="60" x2="90" y2="310" stroke="#2b343f" stroke-width="1"/>
+  <!-- gridline + labels: coverage ticks -->
+  <text x="60" y="314" fill="#9fabb8" font-family="monospace" font-size="10">0.0</text>
+  <text x="198" y="314" fill="#9fabb8" font-family="monospace" font-size="10">0.25</text>
+  <text x="318" y="314" fill="#9fabb8" font-family="monospace" font-size="10">0.50</text>
+  <text x="428" y="314" fill="#9fabb8" font-family="monospace" font-size="10">0.75</text>
+  <text x="540" y="314" fill="#9fabb8" font-family="monospace" font-size="10">1.00</text>
+  <line x1="198" y1="60" x2="198" y2="310" stroke="#2b343f" stroke-width="0.5"/>
+  <line x1="318" y1="60" x2="318" y2="310" stroke="#2b343f" stroke-width="0.5"/>
+  <line x1="438" y1="60" x2="438" y2="310" stroke="#2b343f" stroke-width="0.5"/>
+  <line x1="558" y1="60" x2="558" y2="310" stroke="#2b343f" stroke-width="0.5"/>
+  <!-- accuracy ticks on y -->
+  <text x="56" y="314" fill="#9fabb8" font-family="monospace" font-size="10">0.0</text>
+  <text x="50" y="250" fill="#9fabb8" font-family="monospace" font-size="10">0.25</text>
+  <text x="50" y="184" fill="#9fabb8" font-family="monospace" font-size="10">0.50</text>
+  <text x="50" y="118" fill="#9fabb8" font-family="monospace" font-size="10">0.75</text>
+  <text x="52" y="64" fill="#9fabb8" font-family="monospace" font-size="10">1.00</text>
+  <!-- axis titles -->
+  <text x="250" y="336" fill="#9fabb8" font-family="monospace" font-size="11">coverage-style rate — metric differs per point →</text>
+  <text x="24" y="72" fill="#9fabb8" font-family="monospace" font-size="11" transform="rotate(-90 24 72)">accuracy →</text>
+  <!-- Points plotted by x = 90 + cov*480 ; y = 310 - acc*270. The x METRIC
+       differs per point (completion coverage / citation-verification rate /
+       valid-output coverage), so colours are not on one comparable scale and
+       are not joined. Full-booklet is rightmost (completion 81/81=1.00); dense
+       within-PDF is slightly LEFT of it (80/81), NOT to its right. -->
+  <!-- grouped-full: completion coverage 81/81=1.00 (answered) acc 0.519 -->
+  <circle cx="570" cy="170" r="8" fill="#6aa9e0" fill-opacity="0.9"/>
+  <text x="410" y="162" fill="#e8edf2" font-family="sans-serif" font-size="10">full-booklet 8B · acc .519 · answered 81/81 (over-neutral)</text>
+  <!-- grouped-dense: completion coverage 80/81=0.988 (LOWER than full) acc 0.802 -->
+  <circle cx="564" cy="94" r="8" fill="#6aa9e0" fill-opacity="0.9"/>
+  <text x="330" y="86" fill="#e8edf2" font-family="sans-serif" font-size="10">dense within-PDF 8B · acc .802 · answered 80/81 · LOWER coverage than full</text>
+  <!-- ablation-C: citation-verification rate 36/81=0.444 (NOT a coverage rate) acc 0.790 -->
+  <circle cx="303" cy="97" r="8" fill="#8b95a1" fill-opacity="0.9"/>
+  <text x="196" y="120" fill="#e8edf2" font-family="sans-serif" font-size="10">rerank C 8B · acc .790 · citations verified 36/81 (not a coverage rate)</text>
+  <!-- p0-dense: valid-output coverage 43/54=0.796 acc(strict) 0.593 -->
+  <circle cx="472" cy="150" r="8" fill="#d9a441" fill-opacity="0.9"/>
+  <text x="430" y="176" fill="#e8edf2" font-family="sans-serif" font-size="10">P0 dense 70B · strict .593 · valid 43/54</text>
+  <!-- p0-vote-aware: valid-output coverage 25/54=0.463 strict 0.426 -->
+  <circle cx="312" cy="195" r="8" fill="#e0655a" fill-opacity="0.9"/>
+  <text x="230" y="216" fill="#e8edf2" font-family="sans-serif" font-size="10">P0 vote-aware 70B · strict .426 · valid 25/54</text>
+  <!-- the point: lower-right empty region is what naive tuning chases -->
+  <text x="330" y="250" fill="#e0655a" font-family="sans-serif" font-size="10" font-style="italic">← reject more here: fewer answers, and 18/29 refusals were gold-correct</text>
+  <text x="250" y="266" fill="#9fabb8" font-family="monospace" font-size="9">x metric differs per point → these are not one frontier / Pareto line; only the paired pair (n=54) is comparable</text>
+</svg>

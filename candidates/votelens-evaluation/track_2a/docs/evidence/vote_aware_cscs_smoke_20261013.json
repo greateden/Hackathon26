@@ -1,0 +1,34 @@
+{
+  "schema": "hackapertus-vote-aware-cscs-smoke-v1",
+  "evidence_date": "2026-10-13",
+  "scope": "single Advanced Docker application smoke; not a performance evaluation",
+  "pipeline_version": "vote-aware-v1",
+  "model": "swiss-ai/Apertus-v1.5-70B",
+  "task": "advanced",
+  "status": "PASS_WITH_CITATION_BOUNDARY_LIMITATION",
+  "result": {
+    "label": "entailment",
+    "label_code": 0,
+    "vote_status": "recognised",
+    "page": 19,
+    "input_tokens": 1330,
+    "output_tokens": 91,
+    "inference_time_ms": 1340,
+    "finish_reason": "stop",
+    "syntax_recovery": "removed_single_trailing_closing_brace",
+    "citation_verified": true
+  },
+  "citation_boundary_observation": "The selected source span begins mid-word with 'aisons' and includes trailing material. Mechanical provenance passed, but citation formatting is not fully solved.",
+  "raw_records": {
+    "remote_availability": "ignored; not published",
+    "result_path": "data/p0-advanced-v3-result.json",
+    "result_sha256": "dd962624c10b885533fc80afbf145585216bf2e81ad17010c9af9babcc608f5f",
+    "diagnostics_path": "data/p0-advanced-v3-diagnostics.json",
+    "diagnostics_sha256": "876fa416e44beb59b89355d6003ab768bfa4af6138834d6d05e34d9f8a7ce601"
+  },
+  "limitations": [
+    "one successful example",
+    "does not estimate accuracy, citation sufficiency, portability or generalisation",
+    "source verification establishes occurrence in extracted PDF text, not semantic support"
+  ]
+}

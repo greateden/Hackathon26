@@ -1,0 +1,95 @@
+...............................[1/1] row 0: completed (0.0s)
+.....................sssssssssssss....ERROR: ValueError: check request, endpoint and output configuration
+....BLOCKED: model endpoint/provenance or cached encoder unavailable; start the documented server
+.usage: python -m unittest [-h] [--data DATA] [--plan PLAN] [--out OUT]
+                          [--endpoint ENDPOINT] [--context CONTEXT]
+                          [--timeout TIMEOUT] [--retries RETRIES] [--resume]
+                          [--retry-failed]
+                          [--deployment {managed,cscs,external}]
+                          [--request REQUEST] [--smoke-timeout SMOKE_TIMEOUT]
+                          [--dry-run | --live]
+                          {preflight,run,submission-smoke}
+python -m unittest: error: Invalid context, timeout or retries (retries must be 0–2)
+usage: python -m unittest [-h] [--data DATA] [--plan PLAN] [--out OUT]
+                          [--endpoint ENDPOINT] [--context CONTEXT]
+                          [--timeout TIMEOUT] [--retries RETRIES] [--resume]
+                          [--retry-failed]
+                          [--deployment {managed,cscs,external}]
+                          [--request REQUEST] [--smoke-timeout SMOKE_TIMEOUT]
+                          [--dry-run | --live]
+                          {preflight,run,submission-smoke}
+python -m unittest: error: --retry-failed requires --resume
+usage: python -m unittest [-h] [--data DATA] [--plan PLAN] [--out OUT]
+                          [--endpoint ENDPOINT] [--context CONTEXT]
+                          [--timeout TIMEOUT] [--retries RETRIES] [--resume]
+                          [--retry-failed]
+                          [--deployment {managed,cscs,external}]
+                          [--request REQUEST] [--smoke-timeout SMOKE_TIMEOUT]
+                          [--dry-run | --live]
+                          {preflight,run,submission-smoke}
+python -m unittest: error: submission-smoke requires exactly one of --dry-run or --live
+usage: python -m unittest [-h] [--data DATA] [--plan PLAN] [--out OUT]
+                          [--endpoint ENDPOINT] [--context CONTEXT]
+                          [--timeout TIMEOUT] [--retries RETRIES] [--resume]
+                          [--retry-failed]
+                          [--deployment {managed,cscs,external}]
+                          [--request REQUEST] [--smoke-timeout SMOKE_TIMEOUT]
+                          [--dry-run | --live]
+                          {preflight,run,submission-smoke}
+python -m unittest: error: --dry-run/--live apply only to submission-smoke
+..PASS: One real Docker make run completed; no cross-platform or accuracy claim
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmp7h871lr0/data/experiments/test/verification.json
+[1/2] row 1095 de->it full: failed (0.0s)
+[2/2] row 1095 de->it retrieved: failed (0.0s)
+.[1/2] row 1095 de->it full: completed (0.0s)
+[2/2] row 1095 de->it retrieved: completed (0.0s)
+.[1/2] row 1095 de->it full: interrupted (0.0s)
+[1/1] row 1095 de->it retrieved: completed (0.0s)
+[1/1] row 1095 de->it full: completed (0.0s)
+.[1/2] row 1095 de->it full: completed (0.0s)
+[2/2] row 1095 de->it retrieved: completed (0.0s)
+.[1/2] row 1095 de->it full: completed (0.0s)
+[2/2] row 1095 de->it retrieved: completed (0.0s)
+.[1/2] row 1095 de->it full: completed (0.0s)
+[2/2] row 1095 de->it retrieved: completed (0.0s)
+.BLOCKED: FileNotFoundError
+...........Preflight PASS: 2 planned calls, up to 2 with retries
+No endpoint called, model loaded or download attempted. Docker runtime remains unverified.
+PASS: One real Docker make run completed; no cross-platform or accuracy claim
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpxhi86x0c/data/experiments/test/verification.json
+PASS: One real Docker make run completed; no cross-platform or accuracy claim
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmptjzln8l_/data/experiments/test/verification.json
+READY: Dry-run prerequisites passed; zero endpoint or inference calls were made
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpiwouqe1k/data/experiments/test/verification.json
+BLOCKED: Set HF_TOKEN for gated official model access
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpbck6feq7/data/experiments/test/verification.json
+BLOCKED: Docker daemon is unavailable
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmp6c9gplmb/data/experiments/test/verification.json
+BLOCKED: Docker does not advertise the NVIDIA runtime; managed 8B needs a Linux NVIDIA GPU and NVIDIA Container Toolkit
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpwics8sjz/data/experiments/test/verification.json
+FAIL: Docker application produced no result; inspect startup, GPU, access, endpoint and bind-mount permissions
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpatiu_85m/data/experiments/test/verification.json
+FAIL: Docker inference completed but acceptance criteria failed
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmp8ojhiv2y/data/experiments/test/verification.json
+PASS: One real Docker make run completed; no cross-platform or accuracy claim
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpcbq_jrws/data/experiments/test/verification.json
+FAIL: Deployment timeout; services stopped, caches retained
+record=/private/var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpqan661g4/data/experiments/test/verification.json
+[1/2] row 1095 de->it full: failed (0.0s)
+[1/2] row 1095 de->it full: completed (0.0s)
+[2/2] row 1095 de->it retrieved: completed (0.0s)
+......ERROR: incomplete corpus; existing output preserved
+Missing documents: []
+ERROR: incomplete corpus; existing output preserved
+Missing documents: ['a_xx']
+.ERROR: --limit must be non-negative; limited runs require a separate --out
+....................................................................................ss...s....s.....Case bad: ValueError; no prediction written
+1/2 cases failed; successful cases retained
+...........s
+----------------------------------------------------------------------
+Ran 212 tests in 0.167s
+
+OK (skipped=18)
+
+Indexed 1 passages from 1 booklets -> /var/folders/cv/z8dfsbb50697tlbw8df8dwx00000gn/T/tmpnd6iolhz/subset.json
+By language: {'xx': 1}

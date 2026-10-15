@@ -1,0 +1,137 @@
+{
+  "schema": "hackapertus-counterfactual-plan-v1",
+  "status": "NOT TESTED — built and self-checked offline; no inference run",
+  "system_prompt": "RESEARCH COUNTERFACTUAL — NOT THE SUBMISSION PROMPT. You are given numbered passages that may come from different stakeholder voices or proposals. Report entailment/neutral/contradiction for the claim *as attributed*, and state whether the decisive proposition is present, absent, or contradicted.",
+  "keep_failures_in_denominator": true,
+  "cases": [
+    {
+      "case_id": "sens-1026",
+      "gold_from_record": "contradiction",
+      "counterfactual_prompt_marker": "RESEARCH-COUNTERFACTUAL",
+      "variants": {
+        "full": {
+          "available": false,
+          "reason": "no recorded evidence source"
+        },
+        "retrieved": {
+          "available": true,
+          "from_condition": "A_original"
+        },
+        "oracle_verified": {
+          "available": true,
+          "from_condition": "B_minimal",
+          "provenance_taken_from_record": true,
+          "citation_verified_in_record": true,
+          "note": "provenance copied from record; a manually curated sufficient block is an upper bound, not a retrievable oracle"
+        },
+        "neutral_distractor": {
+          "available": true,
+          "from_condition": "C_minimal_plus_distractors"
+        },
+        "neutral_distractor_reordered": {
+          "available": true,
+          "from_condition": "D_reordered",
+          "shares_evidence_with_C": true,
+          "note": "position-only change; identical evidence set and token budget"
+        }
+      }
+    },
+    {
+      "case_id": "sens-1344",
+      "gold_from_record": "contradiction",
+      "counterfactual_prompt_marker": "RESEARCH-COUNTERFACTUAL",
+      "variants": {
+        "full": {
+          "available": false,
+          "reason": "no recorded evidence source"
+        },
+        "retrieved": {
+          "available": true,
+          "from_condition": "A_original"
+        },
+        "oracle_verified": {
+          "available": true,
+          "from_condition": "B_minimal",
+          "provenance_taken_from_record": true,
+          "citation_verified_in_record": true,
+          "note": "provenance copied from record; a manually curated sufficient block is an upper bound, not a retrievable oracle"
+        },
+        "neutral_distractor": {
+          "available": true,
+          "from_condition": "C_minimal_plus_distractors"
+        },
+        "neutral_distractor_reordered": {
+          "available": true,
+          "from_condition": "D_reordered",
+          "shares_evidence_with_C": true,
+          "note": "position-only change; identical evidence set and token budget"
+        }
+      }
+    },
+    {
+      "case_id": "sens-189",
+      "gold_from_record": "entailment",
+      "counterfactual_prompt_marker": "RESEARCH-COUNTERFACTUAL",
+      "variants": {
+        "full": {
+          "available": false,
+          "reason": "no recorded evidence source"
+        },
+        "retrieved": {
+          "available": true,
+          "from_condition": "A_original"
+        },
+        "oracle_verified": {
+          "available": true,
+          "from_condition": "B_minimal",
+          "provenance_taken_from_record": true,
+          "citation_verified_in_record": false,
+          "note": "provenance copied from record; a manually curated sufficient block is an upper bound, not a retrievable oracle"
+        },
+        "neutral_distractor": {
+          "available": true,
+          "from_condition": "C_minimal_plus_distractors"
+        },
+        "neutral_distractor_reordered": {
+          "available": true,
+          "from_condition": "D_reordered",
+          "shares_evidence_with_C": true,
+          "note": "position-only change; identical evidence set and token budget"
+        }
+      }
+    },
+    {
+      "case_id": "sens-195",
+      "gold_from_record": "entailment",
+      "counterfactual_prompt_marker": "RESEARCH-COUNTERFACTUAL",
+      "variants": {
+        "full": {
+          "available": false,
+          "reason": "no recorded evidence source"
+        },
+        "retrieved": {
+          "available": true,
+          "from_condition": "A_original"
+        },
+        "oracle_verified": {
+          "available": true,
+          "from_condition": "B_minimal",
+          "provenance_taken_from_record": true,
+          "citation_verified_in_record": true,
+          "note": "provenance copied from record; a manually curated sufficient block is an upper bound, not a retrievable oracle"
+        },
+        "neutral_distractor": {
+          "available": true,
+          "from_condition": "C_minimal_plus_distractors"
+        },
+        "neutral_distractor_reordered": {
+          "available": true,
+          "from_condition": "D_reordered",
+          "shares_evidence_with_C": true,
+          "note": "position-only change; identical evidence set and token budget"
+        }
+      }
+    }
+  ],
+  "invariant_check": "PASS"
+}

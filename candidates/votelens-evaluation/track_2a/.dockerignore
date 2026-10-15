@@ -1,0 +1,13 @@
+*
+!Dockerfile
+!requirements.txt
+!src/
+!src/**
+!tests/
+!tests/**
+!docs/
+!docs/evidence/
+!docs/evidence/paired_grouped81_plan_20261011.json
+!docs/evidence/prompt_pilot27_plan_v1.json
+**/__pycache__
+**/*.py[cod]

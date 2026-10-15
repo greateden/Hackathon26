@@ -1,0 +1,22 @@
+{
+  "verified": true,
+  "independent_full_prompt_token_match": true,
+  "input_tokens": 1007,
+  "output_tokens": 71,
+  "finish_reason": "stop",
+  "citation_pages": [
+    15
+  ],
+  "passage_pages": [
+    15,
+    8,
+    5,
+    4,
+    16
+  ],
+  "inference_s": 1.3836015420092735,
+  "retrieval_s": 2.373687624989543,
+  "revision": "9a3c32df1b84c6abc8ea597c7f57a482e40e3d0e",
+  "enable_thinking": false,
+  "network_downloads_disabled": true
+}
