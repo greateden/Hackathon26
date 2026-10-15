@@ -105,6 +105,13 @@ record its immutable registry digest and verify an unauthenticated pull before s
 
 ## Publishing to GitHub Container Registry (manual release)
 
+**Recommended on Apple Silicon:** use the manual GitHub Actions workflow
+[Publish VoteLens AMD64 to GHCR](https://github.com/greateden/Hackathon26/actions/workflows/publish-votelens-ghcr.yml) after reviewing the encoder licence.
+It builds natively on a GitHub-hosted AMD64 runner, uses the repository's
+`GITHUB_TOKEN` (no personal token to paste), and prints the immutable digest.
+Open **Actions → Publish VoteLens AMD64 to GHCR → Run workflow**; the trigger is
+manual only. Then switch the GHCR package to Public and test an anonymous pull.
+
 Before publishing, complete the required human review of the bundled
 SentenceSwissBERT CC BY-NC 4.0 model licence. Authenticate to GHCR using a
 GitHub personal access token (classic) with `write:packages`, supplied privately

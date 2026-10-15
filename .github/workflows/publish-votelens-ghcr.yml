@@ -1,0 +1,47 @@
+# Manual only: obtain team approval and check the bundled SentenceSwissBERT
+# CC BY-NC 4.0 licence before publishing a distributable container image.
+name: Publish VoteLens AMD64 to GHCR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the selected commit
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production AMD64 image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./track_2a
+          file: ./track_2a/Dockerfile
+          target: production
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/greateden/hackathon26:latest
+            ghcr.io/greateden/hackathon26:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/greateden/Hackathon26
+
+      - name: Show immutable registry reference
+        run: |
+          echo "Published: ghcr.io/greateden/hackathon26@${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "After the run: set package visibility to Public and verify an anonymous pull." >> "$GITHUB_STEP_SUMMARY"
