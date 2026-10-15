@@ -1,33 +1,58 @@
-> **Submission cleanup, 11 October 2026:** the project root is now `track_2a/`.
-> All project-relative paths and commands below refer to that directory.
-> Root `make` forwards there. The existing repository-root `.venv` is preserved
-> and is a fallback for native Make targets. Historical reports and requirements
-> are in `track_2a/docs/archive/`; their dated claims do not override current
-> `track_2a/docs/PROJECT_STATUS.md`. Genuine local v1.5 MLX inference is now
-> evidenced in `track_2a/docs/evidence/v15_local_smoke/`; submission Docker,
-> self-contained model startup and cross-platform execution remain unverified.
-
 # AGENTS.md — working notes for coding agents
 
-> **11 October 2026 submission override:** `make run` now uses
-> `compose.submission.yaml` and `src/booklet_app.py`, requiring a configured
-> `swiss-ai/Apertus-v1.5-8B` endpoint. It accepts a specified booklet and claim.
-> `src/main.py`, its `legacy` default, and global-search experiments remain
-> historical research paths. Their no-booklet-filter rule applies to those
-> experiments only. The supplied booklet and its language are valid application
-> inputs. Do not describe v1.1 as satisfying the current v1.5 acceptance target.
-> See `docs/PROJECT_STATUS.md`, `docs/RUNNING.md`, and `technical_report.md`.
-> No real v1.5 run, Windows execution or new Docker execution is verified yet.
+> **Current release guidance — 15 October 2026, based on GitHub `main`.**
+> The submission project root is `track_2a/`; the repository-root `make`
+> forwards to it. Treat this section, the current source code, and
+> `track_2a/docs/RUNNING.md` as authoritative over dated research notes below.
+> Do not use obsolete branch names, historical 8B-only assumptions, or
+> past `make run` successes to infer evaluation readiness.
 >
-> **Mac-only development path (added 2026-10-11, unverified):** `booklet_app.py`
-> can also address a local `mlx_lm.server` serving
-> `m1rkocasu/Apertus-v1.5-8B-text-MLX-6bit`. That endpoint has no `/tokenize`
-> and advertises models by Hugging Face repo id, hence the two new knobs
-> `LLM_TOKEN_PREFLIGHT` (default `required` = old behaviour) and a `LLM_NAME`
-> that may name another Apertus v1.5 build. Both must stay off the Docker
-> submission path, and the served id must still pass the `/v1/models` check.
-> See `docs/RUNNING.md` ("Local Apple Silicon development endpoint").
-
+> **Authoritative OST evaluation path:** `track_2a/src/submission_cli.py`,
+> launched by the Dockerfile `ENTRYPOINT` and passed `--input /data/cases.jsonl`
+> `--output /output/predictions.jsonl`. The container accepts mixed Task A/B
+> JSONL, evaluation-injected `BASE_URL` and `API_KEY`, a read-only `/data`,
+> and a writable `/output`. Build for `linux/amd64`. The SentenceSwissBERT
+> encoder is downloaded at **build** time and included in the image;
+> no runtime Hugging Face download is intended.
+>
+> **Model selection:** the current default is official
+> `swiss-ai/Apertus-v1.5-70B` via a separately authorised CSCS-compatible
+> endpoint. Official v1.5 8B is also allowlisted, but selecting 8B requires
+> separately validated endpoint/model configuration. The team did not agree
+> an 8B-only rule. Historical v1.1 or third-party MLX checkpoints are not
+> substitutes for the submitted official v1.5 model.
+>
+> **Separate developer path:** `make run` uses `compose.submission.yaml` and
+> `booklet_app.py` for one-request demonstration; it is **not** the OST
+> mixed-JSONL evaluation entrypoint. `src/main.py`, `compose.yaml`, `run-native`
+> and older OCR/global-retrieval evaluators are preserved research paths.
+>
+> **Verification as of 15 October:** source-recorded offline regression suite:
+> 216 tests passed. An AMD64 image was exercised under ARM64 emulation with
+> a loopback **mock** proxy, offline encoder, read-only `/data` and mixed A/B;
+> native AMD64 and a **real integrated A/B CSCS batch have not been verified**.
+> Earlier genuine 70B Docker Beginner/Advanced entailment smokes succeeded;
+> an Advanced Neutral smoke was rejected. Task A `vote-aware-v1` has recorded
+> 54-case development Macro-F1 0.491 and 0/18 accepted gold-Neutral examples;
+> these are exposed development results, not official held-out quality.
+> Task A / B qualification thresholds reported in OST Q&A are 0.60 / 0.75
+> Macro-F1; qualification is **not established**. Error rows with null labels
+> and nonzero batch exits are not valid official predictions. A publicly
+> pullable image from the final code and its digest still require verification.
+>
+> **Safety and licensing:** do not expose credentials or copy local `.env`
+> files into Git/images. Do not include gold-labelled development fixtures in
+> the final production image. SentenceSwissBERT carries third-party
+> CC-BY-NC-4.0 terms; check attribution, redistribution and permitted uses
+> **before publishing an image containing its weights**. Source-code
+> Apache-2.0 does not relicense those weights. See `THIRD_PARTY_NOTICES.md`.
+>
+> **Agent remit:** make minimal, tested release fixes; preserve study data,
+> original code, and evidence. No dead-code purge, model fallback, fabricated
+> labels, unapproved inference, repository visibility changes, registry push,
+> or contest submission. The team approves behavioural changes, public access,
+> release image, and final reports. The demo notebook is a separate artefact;
+> do not suggest that the static research site performs live inference.
 
 Code is the source of truth for implementation detail. This file records
 what is *not* obvious from the code. Before touching retrieval or judgement
@@ -122,7 +147,9 @@ set) before changing `data/example_claims.json`.
   - `run.sh` — convenience wrapper for the MLX backend.
 - `tests/` — permanent offline regression checks over the evaluation path
   (`test_project_contract.py`: judge/pipeline contract, the lexical-protocol
-  guards, recorded-benchmark provenance). Run from the repo root:
+  guards, recorded-benchmark provenance). The official mixed-JSONL boundary
+  is `src/submission_cli.py`, with contracts in `tests/test_submission_cli.py`
+  and `tests/docker_evaluation_contract.py`. Run from `track_2a/`:
   `PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py'`
   (used by `make test` and `make test-docker`). One-off review or scoring
   experiments do not belong in `src/` or `tests/` — give them a `tmp/` path
@@ -180,71 +207,48 @@ MLX judge runs (`LLM_BACKEND=mlx`, `./run.sh`, `make serve-apertus` or
 they are not required for routine checks, and the server should be stopped
 when idle. Never quote their output without recording the exact model id.
 
-## Docker runtime (added 2026-10-09)
+## Docker runtime and evaluation contract (updated 2026-10-15)
 
-Portable, reproducible path for non-macOS users and judges. Entry points
-`make smoke`, `make run`, `make test-docker`,
-`make test-docker-pipeline`, `make eval-lex-docker` and the
-`make eval-apertus-*-docker` targets (from the repo root, via
-`compose.yaml`); native paths (`make run-native`, `make test`,
-`make eval-*`) are unchanged and remain the only place Apple Silicon MLX
-runs.
-
-- `Dockerfile` (root) — python:3.11-slim + CPU PyTorch from
-  `requirements.txt` (pinned; platform markers keep x86-64 and aarch64
-  CPU wheels small). No MLX, no model weights, no corpus in the image.
-  Runs as non-root user `app`; `/app` and `/home/app` are owned by it
-  (needed: `py_compile` writes `__pycache__` into `/app/src`).
-- Dependency split: `requirements.txt` (portable) vs
-  `requirements-macos-mlx.txt` (Apple Silicon only). The old
-  `src/requirements.txt` (unpinned, mixed MLX) was removed; do not
-  reintroduce a third dependency file. Changing a pin = rebuild + rerun
-  the container checks.
-- Mounts (compose): `./repos` read-only (legacy OCR corpus), `./data`
-  read-write (booklet corpus, eval set, embedding caches, logs, results
-  — host-visible), and named volume `hackapertus_hf-cache` at
-  `/home/app/.cache/huggingface` (= `HF_HOME`). Keep model downloads on
-  the volume, out of the image and out of the repo tree. Note:
-  `retriever.load_tokenizer_compat` globs `~/.cache/huggingface/hub`,
-  so the home-cache layout and `HF_HOME` must stay the same path — they
-  are intentionally identical for the tokenizer.json fallback to work.
-- Model endpoints (hard rule): inside a container `LLM_BACKEND` is
-  `lexical` (default; smoke-test baseline only), `ollama` or `openai`,
-  each pointing at an external server (`OLLAMA_BASE_URL` /
-  `OPENAI_BASE_URL`, default `http://host.docker.internal:8080` via
-  `extra_hosts: host-gateway` — container→host networking is verified,
-  not assumed). The `openai` backend is the supported real-model path: it
-  checks `/v1/models` and fails hard when the endpoint is unreachable or
-  the served model id does not match `LLM_MODEL`.
-  `LLM_BACKEND=mlx` inside the container fails loudly (mlx_lm is not
-  installed) — never let anything fall back to lexical, and never quote
-  lexical container numbers as model quality. Failed or unparseable
-  endpoint replies are recorded as errors (`label: None`), per the
-  existing invariant.
-- Offline use: pre-populate the cache volume, or bind-mount a host
-  `~/.cache/huggingface` over it. `RETRIEVAL_CONFIG=legacy` remains the
-  default in the image; `v2`/`hybrid` in containers are plumbing-checked
-  only, same caveat as native.
-- Verified 2026-10-09 on Apple Silicon via colima (linux/aarch64, Docker
-  29.5): image build; `make test-docker` (all offline checks); a full
-  `make run` with the lexical judge; and ollama-backend plumbing against a
-  MOCK Ollama-compatible server on the host. **2026-10-10: re-verified
-  against a REAL endpoint** — `mlx_lm.server` serving
-  `swiss-ai/Apertus-v1.1-4B-Instruct-MLX-INT4` on host loopback, reached
-  from the container as `host.docker.internal:8080`: two 60-item dev runs
-  (retrieve-v2 + oracle, 120 calls, 0 endpoint/parse errors; report §4.2),
-  an endpoint-down run (exits non-zero, no lexical fallback), and
-  `requests` present in the image. UNVERIFIED: Linux x86-64 hosts, Docker
-  Desktop, and `v2`/`hybrid` quality on the `main.py` pipeline path (the
-  §4.2 retrieve-v2 run is the eval harness, not the CLI default). Do not
-  mark those as working without a rerun.
-- Host quirks found the hard way (not repo bugs): stale
-  `~/.docker/cli-plugins/docker-compose` symlinks pointing at a deleted
-  Docker.app, and `credsStore: "desktop"` in `~/.docker/config.json`
-  with the credential helper missing, break `docker compose build`
-  ("error listing credentials" / "unknown command: compose"). Fix:
-  `brew install docker-compose` + relink the plugin, and clear
-  `credsStore` in that file.
+- **Production evaluation:** `src/submission_cli.py` is the only authorised
+  mixed Task A/B JSONL entrypoint, passed through `Dockerfile` `ENTRYPOINT`.
+  It requires `--input` and `--output`, accepts evaluation-injected `BASE_URL`
+  / `API_KEY`, processes local PDF paths beneath `/data`, and writes to the
+  separate writable `/output`. Empty or failed predictions are not silently
+  converted into classes. Check `docs/RUNNING.md` for the exact invocation.
+- **Docker image:** `python:3.11-slim` with CPU PyTorch, `poppler-utils`,
+  application source and a **build-time-bundled SentenceSwissBERT encoder**
+  pinned to revision `7a91fa8a01af56c1f06060f7af3698ef5619e41c`.
+  The Apertus language-model weights themselves are **not** in the image:
+  remote API inference is required. MLX is never used in the production image.
+- **Network/cache:** the production image uses `HF_HUB_OFFLINE=1` and
+  `TRANSFORMERS_OFFLINE=1`; no encoder weights should be downloaded at
+  inference time. Advanced requests need a supplied, readable local PDF.
+- **Evaluation validation recorded:** ARM64-hosted `linux/amd64` emulation,
+  non-root runtime, read-only `/data`, writable `/output`, a genuine CPU
+  encoder and mock OpenAI-compatible HTTP responses with valid source-page
+  citations and token metrics. This verifies the *interface*, not genuine
+  model predictions, Linux/AMD64 native performance or Macro-F1.
+- **Model-provider integration:** `BASE_URL` and `API_KEY` override developer
+  `LLM_BASE_URL` / `LLM_API_KEY`. The evaluation proxy need not expose
+  `/v1/models`; response model identity and token usage remain checked.
+  In developer mode, `/v1/models` may still be used. Credentials must never
+  enter the Dockerfile, image, logs or Git.
+- **Separate single-request demo:** `make run` / `make run-cscs` use
+  `compose.submission.yaml` and `booklet_app.py` with `REQUEST_FILE` and
+  `RESULT_FILE`; unlike official JSONL evaluation, this path may use writable
+  local dev volumes. Do not claim that a `make run` smoke certifies batch CLI.
+- **Historical research-only paths:** `compose.yaml`, `main.py`, native MLX,
+  old global OCR retrieval and lexical baselines remain preserved to reproduce
+  dated studies. Do not treat those configurations as submitted predictions.
+- **Remaining P0 risks:** current Task A identity gate rejects some correct
+  raw labels; an invalid-case batch emits `label:null` and exits nonzero;
+  an official held-out-quality score has not been measured. The production
+  image should exclude gold-labelled test fixtures; `make test-docker` may
+  need an explicit `--entrypoint bash` after the new image `ENTRYPOINT`.
+  Fix from targeted tests, never guess missing labels or drop vote grounding.
+- **Published image:** local build success is not publication. Before release
+  confirm licensing, build from approved final `main`, publish an immutable
+  tag/digest, and independently pull/run it under the documented CLI.
 
 - Label codes are DECIDED (2026-10-09): the official mapping 0 =
   entailment, 1 = neutral, 2 = contradiction lives in `src/labels.py`
@@ -309,12 +313,11 @@ runs.
   routing without a rerun and a report entry. `RETRIEVAL_CONFIG=v2` in
   the CLI is plumbing-verified only; keep `legacy` as the default until
   the pipeline path itself is benchmarked.
-- v1.5 compliance check (2026-10-09): `docs/archive/challenge_spec.md` requires local
-  open-source models (Apertus, SwissBERT) but mandates no version; HF has
-  no MLX/GGUF conversion of Apertus v1.5 (v1.1 conversions only), and
-  mlx-lm 0.32 is the only working loader here. Pinning
-  v1.1-4B-Instruct-MLX-INT4 is compliant; a v1.5 switch needs a
-  conversion path first — do not claim v1.5 support without one.
+- **Superseded historical v1.5 assumption (2026-10-09):** earlier notes
+  speculated that only v1.1 MLX existed. This is no longer the submission
+  policy. Official `swiss-ai/Apertus-v1.5-70B` ran successfully via CSCS,
+  and a v1.5 8B MLX development smoke was recorded. Production uses
+  official v1.5 API inference, not the older v1.1 MLX configuration.
 - `retriever.cosine_sim_matrix()` is single-query only and returns shape
   `(N,)`. Batch evaluation must use its own matmul (`eval_retrieval.batched_sims`);
   feeding it batches was a real bug (report §5.1).
@@ -372,8 +375,9 @@ runs.
   semantically correct non-annotated passages as misses (§5.4 finding 4).
 - `top_k = 5` burns slots on parallel language duplicates of the same
   passage (report §7B).
-- Real-model traffic has only been measured through the `openai` backend
-  (report §4.2); the `ollama` backend has run only against a mock server.
+- Genuine real-model traffic includes native MLX development runs and
+  CSCS 70B single-request Docker smokes. The **new mixed JSONL batch** has
+  only mock completion evidence. The historical Ollama backend was mock-tested.
 - `run.sh` MEMORY_CHECK uses a percentage threshold that is miscalibrated
   for large-RAM machines (report §4.1); it is opt-in (`MEMORY_CHECK=1`).
 - All reported numbers come from one machine (MPS, float32, single runs);
