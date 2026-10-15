@@ -1,5 +1,6 @@
 # Repository-local environment (kept in place during Track 2A migration)
 .venv/
+.vscode/
 venv/
 __pycache__/
 *.py[cod]
