@@ -231,7 +231,7 @@ Hutiri et~al.~(2024) caution that metric choice changes conclusions. Our accepte
 \paragraph{Statistical methodology.}
 Paired comparisons use exact McNemar/sign tests following Dietterich~(1998).
 
-The official primary metric is three-way held-out Macro-F1. The practical goal is valid NLI output; accepted-only accuracy is insufficient. Neutral rejection remains an unresolved scoring risk.
+The official primary metric is three-way held-out Macro-F1. The practical goal is valid NLI output; accepted-only accuracy is insufficient. Neutral rejection remains an unresolved scoring risk. Rejected cases produce \texttt{label: null} and a non-zero batch exit; organiser handling is unconfirmed.
 
 \section{Limitations and Reproducibility}
 
@@ -278,7 +278,7 @@ Generative AI was used \textbf{substantially} in this project: Qwen-based coding
 
 \section*{License}
 
-Report: CC-BY-4.0. Team-authored code: Apache-2.0. External data and model terms remain separate; see the root licensing notices.
+Report: CC-BY-4.0. Team-authored code: Apache-2.0. The public Docker image bundles SentenceSwissBERT encoder weights (CC BY-NC 4.0), but no Apertus LLM weights or booklet PDFs. The team completed its licence review; upstream terms remain applicable (see root notices).
 
 \section*{References}
 

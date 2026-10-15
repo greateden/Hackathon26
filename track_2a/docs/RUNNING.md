@@ -100,8 +100,11 @@ The default production stage contains `src/` and the SentenceSwissBERT notice,
 not `tests/` or gold-labelled fixtures. `make test-docker` builds the separate
 `test` target and overrides its entrypoint for offline regression checks.
 
-The integration does not publish an image. Publish an approved linux/amd64 image,
-record its immutable registry digest and verify an unauthenticated pull before submission.
+**Published evaluation image (15 October):** `ghcr.io/greateden/hackathon26@sha256:87605f3f1c7afad8358e8322bd738593359c4569e959b8d38a0a0d6f47ac07d0`
+(`linux/amd64`). The GitHub Actions build/push succeeded and a clean, credential-free
+Docker pull returned exit code 0; `docker image inspect` confirmed `linux/amd64` and
+the `python3 /app/src/submission_cli.py` entrypoint. This does not validate a private
+scored batch. The team reports that third-party licence review was completed.
 
 ## Publishing to GitHub Container Registry (manual release)
 
@@ -136,8 +139,9 @@ record the immutable `ghcr.io/greateden/hackathon26@sha256:...` digest from the
 registry. Supply the verified image reference in the organiser's submission
 portal. Building on Apple Silicon may be slow due to AMD64 emulation.
 
-Minimum qualifying Macro-F1 is A >= 0.60 and B >= 0.75; neither is demonstrated
-for this integrated path. See the [team checklist](SUBMISSION_TEAM_REVIEW_20261015.md).
+Minimum qualifying Macro-F1 is A >= 0.60 and B >= 0.75. Local exposed development
+runs exceeded both thresholds (A 0.6635, B 0.8418); this does **not** demonstrate
+qualification on the organiser's private set. See the [team checklist](SUBMISSION_TEAM_REVIEW_20261015.md).
 Earlier sections below describe development and historical validation.
 
 

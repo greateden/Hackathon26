@@ -94,12 +94,13 @@ PDFs, result files, Windows limitations and the separate native Mac path.
 
 ## Input and output
 
-The CLI accepts the two official request shapes. Beginner input classifies the
-supplied reference directly:
+The production JSONL CLI expects a non-empty `vote` for each case. Beginner
+input classifies the supplied reference directly:
 
 ```json
 {
   "id": "case-0043",
+  "vote": "Example vote",
   "reference": {"text": "Example reference passage"},
   "claim": {"text": "Example claim"}
 }
@@ -185,8 +186,6 @@ documented in the technical report; both use exposed development data.
   - `make test-integrity` — additionally runs experiment-integrity checks that require git-ignored raw records (`data/experiments/`, `data/eval/`). Skips cleanly in a clean checkout.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
-Report PDF is at `docs/report/technical_report.pdf` (currently 7 pages, A4; the supplied OST materials did not specify a six-page cap). Team and notebook details are populated;
-external-material licensing, final PDF regeneration and registry publication still need human review. Report licence: CC-BY-4.0, following the
-[technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
+Report PDF is at `docs/report/technical_report.pdf` (7-page A4 render rebuilt on 15 October at commit `d08fc08`; the newly edited LaTeX source still needs a final PDF rebuild). The supplied OST materials did not specify a six-page cap. Team and notebook details are populated, the team reports completing third-party licensing review, and the AMD64 image is publicly pullable. Organiser handling of failed prediction rows and private-set qualification remain unverified. Report licence: CC-BY-4.0, following the [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
 
 Release validation and remaining approval conditions: [14 October release record](docs/RELEASE_CANDIDATE_20261014.md). Team-authored source: Apache-2.0; documentation: CC-BY-4.0; external materials retain their own terms ([notices](../THIRD_PARTY_NOTICES.md)).

@@ -5,6 +5,11 @@ Review 11:00–13:00 CEST; intended submission Thursday evening. Deadline:
 VERIFIED = exercised this release; SOURCE-RECORDED = earlier evidence;
 NOT TESTED / BLOCKED / HUMAN DECISION REQUIRED are explicit limitations.
 
+## Final publication addendum (15 October, after the review)
+
+GitHub Actions [run 38790904985](https://github.com/greateden/Hackathon26/actions/runs/38790904985)
+completed the native AMD64 image build/push. The published `ghcr.io/greateden/hackathon26@sha256:87605f3f1c7afad8358e8322bd738593359c4569e959b8d38a0a0d6f47ac07d0` was pulled anonymously (exit 0); Docker inspect confirmed `linux/amd64` and the evaluation CLI entrypoint. The team reports that third-party licence review was completed. The technical-report PDF was rebuilt at commit `d08fc08` before the final short LaTeX wording update; rerender it once more before delivery. The organiser's handling of `label: null` and non-zero batch exits is **still unconfirmed**. The dated pre-publication statements below describe the earlier review, not the current registry status.
+
 ## Evaluation integration verification (15 October)
 
 This section supersedes the earlier single-request entrypoint instructions below.

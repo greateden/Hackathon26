@@ -28,4 +28,4 @@ Other bundled Python, PyTorch, Transformers and system dependencies retain their
 
 External data, software and models retain their own terms. This file documents identified sources, versions and terms as checked on the date above; it does not guarantee future upstream terms will remain unchanged.
 
-Before publishing an image containing SentenceSwissBERT weights, confirm that the intended distribution complies with the applicable CC BY-NC 4.0 conditions and that required attribution and licence materials accompany the distribution. This notice alone does not grant permission to redistribute third-party materials.
+The team reports completing its intended-use and redistribution review on 15 October 2026 before publishing the GHCR image containing SentenceSwissBERT weights. The CC BY-NC 4.0 conditions, attribution and applicable dependency/source terms remain binding; this notice does not independently grant permission to redistribute third-party materials.

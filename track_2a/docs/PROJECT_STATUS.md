@@ -1,4 +1,4 @@
-> **Current release status — 15 October 2026:** The OST evaluation entrypoint is the `linux/amd64` Docker image's mixed-JSONL CLI (`src/submission_cli.py`), with `BASE_URL` and `API_KEY` supplied at runtime; `make run` is a separate developer demo. The selected external model is official Apertus v1.5 70B. **A publicly pullable registry image and its immutable digest are not yet verified.** The tracked Markdown, LaTeX source and PDF are present, but PDF rebuild after source edits and final portal submission remain pending. A six-page limit could not be located in the supplied OST Track 2A slides or challenge brief. Earlier 8B-oriented statements below are dated historical notes, not the current release configuration.
+> **Current release status — 15 October 2026, evening:** The public `linux/amd64` evaluation image `ghcr.io/greateden/hackathon26@sha256:87605f3f1c7afad8358e8322bd738593359c4569e959b8d38a0a0d6f47ac07d0` was built and pushed by [GitHub Actions](https://github.com/greateden/Hackathon26/actions/runs/38790904985), pulled anonymously with exit code 0 and inspected as `linux/amd64`. Its default entrypoint is `src/submission_cli.py` for mixed Task A/B JSONL; the runtime receives `BASE_URL` / `API_KEY` and uses Apertus v1.5 70B externally. `make run` remains a separate development demo. The report PDF was rebuilt on 15 October (commit `d08fc08`); short subsequent LaTeX text edits need a final render. The team reports completing its third-party licensing review. **Private scoring, organiser handling of `label: null` and non-zero exit, and final portal submission remain unverified.** Earlier 8B-oriented notes below are historical. No six-page limit was found in the supplied OST materials.
 
 # Project status — historical 13 October record, refreshed 15 October 2026
 
@@ -43,7 +43,7 @@ HackApertus website, not Devpost; final portal details need verification.
 |---|---|---|
 | `track_2a/` with Makefile, src, data, docs, README and technical report | Passed | Required layout present; repository-root Makefile forwards into it |
 | Apertus family used | Passed for local development | Real loader records v1.5 8B text branch, 6-bit MLX; no inference fallback |
-| Selected official v1.5 model | Configured; earlier real smokes passed | External CSCS `swiss-ai/Apertus-v1.5-70B` is the selected model. Published evaluation-image pull and private scoring remain unverified |
+| Selected official v1.5 model | Configured; public image pull passed | External CSCS `swiss-ai/Apertus-v1.5-70B` is the selected model; published AMD64 image pulled anonymously. Private scoring remains unverified |
 | Official model availability | Earlier real 70B endpoint smokes passed | Inference stays at the provided endpoint; the release container does not bundle 70B weights. Managed local 8B remains unverified |
 | Specified booklet + claim, label and citations | Passed in local MLX and external Docker smokes | Both returned entailment with verified physical-page citations; n=1 each, not quality benchmarks |
 | All nine DE/FR/IT combinations | Development evidence only | Candidate comparison has two rows per language-pair/label cell; exposed n=54, not independent quality evidence |
@@ -57,7 +57,7 @@ HackApertus website, not Devpost; final portal details need verification.
 | Submitted data at most 100 MB | Passed for Git-eligible files | Only README and two request/smoke JSON files; cache/corpora ignored; local data directory is larger |
 | No model weights or credentials in candidate tree | Passed bounded inspection | No model files, credential-pattern matches or files over 10 MB found; this is not a credential audit guarantee |
 | Technical report template | Passed for draft structure | Sections 1–8, licence, references and current development results are present |
-| Final report, team metadata, demo and licence review | Present; final checks pending | Markdown, LaTeX and PDF files exist; team names and notebook link are populated. Rebuild PDF after LaTeX changes; external model licence and registry publication need human review |
+| Final report, team metadata, demo and licence review | Present; PDF refresh and portal pending | Markdown, LaTeX and PDF files exist; team names and notebook link are populated. Team reports licensing review completed; registry image is public. Rebuild PDF after final LaTeX edits |
 
 ## Submission configuration
 
@@ -161,23 +161,23 @@ production default. See the [tracked result](evidence/prompt_pilot27_results_v1.
 
 ## Remaining work
 
-**P0 — publish the official evaluation image:** GitHub source push is not enough:
-produce and publish a `linux/amd64` production image to GHCR or the GitLab
-Container Registry, set permission for organisers to pull it without credentials,
-record the immutable image digest and verify a clean pull. The image's default
-entrypoint is the mixed Task A/B CLI; `make run` is not that interface.
-Public registry publication remains unverified. Earlier mock and CSCS smokes
-do not establish a fully successful scored private batch.
+**P0 — resolve organiser failure-row/exit handling:** The production `linux/amd64`
+image is published at `ghcr.io/greateden/hackathon26@sha256:87605f3f1c7afad8358e8322bd738593359c4569e959b8d38a0a0d6f47ac07d0` and was
+pulled anonymously with exit code 0. The verified default entrypoint is the mixed
+Task A/B CLI (`src/submission_cli.py`); `make run` is the separate developer demo.
+Rejected cases generate `label: null` error rows, and any failed case causes
+batch exit 1; organiser scoring/acceptance of this behaviour is still unknown.
+GHCR access alone does not establish a successful private scored batch.
 
-**P1 — submission evidence and deliverables:** publish and anonymously pull-test
-the AMD64 registry image, record its digest, confirm licence compliance (especially
-the bundled CC BY-NC encoder), verify the organiser's evaluation/exit contract,
-and rebuild the PDF from the latest LaTeX. Team and notebook metadata are present.
-No six-page limit was verified in the supplied OST materials. Independent
-held-out scoring remains unavailable; do not promote the exposed prompt pilot.
+**P1 — submission evidence and deliverables:** The public-image release, anonymous
+pull and team licensing review are completed; keep the verified immutable digest.
+Rebuild the tracked PDF after the latest LaTeX text edits, verify the organiser's
+batch exit/error policy, and complete the actual submission portal process.
+Team and notebook metadata are present. No six-page limit was verified in the
+supplied OST materials. Independent held-out scoring remains unavailable; do not
+promote the exposed prompt pilot.
 
-**P2 — reproducibility and research limitations:** the new native runner pins encoder/model revisions; production image and encoder
-pinning remain open. Resolve the recorded MLX tokenizer warning and fresh-native
+**P2 — reproducibility and research limitations:** the production image has an immutable registry digest and the encoder revision is pinned in the Dockerfile; the external model endpoint is not bundled. Resolve the recorded MLX tokenizer warning and fresh-native
 dependency conflict; assess OCR/layout gaps and historical diagnostic/cache issues.
 Retain uncertain scratch files until their evidence value is settled.
 

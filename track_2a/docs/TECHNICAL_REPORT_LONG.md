@@ -674,8 +674,9 @@ execution and cross-platform determinism remain unverified. The deployed 70B
 endpoint's returned model name does not cryptographically prove the served
 weights, and the 70B observations are not measurements of official 8B.
 The SentenceSwissBERT model card specifies a CC BY-NC 4.0 licence and documents
-news-domain training; licence compatibility with any intended redistribution
-and cross-domain generalisation to legal voting booklets require separate review.
+news-domain training. The team completed its intended-distribution licence review
+before publishing the encoder-bundled image; upstream terms remain applicable.
+Cross-domain generalisation to legal voting booklets remains unverified.
 
 The vote-aware comparison has 54 pairs but only 27 strict-correctness
 discordances. Its
