@@ -70,6 +70,13 @@ class JudgePipelineContractTests(unittest.TestCase):
         self.assertEqual(result['status'], 'error')
         pipe.judge.judge.assert_not_called()
 
+    def test_empty_legacy_corpus_fails_before_index_build(self):
+        with patch.object(main, "build_corpus", return_value=[]), \
+                patch.object(main, "build_retriever") as build_retriever:
+            with self.assertRaisesRegex(RuntimeError, "legacy retrieval corpus is empty"):
+                main.Pipeline._init_legacy(main.Pipeline.__new__(main.Pipeline), self.log)
+            build_retriever.assert_not_called()
+
     def test_backend_error_cannot_be_success(self):
         pipe = self.pipe([{'id': 'x', 'score': 1, 'text': 'evidence'}],
                          {'label': 'neutral', 'error': 'failed'})

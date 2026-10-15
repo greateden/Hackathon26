@@ -108,6 +108,11 @@ class Pipeline:
         t0 = time.time()
         self.corpus = build_corpus()
         log.info("  %d passages in %.1fs", len(self.corpus), time.time() - t0)
+        if not self.corpus:
+            raise RuntimeError(
+                "legacy retrieval corpus is empty; provision the external "
+                "VotingBooklets OCR corpus under repos/ before running make smoke"
+            )
 
         log.info("Stage 2: build retrieval index")
         t0 = time.time()

@@ -125,7 +125,7 @@ test:
 
 test-integrity:
 	@echo ">> Experiment-integrity checks (require git-ignored raw data; skips cleanly without it)."
-	PYTHONPATH=src "$(VENV_PY)" -m unittest tests.test_evidence_sensitivity tests.test_evidence_sensitivity_v2 tests.test_retrieval_ablation tests.test_vote_aware_paired_eval
+	PYTHONPATH=src:tests "$(VENV_PY)" -m unittest test_evidence_sensitivity test_evidence_sensitivity_v2 test_retrieval_ablation test_vote_aware_paired_eval
 
 test-full: test
 	cd src && python3 test_pipeline.py

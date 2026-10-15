@@ -1,6 +1,5 @@
 """Offline contracts for the frozen prompt-only pilot."""
 import json
-import copy
 from pathlib import Path
 import sys
 import tempfile
@@ -38,6 +37,63 @@ def prepared_fixture():
                 index += 1
     return {"schema": prompt_ab.SCHEMA, "phase": "pilot", "expected_rows": 27,
             "planned_calls": 54, "items": items}
+
+
+def vote_identity_fixture():
+    items = []
+    for index, gold in enumerate(("entailment", "neutral", "contradiction", "neutral")):
+        source = "synthetic://vote-identity/" + str(index)
+        text = "Proposal evidence " + str(index)
+        evidence = "[e1; page 1]\n" + text
+        request = {
+            "id": "synthetic-" + str(index),
+            "task": "advanced",
+            "pipeline_version": "vote-aware-v1",
+            "claim": "Claim " + str(index),
+            "claim_language": "de",
+            "booklet": source,
+            "booklet_language": "de",
+            "vote": "Proposal " + str(index),
+            "evidence": "retrieved",
+            "top_k": 5,
+        }
+        passage = {
+            "id": "e1", "page": 1, "text": text, "source": source,
+            "pdf_sha256": "synthetic-" + str(index),
+            "page_start": 0, "page_end": len(text),
+        }
+        evidence_hash = prompt_ab.digest(evidence.encode())
+        arms = {}
+        for arm in prompt_ab.ARMS:
+            messages = booklet_app.build_messages(
+                request["claim"], evidence, prompt_ab.PROMPTS[arm],
+                vote=request["vote"], pipeline_version="vote-aware-v1")
+            arms[arm] = {
+                "evidence_sha256": evidence_hash,
+                "prompt_sha256": prompt_ab.prompt_hash(messages),
+            }
+        items.append({
+            "row_index": index, "cell": "de->de:" + gold, "request": request,
+            "gold": gold, "pdf_sha256": "synthetic-" + str(index),
+            "passages": [passage], "evidence": evidence,
+            "evidence_sha256": evidence_hash, "arms": arms,
+        })
+    return {
+        "schema": prompt_ab.SCHEMA, "phase": "vote-identity",
+        "expected_rows": len(items), "planned_calls": len(items) * 2,
+        "items": items,
+    }
+
+
+def synthetic_booklet(request):
+    item = int(request["id"].rsplit("-", 1)[1])
+    text = "Proposal evidence " + str(item)
+    return {
+        "source": request["booklet"],
+        "language": request["booklet_language"],
+        "sha256": "synthetic-" + str(item),
+        "pages": [{"page": 1, "text": text}],
+    }
 
 
 class PromptPilotContracts(unittest.TestCase):
@@ -140,15 +196,10 @@ class PromptPilotContracts(unittest.TestCase):
             self.assertNotIn("refined prompt did not improve accuracy", (directory / "summary.md").read_text())
 
     def test_vote_identity_frozen_e2e_mock_keeps_hashes_results_and_accounting(self):
-        directory = ROOT / "data/experiments/vote-identity-ab20-20261015T191900Z"
-        prepared = json.loads((directory / "prepared.json").read_text())
         prompt_ab.configure_variant("vote_identity")
-        # The historical prepared file used passage IDs before source_passages()
-        # normalisation. Derive a non-persisted corrected view from the same
-        # frozen passages; no retrieval or plan mutation occurs.
-        prepared = copy.deepcopy(prepared)
+        prepared = vote_identity_fixture()
         for item in prepared["items"]:
-            booklet = prompt_ab.cached_booklet(item["request"])
+            booklet = synthetic_booklet(item["request"])
             item["passages"] = booklet_app.source_passages(booklet, item["passages"])
             item["evidence"] = booklet_app.candidate_evidence(item["passages"])
             item["evidence_sha256"] = prompt_ab.digest(item["evidence"].encode())
@@ -171,7 +222,7 @@ class PromptPilotContracts(unittest.TestCase):
         records = []
         labels = ("entailment", "neutral", "contradiction", None)
         for item, label in zip(prepared["items"][:4], labels):
-            booklet = prompt_ab.cached_booklet(item["request"])
+            booklet = synthetic_booklet(item["request"])
             for arm in prompt_ab.ARMS:
                 messages = booklet_app.build_messages(
                     item["request"]["claim"], item["evidence"],
