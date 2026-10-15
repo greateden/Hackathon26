@@ -1,5 +1,6 @@
 """Offline contracts for the frozen prompt-only pilot."""
 import json
+import copy
 from pathlib import Path
 import sys
 import tempfile
@@ -40,6 +41,9 @@ def prepared_fixture():
 
 
 class PromptPilotContracts(unittest.TestCase):
+    def setUp(self):
+        prompt_ab.configure_variant("prompt_pilot")
+
     def test_frozen_plan_has_portable_provenance(self):
         pilot = json.loads((ROOT / "docs/evidence/prompt_pilot27_plan_v1.json").read_text())
         grouped_path = ROOT / pilot["source_plan"]
@@ -134,6 +138,96 @@ class PromptPilotContracts(unittest.TestCase):
             (directory / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
             prompt_ab.summarise_run(directory, prepared)
             self.assertNotIn("refined prompt did not improve accuracy", (directory / "summary.md").read_text())
+
+    def test_vote_identity_frozen_e2e_mock_keeps_hashes_results_and_accounting(self):
+        directory = ROOT / "data/experiments/vote-identity-ab20-20261015T191900Z"
+        prepared = json.loads((directory / "prepared.json").read_text())
+        prompt_ab.configure_variant("vote_identity")
+        # The historical prepared file used passage IDs before source_passages()
+        # normalisation. Derive a non-persisted corrected view from the same
+        # frozen passages; no retrieval or plan mutation occurs.
+        prepared = copy.deepcopy(prepared)
+        for item in prepared["items"]:
+            booklet = prompt_ab.cached_booklet(item["request"])
+            item["passages"] = booklet_app.source_passages(booklet, item["passages"])
+            item["evidence"] = booklet_app.candidate_evidence(item["passages"])
+            item["evidence_sha256"] = prompt_ab.digest(item["evidence"].encode())
+            for arm in prompt_ab.ARMS:
+                messages = booklet_app.build_messages(
+                    item["request"]["claim"], item["evidence"],
+                    prompt_ab.PROMPTS[arm], vote=item["request"]["vote"],
+                    pipeline_version="vote-aware-v1")
+                item["arms"][arm]["evidence_sha256"] = item["evidence_sha256"]
+                item["arms"][arm]["prompt_sha256"] = prompt_ab.prompt_hash(messages)
+        prompt_ab.validate_prepared(prepared)
+
+        class MockJudge:
+            def __init__(self, response):
+                self.response = response
+
+            def judge(self, *args, **kwargs):
+                return dict(self.response)
+
+        records = []
+        labels = ("entailment", "neutral", "contradiction", None)
+        for item, label in zip(prepared["items"][:4], labels):
+            booklet = prompt_ab.cached_booklet(item["request"])
+            for arm in prompt_ab.ARMS:
+                messages = booklet_app.build_messages(
+                    item["request"]["claim"], item["evidence"],
+                    prompt_ab.PROMPTS[arm], vote=item["request"]["vote"],
+                    pipeline_version="vote-aware-v1")
+                self.assertEqual(prompt_ab.prompt_hash(messages),
+                                 item["arms"][arm]["prompt_sha256"])
+                valid = label is not None
+                response = {
+                    "label": label if valid else None,
+                    "label_code": {"entailment": 0, "neutral": 1,
+                                   "contradiction": 2}.get(label),
+                    "reasoning": "offline fixture",
+                    "raw_response": '{"label":"%s"}' % label,
+                    "usage": {"prompt_tokens": 11, "completion_tokens": 3},
+                    "input_tokens": 11, "inference_s": 0.01,
+                    "error": None if valid else "vote_unrecognised",
+                    "citation_verified": valid,
+                }
+                if arm == "candidate":
+                    response.update(
+                        vote_status="recognised" if valid else "unrecognised",
+                        vote_reference={"passage_id": "e1"} if valid else None,
+                        evidence_status=("insufficient" if label == "neutral"
+                                          else "sufficient") if valid else "insufficient",
+                        evidence_refs=([{"passage_id": "e1"}]
+                                       if valid and label != "neutral" else []))
+                result = prompt_ab.classify(
+                    item["request"], MockJudge(response),
+                    prompt_ab.FrozenRetriever(item["passages"]), booklet)
+                self.assertEqual(
+                    prompt_ab.digest(prompt_ab.candidate_evidence(result["passages"]).encode()),
+                    item["evidence_sha256"])
+                self.assertEqual(result["raw_response"], response["raw_response"])
+                pred = result.get("label") if not result.get("error") else None
+                records.append({
+                    "schema": prompt_ab.SCHEMA,
+                    "key": str(item["row_index"]) + ":" + arm,
+                    "attempt_id": str(item["row_index"]) + arm,
+                    "row_index": item["row_index"], "arm": arm,
+                    "gold": item["gold"], "pred": pred, "correct": pred == item["gold"],
+                    "elapsed_s": 0.01, "evidence_sha256": item["evidence_sha256"],
+                    "status": "completed" if pred else "failed",
+                    "result": result})
+
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "predictions.jsonl"
+            target.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
+            summary = prompt_ab.summarise_run(Path(temporary), prepared, "COMPLETE_WITH_ERRORS")
+            self.assertEqual(summary["attempts"], 8)
+            self.assertEqual(summary["recorded"], 8)
+            self.assertEqual(summary["arms"]["baseline"]["n"], 4)
+            self.assertEqual(summary["arms"]["candidate"]["n"], 4)
+            self.assertEqual(summary["arms"]["candidate"]["failed_requests"], 1)
+            self.assertEqual(len(summary["evidence_identity"]), 4)
+            self.assertTrue(all(row["identical"] for row in summary["evidence_identity"]))
 
 
 if __name__ == "__main__":

@@ -9,7 +9,8 @@ import time
 import uuid
 
 from booklet_app import (CSCS_MODEL, SubmissionJudge, build_messages, classify,
-                         digest, evidence_payload, load_booklet)
+                         candidate_evidence, digest, evidence_payload, load_booklet,
+                         source_passages)
 from config import EMBEDDING_MODEL, PROJECT_ROOT
 from eval_nli import DEFAULT_DATA, load_rows, summarise
 from experiment_runner import (ENCODER_REVISION, append, endpoint, fingerprint,
@@ -18,6 +19,7 @@ from experiment_runner import (ENCODER_REVISION, append, endpoint, fingerprint,
 from fetch_booklets import pdf_path
 from labels import CODE_TO_LABEL, LABEL_PARSE_VERSION
 from nli_judge import SYSTEM_PROMPT
+from experimental_vote_identity import VOTE_IDENTITY_V1
 
 SCHEMA = "hackapertus-prompt-ab-v1"
 PLAN = PROJECT_ROOT / "docs/evidence/prompt_pilot27_plan_v1.json"
@@ -55,9 +57,23 @@ TEAMMATE_RULES_V1_SYSTEM_PROMPT = (
     '"reasoning": "one short sentence", '
     '"evidence_snippet": "verbatim key sentence(s) from the evidence"}'
 )
-
 PROMPTS = {"current_v1": SYSTEM_PROMPT,
            "teammate_rules_v1": TEAMMATE_RULES_V1_SYSTEM_PROMPT}
+VOTE_IDENTITY_MODE = False
+
+def configure_variant(variant):
+    global ARMS, PROMPTS, VOTE_IDENTITY_MODE
+    if variant == "vote_identity":
+        ARMS = ("baseline", "candidate")
+        PROMPTS = {"baseline": SYSTEM_PROMPT, "candidate": VOTE_IDENTITY_V1}
+        VOTE_IDENTITY_MODE = True
+    elif variant == "prompt_pilot":
+        ARMS = ("current_v1", "teammate_rules_v1")
+        PROMPTS = {"current_v1": SYSTEM_PROMPT,
+                   "teammate_rules_v1": TEAMMATE_RULES_V1_SYSTEM_PROMPT}
+        VOTE_IDENTITY_MODE = False
+    else:
+        raise ValueError("Unknown experiment variant")
 
 
 class FrozenRetriever:
@@ -95,12 +111,22 @@ def make_item(index, row, booklet, retriever):
     request = {"claim": row["claim"], "claim_language": row["claim_language"],
                "booklet": row["booklet_url"], "booklet_language": row["reference_language"],
                "evidence": "retrieved", "top_k": TOP_K}
+    if VOTE_IDENTITY_MODE:
+        request.update(id="official-row-" + str(index), task="advanced",
+                       pipeline_version="vote-aware-v1", vote=row["vote"])
     selected = retriever.retrieve(booklet, request["claim"], TOP_K)
-    evidence = evidence_payload(booklet, selected)
+    if VOTE_IDENTITY_MODE:
+        from booklet_app import source_passages
+        selected = source_passages(booklet, selected)
+    evidence = candidate_evidence(selected) if VOTE_IDENTITY_MODE else evidence_payload(booklet, selected)
     evidence_sha = digest(evidence.encode())
     arms = {}
     for arm in ARMS:
-        messages = build_messages(request["claim"], evidence, PROMPTS[arm])
+        if VOTE_IDENTITY_MODE:
+            messages = build_messages(request["claim"], evidence, PROMPTS[arm],
+                                      vote=request["vote"], pipeline_version="vote-aware-v1")
+        else:
+            messages = build_messages(request["claim"], evidence, PROMPTS[arm])
         arms[arm] = {"evidence_sha256": evidence_sha,
                      "prompt_sha256": prompt_hash(messages)}
     return {"row_index": index, "cell": request["claim_language"] + "->" + request["booklet_language"]
@@ -136,7 +162,12 @@ def validate_prepared(prepared):
         for arm in ARMS:
             arm_data = item["arms"][arm]
             hashes.append(arm_data.get("evidence_sha256"))
-            messages = build_messages(item["request"]["claim"], evidence, PROMPTS[arm])
+            if VOTE_IDENTITY_MODE:
+                messages = build_messages(
+                    item["request"]["claim"], evidence, PROMPTS[arm],
+                    vote=item["request"]["vote"], pipeline_version="vote-aware-v1")
+            else:
+                messages = build_messages(item["request"]["claim"], evidence, PROMPTS[arm])
             if prompt_hash(messages) != arm_data.get("prompt_sha256"):
                 raise ValueError("Prepared prompt hash mismatch")
         if hashes != [item["evidence_sha256"], item["evidence_sha256"]]:
@@ -202,7 +233,25 @@ def load_prepared(directory):
     path = directory / PREPARED
     if not path.is_file():
         raise ValueError("Run prepare first")
-    return validate_prepared(json.loads(path.read_text()))
+    prepared = json.loads(path.read_text())
+    if VOTE_IDENTITY_MODE:
+        for item in prepared.get("items", []):
+            request = item.get("request", {})
+            if request.get("pipeline_version") != "vote-aware-v1":
+                continue
+            booklet = cached_booklet(request)
+            selected = source_passages(booklet, item["passages"])
+            evidence = candidate_evidence(selected)
+            item["passages"] = selected
+            item["evidence"] = evidence
+            item["evidence_sha256"] = digest(evidence.encode())
+            for arm in ARMS:
+                messages = build_messages(
+                    request["claim"], evidence, PROMPTS[arm],
+                    vote=request["vote"], pipeline_version="vote-aware-v1")
+                item["arms"][arm]["evidence_sha256"] = item["evidence_sha256"]
+                item["arms"][arm]["prompt_sha256"] = prompt_hash(messages)
+    return validate_prepared(prepared)
 
 
 def validate_records(prepared, records, events):
@@ -255,12 +304,12 @@ def summarise_run(directory, prepared, status=None):
         pair = [latest.get(str(item["row_index"]) + ":" + arm) for arm in ARMS]
         if all(pair):
             result["evidence_identity"].append({"row_index": item["row_index"],
-                "current_v1": pair[0]["evidence_sha256"], "teammate_rules_v1": pair[1]["evidence_sha256"],
+                    ARMS[0]: pair[0]["evidence_sha256"], ARMS[1]: pair[1]["evidence_sha256"],
                 "identical": pair[0]["evidence_sha256"] == pair[1]["evidence_sha256"]})
             if pair[0].get("pred") in CODE_TO_LABEL.values() and pair[1].get("pred") in CODE_TO_LABEL.values() \
                     and pair[0]["pred"] != pair[1]["pred"]:
                 result["paired_prediction_flips"].append({"row_index": item["row_index"], "gold": item["gold"],
-                    "current_v1": pair[0]["pred"], "teammate_rules_v1": pair[1]["pred"],
+                        ARMS[0]: pair[0]["pred"], ARMS[1]: pair[1]["pred"],
                     "change": "improved" if pair[1]["correct"] else "worsened" if pair[0]["correct"] else "both_wrong"})
     write_json(directory / "summary.json", result)
     lines = ["# Prompt-only paired NLI pilot", "", f"Status: {result['status']}.",
@@ -343,7 +392,9 @@ def run(args):
                     raise ValueError("Cached PDF differs from prepared pilot")
                 judge.system_prompt = PROMPTS[arm]
                 result = classify(request, judge, FrozenRetriever(item["passages"]), booklet)
-                evidence = evidence_payload(booklet, result["passages"])
+                evidence = (candidate_evidence(result["passages"])
+                            if VOTE_IDENTITY_MODE
+                            else evidence_payload(booklet, result["passages"]))
                 if digest(evidence.encode()) != item["evidence_sha256"]:
                     raise ValueError("Runtime evidence differs from prepared bytes")
                 if result.get("prompt_sha256") != item["arms"][arm]["prompt_sha256"]:
@@ -379,12 +430,15 @@ def parser():
     ap.add_argument("--context", type=int, default=32768)
     ap.add_argument("--timeout", type=float, default=180)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--variant", choices=("prompt_pilot", "vote_identity"),
+                    default="prompt_pilot")
     return ap
 
 
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        configure_variant(args.variant)
         args.out = output_path(args.out)
         if args.mode == "prepare":
             if args.resume:
@@ -392,7 +446,9 @@ def main(argv=None):
             return prepare(args)
         prepared = load_prepared(args.out)
         if args.mode == "validate":
-            print("PASS: 27 unique rows, 54 calls, 27 cells and byte-identical paired evidence; no endpoint called.")
+            print(f"PASS: {prepared['expected_rows']} unique rows, "
+                  f"{prepared['planned_calls']} calls and byte-identical paired evidence; "
+                  "no endpoint called.")
             return 0
         if args.mode == "summarise":
             summarise_run(args.out, prepared)

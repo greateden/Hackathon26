@@ -40,6 +40,8 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 
 **Decoding and prompts.** All experiments used temperature 0, a 512-token output allowance and strict JSON parsing; failed or invalid outputs remain in denominators. Managed and native arms pass seed 20261011; the CSCS path uses standard OpenAI-compatible fields and does not send the vLLM-specific thinking control or seed. The production prompt is `current_v1`; a 27-example prompt-only pilot on 70B found no accuracy gain from the refined prompt (23/27 both arms, 18.8% more input tokens), so no prompt change was promoted. Deterministic JSON recovery (stripping markdown fences, extracting the first JSON object) is applied before the label parser — format normalisation, not semantic interpretation; unparseable outputs remain errors.
 
+An identity-aware prompt improved Macro-F1 from 0.656 to 0.850 on nine targeted cases, but yielded no improvement on a separate 20-case development sample (0.633 for both variants); we therefore retained the original prompt. These are local development results, not official evaluation scores or evidence of generalisation.
+
 ## 4. Data
 
 - **Evaluation set.** HackApertus-provided MNLI-over-Swiss-Voting-Booklets v1.1 (1,488 items; 60-item dev split), fetched by `fetch_eval_data.py` into git-ignored `data/eval/`. Twenty-four of the 60 dev rows duplicate claim/reference/label triples in the 1,428-row complement (25 share claims, 46 share references); the complement is **not** held out. All development samples used in §5 are drawn from this historically exposed corpus and are exploratory evidence, not unbiased generalisation estimates.
@@ -55,13 +57,12 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 **Task:** Multilingual document-grounded natural language inference
 over Swiss federal voting booklets (DE/FR/IT).
 
-| Setup | Metric | Result |
-|---|---|---|
-| Baseline (`dense-v1`) | Strict accuracy / Macro-F1 | 59.3% (32/54) / 0.652 |
-| Ours (`vote-aware-v1`) | Strict accuracy / Macro-F1 | 42.6% (23/54) / 0.491 |
+| Task | Local development Macro-F1 | Threshold | Valid outputs |
+|---|---:|---:|---:|
+| A · Advanced (`vote-aware-v1`) | **0.6635** | 0.60 | 46/60 |
+| B · Beginner | **0.8418** | 0.75 | 60/60 |
 
-*Both systems were evaluated on the same 54 exposed development cases using Apertus v1.5 70B via CSCS.
-Invalid outputs count as errors. These are exploratory development results, not held-out benchmark scores.*
+*Both production-path tasks exceeded their respective thresholds in local 60-case development evaluations using Apertus v1.5 70B via CSCS. Task A had 14 invalid outputs (`ValueError`), counted as errors; Task B had none. We expect the submitted production candidate to meet both thresholds, but these exposed development results are not official or held-out scores and do not guarantee official performance.*
 
 **Recorded research finding  — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
 
@@ -85,7 +86,6 @@ This comparison is **not** a controlled single-factor experiment: retrieval quer
 | Strict accuracy | 32/54 (0.593) | 23/54 (0.426) |
 | Valid-output coverage | 43/54 (0.796) | 25/54 (0.463) |
 | Rejections | 11 | 29 |
-| Macro-F1 (invalid = error) | 0.652 | 0.491 |
 
 The candidate's 29 rejections: 14 `vote_unrecognised`, 15 `invalid_vote_status`. All 29 still contained a parseable raw NLI label; 18 matched gold. Conditional accuracy among the candidate's 25 accepted outputs was 23/25 = 92% — against 23/54 = 42.6% strict correctness over all cases (the control's conditional figure is 32/43 = 74.4%). Reporting only the conditional figure would create a misleading impression of reliability. On strict correctness: 18 dense-only correct, 9 candidate-only correct, 14 both correct, 13 both incorrect; paired exact McNemar p = 0.122078 (not significant; does not establish equivalence or absence of difference either).
 

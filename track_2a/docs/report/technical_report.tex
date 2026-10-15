@@ -92,6 +92,8 @@ Evidence sensitivity (4 cond.) & 15 & 8B MLX & Placement and sufficiency \\
 
 All experiments used temperature 0, 512-token output, strict JSON parsing; failed/invalid outputs remain in denominators.
 
+An identity-aware prompt improved Macro-F1 from 0.656 to 0.850 on nine targeted cases, but yielded no improvement on a separate 20-case development sample (0.633 for both variants); we therefore retained the original prompt. These are local development results, not official evaluation scores or evidence of generalisation.
+
 \paragraph{Metric definitions.}
 Four distinct measures: \emph{raw-label accuracy} (model label matches gold, contract irrelevant; some correct raw labels failed citation verification but count here); \emph{strict correctness} (correct label AND accepted response); \emph{valid-output coverage} (fraction passing the full output contract); \emph{citation verified} (mechanical source-string occurrence, not semantic support). The 15-case sensitivity diagnostic has only entailment and contradiction gold labels; its macro-F1 averages over two classes and is not directly comparable with three-class F1. Deterministic JSON recovery (stripping fences, extracting the first JSON object) is applied before the label parser; this is format normalisation, not semantic interpretation.
 

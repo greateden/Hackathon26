@@ -1,4 +1,5 @@
 import json
+import io
 import os
 from pathlib import Path
 import tempfile
@@ -73,6 +74,24 @@ class Contracts(unittest.TestCase):
             self.assertEqual([row['id'] for row in rows], ['bad', 'good'])
             self.assertIsNone(rows[0]['label'])
             self.assertIn('error', rows[0])
+
+    def test_validation_diagnostics_preserve_rejection_without_leaking_text(self):
+        for reason in ('invalid_vote_status', 'invalid_neutral_evidence',
+                       'unknown_evidence_reference', 'private endpoint response'):
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source = root / 'cases.jsonl'
+                source.write_text(json.dumps(self.case()))
+                stderr = io.StringIO()
+                result = {'label': None, 'error': reason,
+                          'raw_response': 'private model response'}
+                with patch.object(app, 'classify', return_value=result), patch('sys.stderr', stderr):
+                    self.assertEqual(cli.run(source, root / 'out', root, lambda: object()), 1)
+                self.assertEqual(json.loads((root / 'out').read_text()), {
+                    'id': 'b', 'label': None, 'error': 'classification_failed:ValueError'})
+                if reason != 'private endpoint response':
+                    self.assertIn('Classification rejected: ' + reason, stderr.getvalue())
+                self.assertNotIn('private', stderr.getvalue())
 
     def test_proxy_variables_override_development_aliases(self):
         with patch.dict(os.environ,{'BASE_URL':'http://proxy.test/v1','API_KEY':'test-secret','LLM_BASE_URL':'http://wrong.test','LLM_API_KEY':'wrong'},clear=True),patch('sys.argv',['submission_cli','--input','cases','--output','out']),patch.object(cli,'run',return_value=0) as run:

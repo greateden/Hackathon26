@@ -97,6 +97,17 @@ def run(input_path, output_path, data_root=None, judge_factory=None, retriever_f
                         booklets.move_to_end(key)
                         booklet = booklets[key]
                     result = app.classify(request, judge, retriever=retriever, booklet=booklet)
+                # Preserve known validation reasons before output rendering masks
+                # them as ValueError. Never log arbitrary endpoint/model text.
+                reason = result.get("error")
+                if isinstance(reason, str) and reason in {
+                    "vote_ambiguous", "vote_unrecognised", "invalid_vote_status",
+                    "missing_evidence_refs", "invalid_neutral_evidence",
+                    "insufficient_evidence", "invalid_evidence_reference",
+                    "unknown_evidence_reference", "invalid_citation_offsets",
+                    "duplicate_evidence_reference",
+                }:
+                    print(f"Classification rejected: {reason}", file=sys.stderr)
                 response = app.submission_output(result)
                 if response["label"] != 1 and request["task"] == "advanced":
                     if not response["evidence"]:
