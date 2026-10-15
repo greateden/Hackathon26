@@ -5,6 +5,59 @@ Review 11:00–13:00 CEST; intended submission Thursday evening. Deadline:
 VERIFIED = exercised this release; SOURCE-RECORDED = earlier evidence;
 NOT TESTED / BLOCKED / HUMAN DECISION REQUIRED are explicit limitations.
 
+## Evaluation integration verification (15 October)
+
+This section supersedes the earlier single-request entrypoint instructions below.
+Only relevant files were extracted from Mikal's candidate copy at
+`10d431535cc4cadf622da98718dbe40e35cb126d`; the branch/project was not merged.
+The actual `track_2a/` now contains the evaluation CLI, offline encoder packaging,
+Compose entrypoint compatibility and adapted/new contract tests.
+
+| Contract | Status / evidence |
+|---|---|
+| Mixed A/B `--input` / `--output`, UTF-8 and ID preservation | VERIFIED with mock completions; failed IDs receive explicit error rows |
+| linux/amd64 CPU image | VERIFIED on Colima ARM64 through amd64 emulation; native x86 host NOT TESTED |
+| Bundled encoder, no runtime downloads | VERIFIED: pinned revision `7a91fa8a01af56c1f06060f7af3698ef5619e41c`; build-time local load; runtime `--network none` |
+| `/data:ro`, non-root `/output` | VERIFIED in container; initial host `/tmp` fixture mount failed, shared-home fixture passed |
+| Task A grounded evidence, page numbering, metrics | VERIFIED against synthetic PDF and mock HTTP usage; page 1, exact source text, 100 input / 20 output tokens per case |
+| Task B vote and optional evidence | VERIFIED for all three labels and nine language pairs; no identity gate; prompt changed, quality NOT TESTED |
+| Proxy injection | VERIFIED mock: BASE_URL/API_KEY override aliases, no models/tokenise request required, exact response-model check retained |
+| Nine language combinations / adapters | VERIFIED structurally; existing booklet-language adapter for both source/query unchanged; quality NOT TESTED |
+| Extraction cache | VERIFIED one extraction for two same-PDF requests; bounded eight-entry batch-local cache |
+| Gold/credential isolation | VERIFIED normalisation excludes gold fields; allowlisted Docker context; dummy-only mock credentials; no real key read or baked into image |
+| Native regression | VERIFIED `make test`, repository `.venv/bin/python`, 216 tests, exit 0, plus judge/source checks; local ignored data/cache available |
+| Final focused checks | VERIFIED submission 9, P0 17, output gates 18; exit 0; `git diff --check` passed |
+| Local image | `votelens:evaluation-20261015`, image ID `sha256:0cbcee56ba91d84dfce3f73adfa6c9328b7b5a220329995adc769cd4b7978c1a`; not a registry publication digest |
+| Live integrated CSCS / benchmark | NOT TESTED; zero new real requests; 54-case benchmark not repeated |
+| Notebook | NOT FOUND in checkout or Downloads; existing static demo preserved and linked from report |
+
+Reproduction: [evaluation commands and offline Docker contract test](RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration).
+The committed `tests/docker_evaluation_contract.py` runs the actual CLI as a subprocess
+inside the non-root, network-disabled container with a loopback mock endpoint and real
+bundled encoder. It tests one A and one B input, not model quality. Build-time warning
+about `LLM_TOKEN_PREFLIGHT` is a name heuristic: the value is `optional`, not a secret.
+The unused XMOD pooler is initialised by Transformers; retrieval uses hidden-state mean
+pooling, unchanged from the existing encoder implementation.
+
+**BLOCKED for merge/submission readiness:** no guaranteed valid prediction for every
+input ID on inference/gate failure. Error rows retain `label: null`, never fabricated
+labels; batch exit 1 deliberately signals incompleteness. Organisers must confirm how
+such failures are scored/handled. A published pullable image is still required and was
+explicitly not published in this task. Qualifying Macro-F1 (A >= 0.60, B >= 0.75) is not
+established for the integrated path; below either threshold the submission scores zero.
+
+Task A's 29/54 recorded rejections (15 invalid/null identity, 14 unrecognised) reproduce
+the implemented gate; no demonstrable implementation bug justified weakening it.
+All 18 gold-Neutral cases were rejected in that historical run (12 raw Neutral, six raw
+Contradiction); candidate Macro-F1 was 0.491. These remain historical development facts,
+not new results or Task B quality estimates. No item-level prediction improvements are
+claimed. Next experiment: blind human review of those rejected cases to distinguish
+correct vote scope from wrong-proposal evidence before any gate change.
+
+Remaining team decisions: official error-row policy; gate/scoring risk; approved image
+registry/tag and publication owner; final team/contribution details and demo access.
+No model server was started and no live commands are needed to reproduce the mock check.
+
 ## Current candidate
 
 - Feature branch only: `feature/votelens-research-positioning`; preparation began
@@ -14,8 +67,9 @@ NOT TESTED / BLOCKED / HUMAN DECISION REQUIRED are explicit limitations.
   never distribute it. 70B selected for proven deployment, not inferred accuracy.
 - CSCS lists official 8B too; **NOT TESTED** here. Managed NVIDIA 8B remains
   explicit, unsuitable for this Apple Silicon host and unverified.
-- CLI remains `vote-aware-v1`. No retrieval, prompt, identity or citation policy
-  was weakened; no automatic model fallback exists.
+- Task A remains `vote-aware-v1` with unchanged retrieval, prompt, identity and
+  citation policies. Task B now carries vote context and accepts optional citations.
+  No automatic model fallback exists.
 
 ## Commands and external requirements
 
@@ -33,7 +87,7 @@ REQUEST_FILE=/app/data/examples/advanced-neutral.json make run
 
 Judges need Make, Docker/Compose, network and their own authorised endpoint/key.
 Compose uses `LLM_API_KEY` or `CSCS_INFERENCE_API_KEY`. No host Python/MLX is needed.
-Advanced first use downloads the PDF and SentenceSwissBERT unless cached. A local
+The development demo may download the PDF; the rebuilt image bundles SentenceSwissBERT. A local
 PDF under mounted `/app/data` and judge-supplied request path also work by contract;
 no application edit is required. This credential-dependent route is not self-contained.
 
@@ -41,7 +95,7 @@ Exact `/v1/models` and completion identity, positive integer token usage,
 `finish_reason=stop` and supplied-source evidence are checked. Optional preflight
 uses provider usage; it cannot independently detect silent prompt truncation.
 
-## Verification
+## Earlier single-request release verification
 
 See [release record](RELEASE_CANDIDATE_20261014.md) and
 [compact real-call evidence](evidence/release_smoke_20261014.json).

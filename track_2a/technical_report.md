@@ -9,6 +9,16 @@
 
 *All research results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
 
+**Evaluation integration (15 October 2026).** The authoritative submission is now
+the [mixed-task Docker JSONL CLI](docs/RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration),
+with a bundled offline encoder and injected endpoint credentials. Task B now retains
+vote context and treats citations as optional; its prompt has changed and has not
+been quality-benchmarked. Task A's identity/grounding gates and all historical
+results below remain unchanged. Explicit error rows are not official predictions;
+publication and failure-policy agreement remain outstanding. No separately supplied
+demo notebook was found in this checkout or Downloads; the existing Demo link above
+continues to identify the actual recorded-results artefact, not live inference.
+
 ## 1. Summary
 
 The practical objective is valid three-way NLI, evaluated primarily by held-out **Macro-F1**. In the 54-case development comparison, errors included in the denominators, dense-v1 scored 0.652 Macro-F1 and vote-aware-v1 0.491. The unchanged vote-aware gate remains a scoring risk, especially for neutral; accepted-only accuracy is not the submission metric. The selected runtime is external official Apertus v1.5 70B on CSCS, requiring an authorised key. See [release validation](docs/RELEASE_CANDIDATE_20261014.md).

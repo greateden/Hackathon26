@@ -44,7 +44,8 @@ class ApplicationTests(unittest.TestCase):
                         "inference_time_ms": 125}})
         judge.judge.assert_called_once_with(
             "Example claim", "[e1; page None]\nVerbatim support from the supplied reference.",
-            seed=20261011, pipeline_version=app.CANDIDATE_PIPELINE)
+            seed=20261011, pipeline_version=app.CANDIDATE_PIPELINE,
+            vote=None, reference_task=True)
 
     def test_official_advanced_input_page_provenance_and_nine_language_pairs(self):
         claims = {"de": "Beispielbehauptung", "fr": "Exemple d'affirmation",

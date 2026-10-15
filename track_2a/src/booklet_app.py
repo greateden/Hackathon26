@@ -75,7 +75,7 @@ def token_preflight_mode():
     finish_reason='stop' plus valid token usage. This cannot independently detect
     a server silently dropping input; that requires exact token preflight.
     """
-    return os.environ.get("LLM_TOKEN_PREFLIGHT", "required")
+    return os.environ.get("LLM_TOKEN_PREFLIGHT", "optional" if "BASE_URL" in os.environ else "required")
 
 
 def digest(data):
@@ -209,8 +209,17 @@ def evidence_payload(booklet, evidence):
 
 
 def build_messages(claim, evidence, system_prompt=SYSTEM_PROMPT, *, vote=None,
-                   pipeline_version=FROZEN_PIPELINE):
-    if pipeline_version == CANDIDATE_PIPELINE:
+                   pipeline_version=FROZEN_PIPELINE, reference_task=False):
+    if reference_task:
+        system_prompt = system_prompt.split("Reply with EXACTLY", 1)[0].rstrip()
+        system_prompt += ("\nThe supplied reference is the premise for this vote. "
+                          "Use the vote as context, not as evidence for the claim. "
+                          "No separate proposal identity verification is required. "
+                          'Reply with one JSON object containing label and reasoning. '
+                          'Evidence citations are optional; if supplied, use evidence_refs '
+                          'with passage_id and optional start/end offsets.')
+        evidence = "Specified vote (request metadata): " + json.dumps(vote, ensure_ascii=False) + "\n\n" + evidence
+    elif pipeline_version == CANDIDATE_PIPELINE:
         system_prompt = system_prompt.split("Reply with EXACTLY", 1)[0].rstrip()
         if vote is not None:
             system_prompt += "\n\n" + VOTE_INSTRUCTIONS
@@ -257,7 +266,7 @@ def normalise_request(request, base_dir=None):
         reference = request["reference"]
         if not isinstance(reference, dict) or not isinstance(reference.get("text"), str):
             raise ValueError("reference.text must be a non-empty string")
-        normalised.update(task="beginner", reference=reference["text"])
+        normalised.update(task="beginner", reference=reference["text"], vote=request.get("vote"))
         if "language" in reference:
             normalised["reference_language"] = reference["language"]
     else:
@@ -309,7 +318,7 @@ class SubmissionJudge:
                              "historical models use main.py")
         if token_preflight_mode() not in ("required", "optional"):
             raise ValueError("LLM_TOKEN_PREFLIGHT must be 'required' or 'optional'")
-        base = os.environ.get("LLM_BASE_URL", "").rstrip("/")
+        base = os.environ.get("BASE_URL", os.environ.get("LLM_BASE_URL", "")).rstrip("/")
         if not base:
             raise ValueError("Set LLM_BASE_URL to an Apertus v1.5 OpenAI-compatible endpoint; no lexical fallback")
         parsed_base = urlparse(base)
@@ -323,9 +332,13 @@ class SubmissionJudge:
         if self.context <= self.max_tokens:
             raise ValueError("LLM_CONTEXT_TOKENS must exceed 512 and match the server limit")
         self.session = requests.Session()
-        key = os.environ.get("LLM_API_KEY")
+        key = os.environ.get("API_KEY", os.environ.get("LLM_API_KEY"))
         if key:
             self.session.headers["Authorization"] = "Bearer " + key
+        # Injected evaluation proxies need only implement chat completions.
+        # Exact allowlisted response identity is still checked on every completion.
+        if "BASE_URL" in os.environ:
+            return
         try:
             response = self.session.get(self.base + "/v1/models", timeout=10)
             response.raise_for_status()
@@ -340,11 +353,11 @@ class SubmissionJudge:
             raise RuntimeError("Apertus v1.5 endpoint preflight failed; check LLM_BASE_URL and credentials") from exc
 
     def judge(self, claim, evidence, seed=20261011, *, vote=None,
-              pipeline_version=FROZEN_PIPELINE):
+              pipeline_version=FROZEN_PIPELINE, reference_task=False):
         # Experimental runners may set a versioned system prompt. The default
         # remains the original production prompt byte-for-byte.
         messages = build_messages(claim, evidence, getattr(self, "system_prompt", SYSTEM_PROMPT),
-                                  vote=vote, pipeline_version=pipeline_version)
+                                  vote=vote, pipeline_version=pipeline_version, reference_task=reference_task)
         preflight = token_preflight_mode()
         out = {"label": None, "label_code": None, "model": self.model,
                "parser_version": LABEL_PARSE_VERSION, "temperature": 0, "seed": seed,
@@ -510,6 +523,15 @@ def resolve_references(refs, selected):
     return citations
 
 
+def optional_reference_citations(result, selected):
+    """Task B citations are optional; never emit unverified source text."""
+    try:
+        refs = result.get("evidence_refs", [])
+        return resolve_references(refs, selected) if isinstance(refs, list) else []
+    except ValueError:
+        return []
+
+
 def candidate_result(result, selected, vote=None):
     citations = []
     if not result.get("error"):
@@ -520,7 +542,9 @@ def candidate_result(result, selected, vote=None):
                                  else "invalid_vote_status")
             if vote is not None:
                 result["vote_citation"] = resolve_references([result.get("vote_reference")], selected)[0]
-            citations = referenced_citations(result, selected)
+            citations = (optional_reference_citations(result, selected)
+                         if result.get("task") == "beginner"
+                         else referenced_citations(result, selected))
         except ValueError as exc:
             result.update(label=None, label_code=None, error=str(exc))
     result.update(passages=selected, citations=citations, citation_verified=bool(citations),
@@ -546,8 +570,9 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
                          "source": "supplied_reference", "source_sha256": digest(reference.encode()),
                          "page_start": 0, "page_end": len(reference)}]
             result = judge.judge(claim, candidate_evidence(selected), seed=seed,
-                                 pipeline_version=pipeline)
-            result.update(case_id=request.get("id"), claim=claim, task="beginner", retrieval_s=0.0)
+                                 pipeline_version=pipeline, vote=request.get("vote"),
+                                 reference_task=True)
+            result.update(case_id=request.get("id"), claim=claim, task="beginner", vote=request.get("vote"), retrieval_s=0.0)
             return candidate_result(result, selected)
         result = judge.judge(claim, reference, seed=seed)
         snippet = result.get("evidence_snippet", "")
@@ -622,11 +647,14 @@ def submission_output(result):
         if result.get("task") == "advanced" and result.get("vote_citation") != resolve_references(
                 [result.get("vote_reference")], result["passages"])[0]:
             raise ValueError("vote_source_mismatch")
-        citations = referenced_citations(result, result["passages"])
+        citations = (optional_reference_citations(result, result["passages"])
+                     if result.get("task") == "beginner"
+                     else referenced_citations(result, result["passages"]))
         if citations != result.get("citations"):
             raise ValueError("citation_source_mismatch")
     if label_name != "neutral":
-        if not result.get("citation_verified") or not result.get("citations"):
+        if result.get("task") != "beginner" and (
+                not result.get("citation_verified") or not result.get("citations")):
             raise ValueError("entailment and contradiction require grounded evidence")
         snippet = result.get("evidence_snippet", "")
         for citation in result["citations"]:

@@ -1,5 +1,81 @@
 # Running the submission application
 
+## Authoritative OST evaluation entrypoint (15 October integration)
+
+Direct Docker execution reads mixed Task A/B UTF-8 JSONL. `make run` remains the
+single-request development demo; it is not the batch evaluation interface.
+Build on a networked machine; the pinned SentenceSwissBERT encoder is included
+in the image. No Apertus weights are downloaded. Runtime model downloads are
+disabled. Local PDF paths are resolved relative to `/data`; URL inputs are rejected.
+
+```sh
+cd track_2a
+docker build --platform linux/amd64 -t votelens:evaluation-20261015 .
+mkdir -p output
+# Make this dedicated output directory writable by the image's non-root app user.
+chmod 777 output
+docker run --rm --platform linux/amd64 \
+  -e BASE_URL -e API_KEY \
+  -v "$PWD/data:/data:ro" -v "$PWD/output:/output" \
+  votelens:evaluation-20261015 --input /data/cases.jsonl --output /output/predictions.jsonl
+```
+
+Export the organiser's endpoint and key privately before running; never put keys
+in command arguments, source files or build arguments. `BASE_URL` and `API_KEY`
+override `LLM_BASE_URL` and `LLM_API_KEY` in the actual client. Injected proxies
+need only `/v1/chat/completions`, not `/v1/models` or `/tokenize`. The default
+remains `swiss-ai/Apertus-v1.5-70B`; configured and returned model identities must
+match an allowlisted Apertus v1.5 model. Provider token usage and completion
+status remain mandatory; latency measures the completion HTTP request only.
+
+Each input has `id`, `vote`, `claim: {text, language}` and exactly one of
+`booklet: {path, language}` (A) or `reference: {text, language}` (B). Language is
+optional; when supplied it is de/fr/it. No gold fields are used. For example:
+
+```json
+{"id":"B-editable","vote":"Proposal name","reference":{"text":"Der Bundesrat lehnt die Vorlage ab.","language":"de"},"claim":{"text":"Der Bundesrat unterstützt die Vorlage.","language":"de"}}
+```
+
+Use DE/FR/IT language codes in actual input. Edit the reference and claim independently. For a booklet
+example, place the actual PDF at `data/booklets/example.pdf`, replace `reference`
+with `"booklet":{"path":"booklets/example.pdf","language":"de"}`, and specify
+its actual proposal name. These are editable input templates, not saved successes.
+
+Task B receives the vote as context and accepts valid labels without citations;
+any emitted citation must still resolve to supplied text. Task A retains proposal
+identity and source-grounding gates. Pages start at 1. All nine source/claim
+language combinations are structurally supported. The existing booklet-language
+adapter is used for both source and query; this integration does not establish
+cross-language quality. Up to eight extracted PDFs are cached in memory per batch,
+keyed by path, language, size and modification time; nothing is persisted.
+
+**Failure limitation:** valid cases produce official prediction rows. A failed
+case produces `{"id":"...","label":null,"error":"classification_failed:..."}`,
+then processing continues and the batch exits 1. This is explicit failure accounting,
+not an official prediction or an invented Neutral. Malformed/duplicate input IDs
+and startup failures abort before inference. A fully populated valid prediction
+file cannot be guaranteed under model/gate failures. Organisers must confirm
+failure handling; do not claim unconditional evaluation readiness.
+
+Offline Docker contract check (mock completions; no CSCS calls):
+
+```sh
+fixture=$(mktemp -d "$HOME/votelens-contract.XXXXXX")
+python3 tests/docker_evaluation_contract.py --prepare "$fixture/data"
+mkdir "$fixture/output"
+chmod 777 "$fixture/output"
+docker run --rm --platform linux/amd64 --network none \
+  -v "$fixture/data:/data:ro" -v "$fixture/output:/output" \
+  --entrypoint python3 votelens:evaluation-20261015 /app/tests/docker_evaluation_contract.py
+```
+
+The integration does not publish an image. Publish an approved linux/amd64 image,
+record its immutable registry digest and verify a clean pull before submission.
+Minimum qualifying Macro-F1 is A >= 0.60 and B >= 0.75; neither is demonstrated
+for this integrated path. See the [team checklist](SUBMISSION_TEAM_REVIEW_20261015.md).
+Earlier sections below describe development and historical validation.
+
+
 Run from `track_2a/`. The repository-root Makefile forwards here.
 The submission uses `src/booklet_app.py`; historical experiments use
 `main.py` and `compose.yaml`.
@@ -33,10 +109,10 @@ input. Its usage and completion checks are necessary but are not equivalent to
 an independently reconstructed prompt-token count. Configure the context limit
 to match the endpoint; use required preflight when available.
 
-The committed Beginner request needs no PDF or encoder. Advanced retrieved mode
-downloads SentenceSwissBERT on the first run into the `hf-cache` volume. For an
-offline judge environment, place a PDF under `data/` and pre-populate the named
-`hf-cache` volume; no historical corpus or embedding cache is required.
+The committed Beginner request needs no PDF or encoder. The rebuilt image bundles
+SentenceSwissBERT for Advanced retrieval; place a local PDF under `data/`. Native
+Python development still needs a cached encoder or a first-use download. No
+historical corpus or embedding cache is required.
 
 ## Managed server (optional)
 
@@ -206,5 +282,6 @@ configured allowlisted official 8B/70B endpoint. This is not self-contained.
 Never display `env`, the credential file, or interpolated `docker compose config`
 while recording. Advanced requests accept a supplied PDF URL or a path under mounted
 `/app/data`; no code changes or historical evaluation corpus are required. First use
-may download the PDF and SentenceSwissBERT; no Apertus weights are downloaded.
+may download the PDF in this development workflow; the rebuilt Docker image bundles
+SentenceSwissBERT. No Apertus weights are downloaded.
 See `data/examples/README.md` for gold provenance and actual smoke outcomes.

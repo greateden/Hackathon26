@@ -22,7 +22,7 @@ LANG_DIRS = {
 YEARS = ["1977", "1985", "2007"]
 
 # Embedding model for retrieval
-EMBEDDING_MODEL = "jgrosjean-mathesis/sentence-swissbert"
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "jgrosjean-mathesis/sentence-swissbert")
 BATCH_SIZE = 32
 
 # LLM for NLI judgment.

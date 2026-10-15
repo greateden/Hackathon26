@@ -1,5 +1,15 @@
 # VoteLens: The Courage to Be Wrong
 
+**OST evaluation integration, 15 October:** the authoritative entrypoint is now
+`docker run IMAGE --input /data/cases.jsonl --output /output/predictions.jsonl`
+with runtime `BASE_URL`/`API_KEY`, read-only `/data`, and writable `/output`.
+Build for `linux/amd64`; SentenceSwissBERT is bundled at build time and runtime
+model downloads are disabled. The default remains Apertus v1.5 70B.
+See [exact commands and failure limitations](docs/RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration).
+`make run` remains the development demo. Publication, official failure-row policy
+and qualifying Macro-F1 remain release gates; this integration is not a readiness certificate.
+
+
 **HackApertus Track 2A — OST: Multilingual Document-Grounded NLI over
 Swiss Official Voting Booklets.**
 
@@ -37,8 +47,8 @@ default `make run` starts only the CPU application and requires no local NVIDIA
 GPU. Endpoints without `/tokenize` are supported while response identity, token
 usage and completion checks remain strict. Runtime portability remains
 unverified. The committed Beginner request needs neither a PDF nor an encoder
-download. Advanced requests need the specified local PDF and a cached or
-downloadable SentenceSwissBERT model.
+download. Advanced requests need the specified local PDF; the rebuilt Docker
+image bundles SentenceSwissBERT. Native Python needs a cached or downloadable encoder.
 
 For the selected CSCS Apertus v1.5 70B default, set
 `CSCS_INFERENCE_API_KEY` outside the repository, edit `data/request.json`, and

@@ -1,6 +1,7 @@
 # Submission runtime. Historical experiments use compose.yaml.
 services:
   app:
+    entrypoint: []
     build: .
     image: hackapertus:local
     working_dir: /app/src
