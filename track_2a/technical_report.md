@@ -4,7 +4,7 @@
 
 - **Track:** Track 2A — OST: Multilingual Document-Grounded NLI over Swiss Official Voting Booklets
 - **Event:** Online
-- **Team:** 2A-OST: VoteLens — Yitian Li, Mikal Ermias Tadesse, Aline Prandstätter
+- **Team:** 2A-OST: VoteLens — Yitian(Eden) Li, Mikal Ermias Tadesse, Aline Prandstätter
 - **Demo:** [VoteLens interactive pipeline demo (Jupyter Notebook)](docs/report/HackApertus-demo.ipynb)
 
 ## 1. Summary
