@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from contextlib import redirect_stdout
 from collections import OrderedDict
 
@@ -79,6 +80,7 @@ def run(input_path, output_path, data_root=None, judge_factory=None, retriever_f
     judge = judge_factory() if cases else None
     with output_path.open("w", encoding="utf-8") as out:
         for request in cases:
+            case_started = time.perf_counter()
             try:
                 if request["task"] == "advanced" and retriever is None:
                     retriever = retriever_factory()
@@ -104,6 +106,8 @@ def run(input_path, output_path, data_root=None, judge_factory=None, retriever_f
                             raise ValueError("Invalid document evidence")
                 out.write(json.dumps(response, ensure_ascii=False, allow_nan=False) + "\n")
                 out.flush()
+                app.profile_log("case", case_id=request["id"],
+                                duration_s=f"{time.perf_counter() - case_started:.3f}")
             except Exception as exc:
                 failures += 1
                 # An explicit error row preserves ID accounting, not an invented prediction.
@@ -112,6 +116,9 @@ def run(input_path, output_path, data_root=None, judge_factory=None, retriever_f
                                      ensure_ascii=False, allow_nan=False) + "\n")
                 out.flush()
                 print(f"Case {request['id']}: {type(exc).__name__}; error row written", file=sys.stderr)
+                app.profile_log("case", case_id=request["id"],
+                                duration_s=f"{time.perf_counter() - case_started:.3f}",
+                                status="error")
     if failures:
         print(f"{failures}/{len(cases)} cases failed; successful cases retained", file=sys.stderr)
     return 1 if failures else 0

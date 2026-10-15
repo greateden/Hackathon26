@@ -27,6 +27,14 @@ LANGUAGES = ("de", "fr", "it")
 FROZEN_PIPELINE = "dense-v1"
 CANDIDATE_PIPELINE = "vote-aware-v1"
 
+
+def profile_log(event: str, **fields):
+    """Write opt-in, non-sensitive performance diagnostics to stderr."""
+    if os.environ.get("VOTELENS_PROFILE") == "1":
+        details = " ".join(f"{key}={value}" for key, value in fields.items())
+        print(f"[votelens-profile] {event}" + (f" {details}" if details else ""),
+              file=sys.stderr, flush=True)
+
 VOTE_INSTRUCTIONS = (
     "Resolve the specified vote against the supplied evidence, including translated "
     "proposal names. Set vote_status to recognised only if it identifies one proposal "
@@ -160,6 +168,7 @@ def load_booklet(spec, language=None):
     if not body.startswith(b"%PDF"):
         raise ValueError("Specified file is not a PDF")
     # Always extract from the identified bytes. No stale global corpus/text cache.
+    extraction_started = time.perf_counter()
     try:
         proc = subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdf), "-"],
                               capture_output=True, timeout=120)
@@ -173,6 +182,8 @@ def load_booklet(spec, language=None):
     if not pages:
         raise ValueError("PDF has no extractable text; scanned PDFs need OCR (not implemented)")
     language = language or detect_language("\n".join(page["text"] for page in pages))
+    profile_log("pdf_extraction", pages=len(pages),
+                duration_s=f"{time.perf_counter() - extraction_started:.3f}")
     return {"source": source, "sha256": digest(body), "language": language, "pages": pages}
 
 
@@ -198,10 +209,17 @@ class BookletRetriever:
         adapter = LANG_TO_ADAPTER[booklet["language"]]
         if key not in self.indices:
             records = passages(booklet)
+            profile_log("passages_extracted", count=len(records),
+                        booklet_pages=len(booklet["pages"]))
+            embedding_started = time.perf_counter()
             embeddings = self.encoder.encode([r["text"] for r in records], lang_code=adapter)
             self.indices[key] = records, embeddings
+            profile_log("index_embedding", count=len(records),
+                        duration_s=f"{time.perf_counter() - embedding_started:.3f}")
         records, embeddings = self.indices[key]
+        embedding_started = time.perf_counter()
         query = self.encoder.encode([claim], lang_code=adapter)
+        profile_log("query_embedding", duration_s=f"{time.perf_counter() - embedding_started:.3f}")
         scores = cosine_sim_matrix(query, embeddings)
         order = np.argsort(-scores, kind="stable")[:top_k]
         return [dict(records[i], source=booklet["source"], score=float(scores[i])) for i in order]
@@ -394,6 +412,7 @@ class SubmissionJudge:
             response = self.session.post(self.base + "/v1/chat/completions", json=payload,
                                          timeout=getattr(self, "timeout", 180))
             out["inference_s"] = time.perf_counter() - inference_start
+            profile_log("api_request", duration_s=f"{out['inference_s']:.3f}")
             response.raise_for_status()
             data = response.json()
             out["response_model"] = data.get("model")
@@ -628,6 +647,8 @@ def classify(request, judge, retriever=None, booklet=None, seed=20261011):
         query = ("Vote: " + request["vote"] + "\nClaim: " + claim) if candidate else claim
         selected = (retriever or BookletRetriever()).retrieve(booklet, query, top_k)
     retrieval_s = time.perf_counter() - started
+    profile_log("retrieval", duration_s=f"{retrieval_s:.3f}", selected=len(selected),
+                mode=mode)
     if not selected:
         raise ValueError("No evidence extracted/retrieved")
     pages = {p["page"]: p["text"] for p in booklet["pages"]}

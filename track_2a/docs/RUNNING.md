@@ -22,6 +22,30 @@ docker run --rm --platform linux/amd64 \
   votelens:evaluation-20261015 --input /data/cases.jsonl --output /output/predictions.jsonl
 ```
 
+For opt-in performance diagnostics, add `-e VOTELENS_PROFILE=1`. Diagnostics
+go to stderr and include PDF extraction, passage/embedding, retrieval, API
+request and per-case durations; the JSONL output is unchanged. CPU threading is
+controlled by the standard `OMP_NUM_THREADS`, `MKL_NUM_THREADS` and
+`OPENBLAS_NUM_THREADS` variables, which may be passed to `docker run`.
+
+The official smoke helper defaults to `linux/amd64`. For a native Apple
+Silicon experiment, build and run a separate image:
+
+```sh
+docker build --platform linux/arm64 --target production -t votelens:arm64-test .
+CSCS_SMOKE_IMAGE=votelens:arm64-test CSCS_SMOKE_PLATFORM=linux/arm64 \
+  OMP_NUM_THREADS=8 VOTELENS_PROFILE=1 \
+  ./run_cscs_mixed_smoke.sh data/booklets/example.pdf "EXACT VOTE TITLE" "CLAIM"
+```
+
+The independent embedding benchmark makes no CSCS requests and is not run
+automatically:
+
+```sh
+cd track_2a
+python3 src/benchmark_embedding.py --threads default,4,8
+```
+
 Export the organiser's endpoint and key privately before running; never put keys
 in command arguments, source files or build arguments. `BASE_URL` and `API_KEY`
 override `LLM_BASE_URL` and `LLM_API_KEY` in the actual client. Injected proxies

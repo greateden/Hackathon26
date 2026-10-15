@@ -52,6 +52,17 @@ Two distinctions are maintained throughout: **output-validation failure ≠ reas
 
 **Metrics and denominators.** Four distinct measures appear below: *raw-label accuracy* (the model's recognised label matches gold, whether or not the output contract would accept the response); *strict correctness* (correct label AND accepted official response); *valid-output coverage* (fraction of cases satisfying the full output contract; rejects and endpoint failures count against coverage); *citation verified* (mechanical source-string occurrence, not semantic support). Failed or unparseable outputs are recorded as errors (`pred = None`), never defaulted to neutral. The 15-case sensitivity panel contains only entailment and contradiction gold labels, so its macro-F1 averages over two classes and is not comparable with three-class figures elsewhere.
 
+**Task:** Multilingual document-grounded natural language inference
+over Swiss federal voting booklets (DE/FR/IT).
+
+| Setup | Metric | Result |
+|---|---|---|
+| Baseline (`dense-v1`) | Strict accuracy / Macro-F1 | 59.3% (32/54) / 0.652 |
+| Ours (`vote-aware-v1`) | Strict accuracy / Macro-F1 | 42.6% (23/54) / 0.491 |
+
+*Both systems were evaluated on the same 54 exposed development cases using Apertus v1.5 70B via CSCS.
+Invalid outputs count as errors. These are exploratory development results, not held-out benchmark scores.*
+
 **Recorded research finding  — stricter output validation can create a substantial coverage cost.** In the 54-case paired development comparison (Apertus v1.5 70B via CSCS), the strict `vote-aware-v1` candidate achieved slightly *higher* raw-label accuracy (41/54 vs 40/54 for the `dense-v1` control) yet dramatically *lower* valid-output coverage (25/54 vs 43/54) and lower overall strict correctness (23/54 = 42.6% vs 32/54 = 59.3%). Of the candidate's 29 rejected outputs, **18 had a correct raw NLI label**. Among the 18 gold-neutral cases, **none became a valid accepted output**: 12 returned a correctly neutral raw label whose `vote_status` was `null` (rejected by the identity gate), and six returned contradiction. Conditional accuracy among accepted outputs was 23/25 = 92%, while overall strict correctness was 23/54 = 42.6%. The paired exact McNemar test gives p = 0.122078: this is an exploratory comparison, not a statistically established deterioration. The central message is therefore about evaluation methodology as much as about the system: **an apparently reliable system can look better when evaluated only on accepted answers, while rejecting many otherwise correct ones** — 92% "accuracy" on the 25 accepted outputs hides 18 correct labels destroyed by the output contract.
 
 This comparison is **not** a controlled single-factor experiment: retrieval query, prompt, schema, identity gate and citation mechanism changed together. In particular, the immediate rejection mechanism is the identity gate, but no claim follows that the identity gate alone caused every observed error. The comparison used the 70B model, the selected official 70B submission model; these development results are not held-out scores.

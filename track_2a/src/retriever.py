@@ -5,6 +5,8 @@ Given a claim, finds the most relevant passages from the voting booklet corpus.
 """
 import time
 import glob
+import os
+import sys
 import numpy as np
 import torch
 from pathlib import Path
@@ -12,6 +14,14 @@ from transformers import AutoModel, AutoTokenizer, PreTrainedTokenizerFast
 from typing import Dict, List
 
 from config import EMBEDDING_MODEL, BATCH_SIZE, TOP_K, MIN_SIMILARITY
+
+
+def profile_log(event: str, **fields):
+    """Write opt-in, non-sensitive performance diagnostics to stderr."""
+    if os.environ.get("VOTELENS_PROFILE") == "1":
+        details = " ".join(f"{key}={value}" for key, value in fields.items())
+        print(f"[votelens-profile] {event}" + (f" {details}" if details else ""),
+              file=sys.stderr, flush=True)
 
 
 def cosine_sim_matrix(query_emb: np.ndarray, corpus_emb: np.ndarray) -> np.ndarray:
@@ -88,13 +98,21 @@ class Retriever:
         else:
             self.device = device
 
-        print(f"Loading embedding model: {model_name} on {self.device}")
+        print(f"Loading embedding model: {model_name} on {self.device}", file=sys.stderr)
         t0 = time.time()
         self.tokenizer = load_tokenizer_compat(model_name)
         self.model = AutoModel.from_pretrained(model_name)
         self.model = self.model.to(self.device)
         self.model.eval()
-        print(f"Model loaded in {time.time() - t0:.1f}s")
+        print(f"Model loaded in {time.time() - t0:.1f}s", file=sys.stderr)
+        profile_log(
+            "embedding_threads",
+            torch_intra=torch.get_num_threads(),
+            torch_inter=torch.get_num_interop_threads(),
+            omp=os.environ.get("OMP_NUM_THREADS", "unset"),
+            mkl=os.environ.get("MKL_NUM_THREADS", "unset"),
+            openblas=os.environ.get("OPENBLAS_NUM_THREADS", "unset"),
+        )
 
         self.corpus_embeddings: np.ndarray | None = None
         self.corpus_records: List[Dict] = []
@@ -109,6 +127,7 @@ class Retriever:
     @torch.no_grad()
     def encode(self, texts: List[str], lang_code: str = "de_CH") -> np.ndarray:
         """Encode texts via mean pooling (matches the official SentenceSwissBERT recipe)."""
+        started = time.perf_counter()
         self.set_default_language(lang_code)
         all_emb = []
         for start in range(0, len(texts), BATCH_SIZE):
@@ -124,7 +143,10 @@ class Retriever:
             emb = (torch.sum(tok_emb * mask, 1) /
                    torch.clamp(mask.sum(1), min=1e-9)).cpu().numpy()
             all_emb.append(emb)
-        return np.vstack(all_emb)
+        embeddings = np.vstack(all_emb)
+        profile_log("embedding", count=len(texts), adapter=lang_code,
+                    duration_s=f"{time.perf_counter() - started:.3f}")
+        return embeddings
 
     def build_index(self, corpus: List[Dict]):
         """Build the embedding index for the full corpus, grouping by language."""
@@ -206,4 +228,3 @@ def build_retriever(corpus: List[Dict]) -> Retriever:
     retriever = Retriever()
     retriever.build_index(corpus)
     return retriever
-

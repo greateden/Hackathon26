@@ -12,6 +12,11 @@ vote_text=$2
 claim_text=$3
 env_file=${CSCS_ENV_FILE:-"$HOME/.config/hackapertus/cscs.env"}
 image_name=${CSCS_SMOKE_IMAGE:-votelens:evaluation-20261015}
+smoke_platform=${CSCS_SMOKE_PLATFORM:-linux/amd64}
+case "$smoke_platform" in
+    linux/amd64|linux/arm64) ;;
+    *) echo "ERROR: CSCS_SMOKE_PLATFORM must be linux/amd64 or linux/arm64" >&2; exit 2 ;;
+esac
 
 test -f "$pdf_path" || { echo "ERROR: trusted local PDF not found" >&2; exit 2; }
 test -f "$env_file" || { echo "ERROR: CSCS env file not found: $env_file" >&2; exit 2; }
@@ -36,6 +41,19 @@ trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 mkdir "$work_dir/data" "$work_dir/output"
 chmod 777 "$work_dir/output"
 cp "$pdf_path" "$work_dir/data/booklet.pdf"
+thread_env="$work_dir/thread.env"
+: > "$thread_env"
+for variable in OMP_NUM_THREADS MKL_NUM_THREADS OPENBLAS_NUM_THREADS VOTELENS_PROFILE; do
+    case "$variable" in
+        OMP_NUM_THREADS) value=${OMP_NUM_THREADS:-} ;;
+        MKL_NUM_THREADS) value=${MKL_NUM_THREADS:-} ;;
+        OPENBLAS_NUM_THREADS) value=${OPENBLAS_NUM_THREADS:-} ;;
+        VOTELENS_PROFILE) value=${VOTELENS_PROFILE:-} ;;
+    esac
+    if [ -n "$value" ]; then
+        printf '%s=%s\n' "$variable" "$value" >> "$thread_env"
+    fi
+done
 
 python3 - "$work_dir/data/cases.jsonl" "$vote_text" "$claim_text" <<'PY'
 import json
@@ -58,10 +76,11 @@ with open(destination, "w", encoding="utf-8") as stream:
 PY
 
 echo "LIVE CSCS SMOKE: exactly two authorised inference requests; this is not a benchmark."
-echo "docker run --rm --platform linux/amd64 -e BASE_URL=<redacted> -e API_KEY=<redacted> -v <input>:/data:ro -v <output>:/output $image_name --input /data/cases.jsonl --output /output/predictions.jsonl"
+echo "docker run --rm --platform $smoke_platform -e BASE_URL=<redacted> -e API_KEY=<redacted> --env-file <thread-settings> -v <input>:/data:ro -v <output>:/output $image_name --input /data/cases.jsonl --output /output/predictions.jsonl"
 set +e
-docker run --rm --platform linux/amd64 \
+docker run --rm --platform "$smoke_platform" \
     -e BASE_URL -e API_KEY \
+    --env-file "$thread_env" \
     -v "$work_dir/data:/data:ro" -v "$work_dir/output:/output" \
     "$image_name" --input /data/cases.jsonl --output /output/predictions.jsonl
 docker_exit=$?
