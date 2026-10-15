@@ -22,7 +22,10 @@ within the supplied booklet.
 The P0 submission candidate is now `vote-aware-v1`: dense Top-5 retrieval uses
 the specified vote and the unchanged claim. Apertus must identify the proposal
 in the selected evidence and choose source passage IDs for citations. Unknown
-or ambiguous votes fail explicitly. The original `dense-v1` experiment path
+or ambiguous votes fail explicitly, except that a schema-consistent Neutral
+response may recover identity from the complete requested title occurring in a
+selected source passage. Non-neutral and wrong-proposal cases are not recovered.
+The original `dense-v1` experiment path
 remains available to historical Python runners. Existing accuracy figures and
 historical deployment smokes measure that original path. A later 54-case paired
 development evaluation and one Advanced CSCS Docker smoke exercise the complete
@@ -55,6 +58,11 @@ For the selected CSCS Apertus v1.5 70B default, set
 run `make run-cscs`. This uses the external Docker application and the existing
 optional token-preflight contract because CSCS does not document `/tokenize`.
 See [RUNNING.md](docs/RUNNING.md) for the exact checks and limitations.
+
+The [editable notebook demo](docs/HackApertus-demo.ipynb) keeps `LIVE_RUN=False`
+by default and preserves its displayed outputs as historical observations. It is
+separate from both the production mixed-JSONL entrypoint and the static
+recorded-results research website.
 
 1. Export the three `LLM_*` variables above or copy `.env.example` to `.env` and
    configure them. Keep credentials out of Git.
@@ -157,6 +165,7 @@ documented in the technical report; both use exposed development data.
 - [Technical report PDF](docs/report/technical_report.pdf): 6-page A4 render; rebuild via `make pdf` from this directory.
 - [Long-form technical reference](docs/TECHNICAL_REPORT_LONG.md): full methodology, per-case analysis and counterfactual design.
 - [Interactive diagnostic](docs/experience/courage-to-be-wrong/README.md): failure-first presentation layer with data-verification guard (no model, no server, no network).
+- [Editable notebook demo](docs/HackApertus-demo.ipynb): opt-in one-request Docker walkthrough; saved outputs are historical and live API use is disabled by default.
 - [Evidence index](docs/evidence/README.md): saved runs and verification provenance.
 - [Historical archive](docs/archive/README.md): original research measurements and integrity caveats.
 - `src/`: application, paired evaluation and preserved research scripts.

@@ -243,8 +243,8 @@ when idle. Never quote their output without recording the exact model id.
 - **Remaining P0 risks:** current Task A identity gate rejects some correct
   raw labels; an invalid-case batch emits `label:null` and exits nonzero;
   an official held-out-quality score has not been measured. The production
-  image should exclude gold-labelled test fixtures; `make test-docker` may
-  need an explicit `--entrypoint bash` after the new image `ENTRYPOINT`.
+  stage excludes tests/gold fixtures; `make test-docker` builds the separate
+  test target and explicitly overrides its entrypoint.
   Fix from targeted tests, never guess missing labels or drop vote grounding.
 - **Published image:** local build success is not publication. Before release
   confirm licensing, build from approved final `main`, publish an immutable

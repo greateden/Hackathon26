@@ -5,7 +5,8 @@
 - **Track:** Track 2A — OST: Multilingual Document-Grounded NLI over Swiss Official Voting Booklets
 - **Event:** HackApertus (online)
 - **Team:** *not finalised — placeholder pending team confirmation (three members; no member has confirmed a public team name or member list).*
-- **Demo:** [The Courage to Be Wrong — interactive research demo](docs/experience/courage-to-be-wrong/README.md), located at `docs/experience/courage-to-be-wrong/` (open `index.html` in a browser). This is a **recorded-results interactive research demonstration**, not a live Apertus inference service: no model, no server, no network. No public hosting URL exists.
+- **Editable notebook demo:** [`docs/HackApertus-demo.ipynb`](docs/HackApertus-demo.ipynb), with `LIVE_RUN=False` by default and historical saved outputs explicitly labelled.
+- **Static research demo:** [The Courage to Be Wrong](docs/experience/courage-to-be-wrong/README.md), located at `docs/experience/courage-to-be-wrong/` (open `index.html` in a browser). This is a **recorded-results interactive research demonstration**, not a live Apertus inference service: no model, no server, no network. No public hosting URL exists.
 
 *All research results in this report are single-run exploratory analyses on **exposed development data**, not held-out benchmarks.*
 
@@ -13,11 +14,13 @@
 the [mixed-task Docker JSONL CLI](docs/RUNNING.md#authoritative-ost-evaluation-entrypoint-15-october-integration),
 with a bundled offline encoder and injected endpoint credentials. Task B now retains
 vote context and treats citations as optional; its prompt has changed and has not
-been quality-benchmarked. Task A's identity/grounding gates and all historical
-results below remain unchanged. Explicit error rows are not official predictions;
-publication and failure-policy agreement remain outstanding. No separately supplied
-demo notebook was found in this checkout or Downloads; the existing Demo link above
-continues to identify the actual recorded-results artefact, not live inference.
+been quality-benchmarked. Task A now permits only one deterministic identity
+recovery for schema-consistent Neutral responses without evidence citations: the
+complete requested vote title must occur in a selected source passage. Ambiguous,
+partial, non-neutral and wrong-proposal matches remain rejected. This change has no new
+live quality measurement, and all historical results below remain unchanged. Explicit
+error rows are not official predictions; publication and failure-policy agreement
+remain outstanding. The notebook and static research website are separate artefacts.
 
 ## 1. Summary
 

@@ -117,6 +117,47 @@ class VoteContracts(unittest.TestCase):
             self.assertIsNone(result['label'])
             self.assertTrue(result.get('error'))
 
+    def test_exact_source_vote_title_recovers_identity_without_guessing_label(self):
+        title = 'Änderung des Zivildienstgesetzes'
+        selected = [
+            {'id': 'e1', 'page': 2, 'page_start': 0,
+             'text': 'Andere Vorlage: Datenschutz.'},
+            {'id': 'e2', 'page': 33, 'page_start': 0,
+             'text': title + '\nDie Vorlage soll den Armeebestand sichern.'},
+        ]
+        raw = {'label': 'neutral', 'label_code': 1,
+               'reasoning': 'The claim is absent.',
+               'vote_status': None, 'vote_reference': None,
+               'evidence_status': 'insufficient', 'evidence_refs': []}
+        result = app.candidate_result(raw, selected, title)
+        self.assertEqual(result['label'], 'neutral')
+        self.assertEqual(result['vote_status'], 'recognised')
+        self.assertEqual(result['vote_reference'], {'passage_id': 'e2'})
+        self.assertEqual(result['vote_identity_recovery'],
+                         'exact_vote_text_in_selected_passage')
+        self.assertIsNone(result['model_vote_status'])
+        self.assertIsNone(result['model_vote_reference'])
+
+    def test_vote_identity_recovery_refuses_partial_wrong_or_ambiguous_titles(self):
+        selected = [{'id': 'e1', 'page': 1, 'page_start': 0,
+                     'text': 'Änderung des Filmgesetzes'}]
+        base = {'label': 'neutral', 'label_code': 1,
+                'vote_reference': None, 'evidence_status': 'insufficient',
+                'evidence_refs': []}
+        for status, vote in ((None, 'Änderung des Filmgesetzes 2025'),
+                             ('unrecognised', 'Änderung des Datenschutzgesetzes'),
+                             ('ambiguous', 'Änderung des Filmgesetzes')):
+            with self.subTest(status=status, vote=vote):
+                result = app.candidate_result(dict(base, vote_status=status), selected, vote)
+                self.assertIsNone(result['label'])
+                self.assertNotIn('vote_identity_recovery', result)
+        non_neutral = dict(base, label='contradiction', label_code=2,
+                           vote_status='unrecognised', evidence_status='sufficient',
+                           evidence_refs=[{'passage_id': 'e1'}])
+        result = app.candidate_result(non_neutral, selected, 'Änderung des Filmgesetzes')
+        self.assertIsNone(result['label'])
+        self.assertNotIn('vote_identity_recovery', result)
+
     def test_frozen_flat_request_keeps_original_query_and_prompt(self):
         doc = {'source': 'votes.pdf', 'sha256': 'fixture', 'language': 'de',
                'pages': [{'page': 1, 'text': 'Evidence'}]}

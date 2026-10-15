@@ -6,7 +6,9 @@ Direct Docker execution reads mixed Task A/B UTF-8 JSONL. `make run` remains the
 single-request development demo; it is not the batch evaluation interface.
 Build on a networked machine; the pinned SentenceSwissBERT encoder is included
 in the image. No Apertus weights are downloaded. Runtime model downloads are
-disabled. Local PDF paths are resolved relative to `/data`; URL inputs are rejected.
+disabled. Local PDF paths are resolved relative to `/data`; absolute paths,
+`..` traversal, symlink escapes and URL inputs are rejected. Production output
+must resolve beneath `/output`.
 
 ```sh
 cd track_2a
@@ -66,8 +68,13 @@ mkdir "$fixture/output"
 chmod 777 "$fixture/output"
 docker run --rm --platform linux/amd64 --network none \
   -v "$fixture/data:/data:ro" -v "$fixture/output:/output" \
-  --entrypoint python3 votelens:evaluation-20261015 /app/tests/docker_evaluation_contract.py
+  -v "$PWD/tests/docker_evaluation_contract.py:/test/docker_evaluation_contract.py:ro" \
+  --entrypoint python3 votelens:evaluation-20261015 /test/docker_evaluation_contract.py
 ```
+
+The default production stage contains `src/` and the SentenceSwissBERT notice,
+not `tests/` or gold-labelled fixtures. `make test-docker` builds the separate
+`test` target and overrides its entrypoint for offline regression checks.
 
 The integration does not publish an image. Publish an approved linux/amd64 image,
 record its immutable registry digest and verify a clean pull before submission.
@@ -177,6 +184,25 @@ exit code 0, a verified page citation and no lexical fallback. It used one
 example and therefore establishes application-path execution, not accuracy or
 cross-platform portability. The default managed 8B service remains unverified.
 
+For a fresh two-case check through the authoritative mixed-JSONL production
+entrypoint, first build the image, then run the operator-only script with a
+trusted local Federal Chancellery PDF, its exact proposal title and a claim:
+
+```bash
+docker build --platform linux/amd64 -t votelens:evaluation-20261015 .
+./run_cscs_mixed_smoke.sh \
+  /absolute/path/to/trusted-booklet.pdf \
+  'Exact proposal title as printed in the booklet' \
+  'Claim about that proposal'
+```
+
+The script reads `~/.config/hackapertus/cscs.env` without printing it, sends
+exactly one Task A and one Task B request, prints a redacted Docker command,
+exit codes, IDs/labels, citation pages and token/latency fields, and validates
+the output schema. It records only predictions plus exit metadata under the
+ignored `data/experiments/` tree. It makes paid remote calls and must be run by
+an authorised user; it is a smoke check, not a benchmark.
+
 ## Input and output
 
 `data/request.json` contains one official Beginner or Advanced object. Beginner:
@@ -218,8 +244,12 @@ The CLI uses the P0 `vote-aware-v1` candidate. Advanced retrieval encodes
 SwissBERT adapter and keeps dense Top-5 ranking. No hybrid or proposition
 reranker is enabled. The judge receives the original claim separately and must
 recognise the vote in a selected source passage; ambiguous, unrecognised or
-unsupported identities fail. Recognition and stakeholder reasoning depend on
-Apertus. They have been measured only in the exposed 54-case paired development
+unsupported identities fail. For a schema-consistent Neutral response with no
+evidence citations, if Apertus returns null/unrecognised identity but the
+complete requested vote title occurs in a selected source passage, the
+application may recover only that exact source-grounded reference. Partial,
+ambiguous, non-neutral and wrong-proposal matches still fail. Recognition and stakeholder
+reasoning otherwise depend on Apertus. They have been measured only in the exposed 54-case paired development
 evaluation documented in `technical_report.md`, not on an independent test set.
 
 The model selects passage IDs instead of generating final quotations. The
