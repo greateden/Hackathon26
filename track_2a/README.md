@@ -161,8 +161,8 @@ documented in the technical report; both use exposed development data.
 ## Evaluation and repository map
 
 - [Project status](docs/PROJECT_STATUS.md): requirements, verified work and remaining gaps.
-- [Technical report](technical_report.md): concise submission report (6 pages) with retrieval, evidence-sensitivity and paired results.
-- [Technical report PDF](docs/report/technical_report.pdf): 6-page A4 render; rebuild via `make pdf` from this directory.
+- [Technical report](technical_report.md): submission report (currently 7 pages) with retrieval, evidence-sensitivity and paired results.
+- [Technical report PDF](docs/report/technical_report.pdf): current A4 render (7 pages as reported after recompilation); rebuild via `make pdf` from this directory.
 - [Long-form technical reference](docs/TECHNICAL_REPORT_LONG.md): full methodology, per-case analysis and counterfactual design.
 - [Interactive diagnostic](docs/experience/courage-to-be-wrong/README.md): failure-first presentation layer with data-verification guard (no model, no server, no network).
 - [Editable notebook demo](docs/HackApertus-demo.ipynb): opt-in one-request Docker walkthrough; saved outputs are historical and live API use is disabled by default.
@@ -174,7 +174,7 @@ documented in the technical report; both use exposed development data.
   - `make test-integrity` — additionally runs experiment-integrity checks that require git-ignored raw records (`data/experiments/`, `data/eval/`). Skips cleanly in a clean checkout.
 - [Data policy](data/README.md): small committed examples, ignored corpora and local results.
 
-Report PDF is at `docs/report/technical_report.pdf` (6 pages, A4). Team metadata, demo and
+Report PDF is at `docs/report/technical_report.pdf` (currently 7 pages, A4; verify the challenge-specific page limit). Team metadata, demo and
 external-material licensing still need human review. Report licence: CC-BY-4.0, following the
 [technical-report template](https://github.com/HackApertus/project-template/blob/main/track_2a/technical_report.md).
 

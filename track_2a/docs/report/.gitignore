@@ -3,3 +3,14 @@ figure*.pdf
 *.aux
 *.log
 *.out
+
+# Other regenerable LaTeX build intermediates; never ignore final PDF.
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.synctex
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg

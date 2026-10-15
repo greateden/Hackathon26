@@ -1,6 +1,6 @@
 # Experimental vote-identity prompt — 15 October 2026
 
-Status: READY_FOR_CONTROLLED_LIVE_TEST. Not promoted; no live evaluation performed.
+Status (15 October): TWO CONTROLLED CSCS A/B RUNS COMPLETED; candidate not promoted. The original plan below is retained for provenance.
 
 ## Diagnosis
 
@@ -67,7 +67,7 @@ Original native predictions SHA-256:
 `a3334fee0e80c8c8330f48271ec0e6c238974db3ea55f14d1533a14f41eab85f`.
 Prior report and diagnostic-logging edits in the worktree are outside this change.
 
-## Proposed live A/B plan — NOT EXECUTED
+## Original nine-case A/B plan (subsequently executed)
 
 - Freeze nine Task A rows: **194, 528, 555, 68, 171, 533, 694, 1076, 1095**.
   First three are diagnostic failures; remaining six are the first two accepted,
@@ -95,3 +95,9 @@ Prior report and diagnostic-logging edits in the worktree are outside this chang
   cannot establish general quality, qualification or submission readiness.
 
 No API calls, model downloads, Docker work, full evaluations, commit or push.
+
+## Subsequent results (15 October 2026)
+
+The original targeted nine-case A/B yielded baseline valid 6/9, strict correct 5/9, three-class Macro-F1 0.656; the identity-aware candidate yielded 8/9 valid, 7/9 correct, Macro-F1 0.850. A separate deterministically selected 20-case development A/B yielded 12/20 valid, 11/20 correct and Macro-F1 0.633 in **both** arms, with zero paired label flips or validity changes. These exposed development samples are not official or held-out evaluation. The production prompt was retained. Raw experiment records remain locally Git-ignored under `data/experiments/vote-identity-ab9-20261015T170130Z/` and `data/experiments/vote-identity-ab20-20261015T193500Z/`; a fresh checkout does not contain them.
+
+The request-budget and non-execution statements above describe the **original preparation stage**, not the final experiment status.

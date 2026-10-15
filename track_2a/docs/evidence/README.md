@@ -68,3 +68,5 @@ bytes, preserved under `../../data/logs/v15_first_real_20261011_1839/` (ignored)
 Old recorded paths describe the run location at the time. For a rerun, use the
 cached PDF stem or its new `track_2a/data/` path; do not edit the raw evidence.
 The model-list response alone cannot prove which weights were loaded.
+
+- **Vote-identity prompt A/B (15 October 2026):** the original targeted nine-case slice showed baseline 5/9 strict correct, Macro-F1 0.656 versus candidate 7/9, Macro-F1 0.850. A separate 20-case exposed-development comparison produced 11/20 correct, Macro-F1 0.633 in both arms, with zero paired label or validity changes. The candidate was not promoted; see [the candidate provenance and experiment summary](../VOTE_IDENTITY_PROMPT_CANDIDATE_20261015.md). Complete run ledgers remain under Git-ignored `data/experiments/vote-identity-*` and are **not** reproducible from a clean checkout alone.
