@@ -17,3 +17,5 @@ __pycache__/
 pytorch_model*.bin
 *.pem
 *.key
+
+.opencode/
